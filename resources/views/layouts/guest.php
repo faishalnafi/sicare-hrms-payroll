@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html class="light" lang="id">
+<head>
+    <meta charset="utf-8"/>
+    <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+    <title>siCare - HRIS & ATS System</title>
+    
+    <!-- Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Inter:wght@400;500;600&display=swap" rel="stylesheet"/>
+    
+    <!-- Icons (Material Symbols) -->
+    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
+    
+    <!-- SweetAlert2 -->
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    
+    <!-- Tailwind via CDN (From Provided Template) -->
+    <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+    <script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            colors: {
+              "tertiary-container": "#fef0d4",
+              "on-error-container": "#410002",
+              "surface-container-lowest": "#ffffff",
+              "on-surface-variant": "#454652",
+              "on-primary-fixed-variant": "#1a5bbf",
+              "inverse-primary": "#a6c8ff",
+              "tertiary-fixed-dim": "#fcd05d",
+              "secondary-container": "#c4ecd1",
+              "on-error": "#ffffff",
+              "tertiary-fixed": "#fde293",
+              "tertiary": "#FBBC05", // Google Yellow
+              "on-secondary-container": "#0b3c1b",
+              "primary": "#4285F4", // Google Blue
+              "surface-tint": "#4285F4",
+              "background": "#f8f9fa",
+              "secondary": "#34A853", // Google Green
+              "on-tertiary-fixed": "#4a3600",
+              "surface-variant": "#e1e3e4",
+              "surface-container-high": "#e7e8e9",
+              "primary-fixed-dim": "#8ab4f8",
+              "on-primary-container": "#d6e4ff",
+              "on-tertiary-fixed-variant": "#5f4600",
+              "on-secondary-fixed": "#0d4d23",
+              "on-primary": "#ffffff",
+              "outline-variant": "#c6c5d4",
+              "on-tertiary": "#ffffff",
+              "on-tertiary-container": "#4a3600",
+              "surface": "#f8f9fa",
+              "surface-bright": "#f8f9fa",
+              "surface-container": "#edeeef",
+              "secondary-fixed-dim": "#81c995",
+              "error": "#EA4335", // Google Red
+              "on-secondary-fixed-variant": "#13602d",
+              "on-secondary": "#ffffff",
+              "secondary-fixed": "#a8dab5",
+              "primary-container": "#aecbfa",
+              "surface-container-low": "#f3f4f5",
+              "inverse-on-surface": "#f0f1f2",
+              "on-background": "#191c1d",
+              "error-container": "#fce8e6",
+              "surface-dim": "#d9dadb",
+              "primary-fixed": "#d2e3fc",
+              "on-surface": "#191c1d",
+              "inverse-surface": "#2e3132",
+              "surface-container-highest": "#e1e3e4",
+              "on-primary-fixed": "#174ea6",
+              "outline": "#767683"
+            },
+            fontFamily: {
+              "headline": ["Manrope"],
+              "body": ["Inter"],
+              "label": ["Inter"]
+            },
+            borderRadius: {"DEFAULT": "0.125rem", "lg": "0.25rem", "xl": "0.5rem", "full": "0.75rem"},
+          },
+        },
+      }
+    </script>
+    <style>
+      @keyframes float {
+        0% { transform: translateY(0px); }
+        50% { transform: translateY(-10px); }
+        100% { transform: translateY(0px); }
+      }
+      .animate-float {
+        animation: float 4s ease-in-out infinite;
+      }
+      .material-symbols-outlined {
+        font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+      }
+      .signature-gradient {
+        background: linear-gradient(135deg, #1e3a8a 0%, #1d4ed8 100%);
+      }
+      .frosted-nav {
+        background: rgba(255, 255, 255, 0.8);
+        backdrop-filter: blur(20px);
+      }
+      .glass-card {
+        background: rgba(255, 255, 255, 0.7);
+        backdrop-filter: blur(16px);
+        border: 1px solid rgba(255, 255, 255, 0.5);
+        box-shadow: 0 4px 30px rgba(0, 0, 0, 0.05);
+      }
+    </style>
+</head>
+<body class="bg-surface font-body text-on-surface antialiased flex flex-col min-h-screen">
+    <?php if (isset($page) && !in_array($page, ['signin', 'signup'])): ?>
+    <?php require __DIR__ . '/../parts/guest_header.php'; ?>
+    <?php endif; ?>
+    <!-- Main Content -->
+    <main class="flex-grow flex flex-col">
+        <?php echo $content; ?>
+    </main>
+
+    <?php require __DIR__ . '/../parts/guest_footer.php'; ?>
+</body>
+</html>

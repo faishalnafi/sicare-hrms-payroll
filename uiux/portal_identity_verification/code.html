@@ -1,0 +1,323 @@
+<!DOCTYPE html>
+
+<html class="light" lang="id"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>ScholarGate Portal Hub</title>
+<!-- Fonts -->
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&amp;family=Inter:wght@400;500;600&amp;display=swap" rel="stylesheet"/>
+<!-- Icons -->
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            colors: {
+              "tertiary-container": "#003909",
+              "on-error-container": "#93000a",
+              "surface-container-lowest": "#ffffff",
+              "on-surface-variant": "#454652",
+              "on-primary-fixed-variant": "#343d96",
+              "inverse-primary": "#bdc2ff",
+              "tertiary-fixed-dim": "#88d982",
+              "secondary-container": "#51b2fe",
+              "on-error": "#ffffff",
+              "tertiary-fixed": "#a3f69c",
+              "tertiary": "#002103",
+              "on-secondary-container": "#00436a",
+              "primary": "#000666",
+              "surface-tint": "#4c56af",
+              "background": "#f8f9fa",
+              "secondary": "#00639a",
+              "on-tertiary-fixed": "#002204",
+              "surface-variant": "#e1e3e4",
+              "surface-container-high": "#e7e8e9",
+              "primary-fixed-dim": "#bdc2ff",
+              "on-primary-container": "#8690ee",
+              "on-tertiary-fixed-variant": "#005312",
+              "on-secondary-fixed": "#001d32",
+              "on-primary": "#ffffff",
+              "outline-variant": "#c6c5d4",
+              "on-tertiary": "#ffffff",
+              "on-tertiary-container": "#5aa958",
+              "surface": "#f8f9fa",
+              "surface-bright": "#f8f9fa",
+              "surface-container": "#edeeef",
+              "secondary-fixed-dim": "#96ccff",
+              "error": "#ba1a1a",
+              "on-secondary-fixed-variant": "#004a75",
+              "on-secondary": "#ffffff",
+              "secondary-fixed": "#cee5ff",
+              "primary-container": "#1a237e",
+              "surface-container-low": "#f3f4f5",
+              "inverse-on-surface": "#f0f1f2",
+              "on-background": "#191c1d",
+              "error-container": "#ffdad6",
+              "surface-dim": "#d9dadb",
+              "primary-fixed": "#e0e0ff",
+              "on-surface": "#191c1d",
+              "inverse-surface": "#2e3132",
+              "surface-container-highest": "#e1e3e4",
+              "on-primary-fixed": "#000767",
+              "outline": "#767683"
+            },
+            fontFamily: {
+              "headline": ["Manrope"],
+              "body": ["Inter"],
+              "label": ["Inter"]
+            },
+            borderRadius: {"DEFAULT": "0.125rem", "lg": "0.25rem", "xl": "0.5rem", "full": "0.75rem"},
+          },
+        },
+      }
+    </script>
+<style>
+      .material-symbols-outlined {
+        font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+      }
+      .signature-gradient {
+        background: linear-gradient(135deg, #000666 0%, #1a237e 100%);
+      }
+      .frosted-nav {
+        background: rgba(255, 255, 255, 0.8);
+        backdrop-filter: blur(20px);
+      }
+    </style>
+</head>
+<body class="bg-surface font-body text-on-surface antialiased">
+<!-- TopNavBar -->
+<nav class="w-full top-0 sticky z-50 frosted-nav flex justify-between items-center px-8 py-4 max-w-full">
+<div class="flex items-center gap-8">
+<span class="text-2xl font-extrabold text-[#000666] tracking-tighter font-headline">ScholarGate</span>
+<div class="hidden md:flex items-center gap-6">
+<a class="text-[#000666] border-b-2 border-[#000666] pb-1 font-bold font-headline transition-colors" href="#">Learning</a>
+<a class="text-[#454652] font-medium font-headline hover:text-[#1A237E] transition-colors" href="#">Admin</a>
+<a class="text-[#454652] font-medium font-headline hover:text-[#1A237E] transition-colors" href="#">Exams</a>
+<a class="text-[#454652] font-medium font-headline hover:text-[#1A237E] transition-colors" href="#">Library</a>
+</div>
+</div>
+<div class="flex items-center gap-4">
+<button class="p-2 text-on-surface-variant hover:bg-surface-container-high rounded-full transition-all">
+<span class="material-symbols-outlined" data-icon="notifications">notifications</span>
+</button>
+<button class="p-2 text-on-surface-variant hover:bg-surface-container-high rounded-full transition-all">
+<span class="material-symbols-outlined" data-icon="settings">settings</span>
+</button>
+<div class="w-10 h-10 rounded-full bg-surface-container-high overflow-hidden">
+<img alt="User Profile Avatar" data-alt="Close-up portrait of a professional man with a friendly expression in a modern office setting, soft natural lighting." src="https://lh3.googleusercontent.com/aida-public/AB6AXuB0xSzk_kjw5sMzHc5sVuidm2AHsEGA2DxySElg6PDU_5_Jo-3vHd3_r1ZCtGrOn6UfLVj3cmvhAGu-o2Mm7YfFTLicGsnnwfYYNNCKWUURWe6-XA4IcJROYKyk_-grDrDZOWBz_umIpZfCinqVzJ9p6CJd1zcsNfvjU7W0FE1Cx1t77RqJ_bm5czc0AJXfNbiRTbCyv7t-g36TJqlfXFHE9u35Izqnhq3kous8_VXK8F4YMkOwPi6jYXbnYKEth0xcUoHWA2stNyc"/>
+</div>
+</div>
+</nav>
+<main class="min-h-screen">
+<!-- Hero Section -->
+<section class="relative pt-20 pb-24 px-8 md:px-12 lg:px-24 overflow-hidden">
+<div class="max-w-7xl mx-auto flex flex-col md:flex-row items-center gap-16">
+<div class="flex-1 space-y-8 z-10">
+<div class="inline-flex items-center gap-2 px-3 py-1 bg-tertiary-fixed rounded-full text-on-tertiary-fixed text-xs font-bold tracking-wider">
+<span class="material-symbols-outlined text-sm" data-icon="verified" style="font-variation-settings: 'FILL' 1;">verified</span>
+                        AKSES TERPUSAT
+                    </div>
+<h1 class="text-5xl lg:text-7xl font-headline font-extrabold tracking-tight text-primary leading-[1.1]">
+                        Portal Layanan Akademik ScholarGate
+                    </h1>
+<p class="text-xl text-on-surface-variant max-w-xl leading-relaxed">
+                        Satu pintu menuju seluruh ekosistem digital sekolah. Akses pembelajaran, ujian, hingga administrasi keuangan dalam satu dasbor terintegrasi yang aman dan efisien.
+                    </p>
+<div class="flex flex-wrap gap-4">
+<button class="px-8 py-4 bg-primary text-on-primary rounded-xl font-bold font-headline hover:shadow-xl transition-all">
+                            Mulai Belajar Sekarang
+                        </button>
+<button class="px-8 py-4 bg-surface-container-lowest text-primary rounded-xl font-bold font-headline border border-outline-variant/15 hover:bg-surface-container-low transition-all">
+                            Panduan Pengguna
+                        </button>
+</div>
+</div>
+<div class="flex-1 relative">
+<div class="w-full aspect-square rounded-[2rem] overflow-hidden signature-gradient p-1">
+<div class="w-full h-full rounded-[1.8rem] overflow-hidden">
+<img alt="Academic Portal Visual" class="w-full h-full object-cover opacity-90 mix-blend-overlay" data-alt="Group of diverse students working together on laptops in a modern glass library, focused atmosphere with soft morning sunlight." src="https://lh3.googleusercontent.com/aida-public/AB6AXuBA9tsIJ3bOn105b1CsZmRZfe4eNXuarfX5tuZTNB7U3ux6FBAYet9sM28y4DBXFkKluXXpMsOCmQCkCypLeer4tG2Dx55olRCcRfJGix8x2OSpmi2j2Mku3_FGvUmAAj5eyJxc4v7m-5GIpId9Y3yPkzNO8hf881E6v0Xdx8XX8FEe442e1je7et4CMytzxmwh-4_2SAE7a1O6Pgf1g4Kr79bvazbjVJUpKrSfTxKU8DJsxK4uP_qP2gXylmuHPIx31e17RNEyOLk"/>
+</div>
+</div>
+<!-- Identity Chip Overlapping -->
+<div class="absolute -bottom-6 -left-6 p-6 bg-surface-container-lowest rounded-xl shadow-[0_20px_40px_rgba(0,7,103,0.06)] border border-outline-variant/15 flex items-center gap-4">
+<div class="w-12 h-12 bg-tertiary-fixed rounded-full flex items-center justify-center">
+<span class="material-symbols-outlined text-on-tertiary-fixed" data-icon="lock_open">lock_open</span>
+</div>
+<div>
+<p class="text-xs text-on-surface-variant font-medium">Masuk Sebagai</p>
+<p class="text-sm font-bold text-primary">Ananda Pratama (Siswa)</p>
+</div>
+</div>
+</div>
+</div>
+</section>
+<!-- Search & Filter Hub -->
+<section class="bg-surface-container-low py-16 px-8 md:px-12 lg:px-24">
+<div class="max-w-7xl mx-auto space-y-12">
+<div class="flex flex-col md:flex-row justify-between items-end gap-8">
+<div class="space-y-4">
+<h2 class="text-3xl font-headline font-bold text-primary">Aplikasi &amp; Layanan</h2>
+<p class="text-on-surface-variant">Temukan aplikasi yang Anda butuhkan melalui kategori atau pencarian.</p>
+</div>
+<div class="w-full md:w-96">
+<div class="relative group">
+<span class="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-on-surface-variant group-focus-within:text-primary transition-colors" data-icon="search">search</span>
+<input class="w-full pl-12 pr-4 py-4 bg-surface-container-high rounded-xl border-none focus:bg-surface-container-lowest focus:ring-0 focus:border-b-2 focus:border-primary transition-all font-medium" placeholder="Cari nama aplikasi..." type="text"/>
+</div>
+</div>
+</div>
+<!-- Tabs -->
+<div class="flex flex-wrap gap-4 items-center">
+<button class="px-6 py-2 bg-primary text-on-primary rounded-full font-bold text-sm shadow-lg shadow-primary/20">Semua</button>
+<button class="px-6 py-2 bg-surface-container-highest text-on-surface-variant rounded-full font-semibold text-sm hover:bg-surface-variant transition-colors">Learning</button>
+<button class="px-6 py-2 bg-surface-container-highest text-on-surface-variant rounded-full font-semibold text-sm hover:bg-surface-variant transition-colors">Exams</button>
+<button class="px-6 py-2 bg-surface-container-highest text-on-surface-variant rounded-full font-semibold text-sm hover:bg-surface-variant transition-colors">Administration</button>
+<button class="px-6 py-2 bg-surface-container-highest text-on-surface-variant rounded-full font-semibold text-sm hover:bg-surface-variant transition-colors">Support</button>
+</div>
+<!-- Application Grid -->
+<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+<!-- App Card 1 -->
+<div class="group bg-surface-container-lowest p-8 rounded-xl border border-outline-variant/15 hover:shadow-[0_20px_40px_rgba(0,7,103,0.06)] transition-all flex flex-col h-full">
+<div class="w-14 h-14 bg-blue-100 rounded-xl flex items-center justify-center mb-6 text-blue-700">
+<span class="material-symbols-outlined text-3xl" data-icon="school">school</span>
+</div>
+<h3 class="text-xl font-headline font-bold text-primary mb-3">Google Classroom</h3>
+<p class="text-sm text-on-surface-variant leading-relaxed mb-8 flex-grow">Akses materi pelajaran, tugas harian, dan diskusi kelas dengan mudah dalam satu tempat.</p>
+<button class="w-full py-3 text-primary border-b border-transparent hover:border-primary font-bold text-sm transition-all text-left flex justify-between items-center group/btn">
+                            Buka Aplikasi
+                            <span class="material-symbols-outlined text-sm group-hover/btn:translate-x-1 transition-transform" data-icon="arrow_forward">arrow_forward</span>
+</button>
+</div>
+<!-- App Card 2 -->
+<div class="group bg-surface-container-lowest p-8 rounded-xl border border-outline-variant/15 hover:shadow-[0_20px_40px_rgba(0,7,103,0.06)] transition-all flex flex-col h-full">
+<div class="w-14 h-14 bg-red-100 rounded-xl flex items-center justify-center mb-6 text-red-700">
+<span class="material-symbols-outlined text-3xl" data-icon="quiz">quiz</span>
+</div>
+<h3 class="text-xl font-headline font-bold text-primary mb-3">CBT Exam</h3>
+<p class="text-sm text-on-surface-variant leading-relaxed mb-8 flex-grow">Sistem ujian berbasis komputer yang aman untuk pelaksanaan ujian tengah dan akhir semester.</p>
+<button class="w-full py-3 text-primary border-b border-transparent hover:border-primary font-bold text-sm transition-all text-left flex justify-between items-center group/btn">
+                            Buka Aplikasi
+                            <span class="material-symbols-outlined text-sm group-hover/btn:translate-x-1 transition-transform" data-icon="arrow_forward">arrow_forward</span>
+</button>
+</div>
+<!-- App Card 3 -->
+<div class="group bg-surface-container-lowest p-8 rounded-xl border border-outline-variant/15 hover:shadow-[0_20px_40px_rgba(0,7,103,0.06)] transition-all flex flex-col h-full">
+<div class="w-14 h-14 bg-purple-100 rounded-xl flex items-center justify-center mb-6 text-purple-700">
+<span class="material-symbols-outlined text-3xl" data-icon="auto_stories">auto_stories</span>
+</div>
+<h3 class="text-xl font-headline font-bold text-primary mb-3">Digital Library</h3>
+<p class="text-sm text-on-surface-variant leading-relaxed mb-8 flex-grow">Ribuan koleksi e-book dan jurnal akademik yang dapat dipinjam dan dibaca secara digital.</p>
+<button class="w-full py-3 text-primary border-b border-transparent hover:border-primary font-bold text-sm transition-all text-left flex justify-between items-center group/btn">
+                            Buka Aplikasi
+                            <span class="material-symbols-outlined text-sm group-hover/btn:translate-x-1 transition-transform" data-icon="arrow_forward">arrow_forward</span>
+</button>
+</div>
+<!-- App Card 4 -->
+<div class="group bg-surface-container-lowest p-8 rounded-xl border border-outline-variant/15 hover:shadow-[0_20px_40px_rgba(0,7,103,0.06)] transition-all flex flex-col h-full">
+<div class="w-14 h-14 bg-emerald-100 rounded-xl flex items-center justify-center mb-6 text-emerald-700">
+<span class="material-symbols-outlined text-3xl" data-icon="description">description</span>
+</div>
+<h3 class="text-xl font-headline font-bold text-primary mb-3">E-Rapor</h3>
+<p class="text-sm text-on-surface-variant leading-relaxed mb-8 flex-grow">Pantau hasil belajar dan laporan perkembangan akademik siswa secara real-time.</p>
+<button class="w-full py-3 text-primary border-b border-transparent hover:border-primary font-bold text-sm transition-all text-left flex justify-between items-center group/btn">
+                            Buka Aplikasi
+                            <span class="material-symbols-outlined text-sm group-hover/btn:translate-x-1 transition-transform" data-icon="arrow_forward">arrow_forward</span>
+</button>
+</div>
+<!-- App Card 5 -->
+<div class="group bg-surface-container-lowest p-8 rounded-xl border border-outline-variant/15 hover:shadow-[0_20px_40px_rgba(0,7,103,0.06)] transition-all flex flex-col h-full">
+<div class="w-14 h-14 bg-sky-100 rounded-xl flex items-center justify-center mb-6 text-sky-700">
+<span class="material-symbols-outlined text-3xl" data-icon="video_chat">video_chat</span>
+</div>
+<h3 class="text-xl font-headline font-bold text-primary mb-3">Virtual Meeting</h3>
+<p class="text-sm text-on-surface-variant leading-relaxed mb-8 flex-grow">Platform tatap muka virtual untuk kegiatan belajar mengajar jarak jauh dan rapat orang tua.</p>
+<button class="w-full py-3 text-primary border-b border-transparent hover:border-primary font-bold text-sm transition-all text-left flex justify-between items-center group/btn">
+                            Buka Aplikasi
+                            <span class="material-symbols-outlined text-sm group-hover/btn:translate-x-1 transition-transform" data-icon="arrow_forward">arrow_forward</span>
+</button>
+</div>
+<!-- App Card 6 -->
+<div class="group bg-surface-container-lowest p-8 rounded-xl border border-outline-variant/15 hover:shadow-[0_20px_40px_rgba(0,7,103,0.06)] transition-all flex flex-col h-full">
+<div class="w-14 h-14 bg-amber-100 rounded-xl flex items-center justify-center mb-6 text-amber-700">
+<span class="material-symbols-outlined text-3xl" data-icon="payments">payments</span>
+</div>
+<h3 class="text-xl font-headline font-bold text-primary mb-3">School Payment</h3>
+<p class="text-sm text-on-surface-variant leading-relaxed mb-8 flex-grow">Sistem pembayaran SPP dan biaya administrasi lainnya secara cashless dan transparan.</p>
+<button class="w-full py-3 text-primary border-b border-transparent hover:border-primary font-bold text-sm transition-all text-left flex justify-between items-center group/btn">
+                            Buka Aplikasi
+                            <span class="material-symbols-outlined text-sm group-hover/btn:translate-x-1 transition-transform" data-icon="arrow_forward">arrow_forward</span>
+</button>
+</div>
+<!-- App Card 7 -->
+<div class="group bg-surface-container-lowest p-8 rounded-xl border border-outline-variant/15 hover:shadow-[0_20px_40px_rgba(0,7,103,0.06)] transition-all flex flex-col h-full">
+<div class="w-14 h-14 bg-teal-100 rounded-xl flex items-center justify-center mb-6 text-teal-700">
+<span class="material-symbols-outlined text-3xl" data-icon="how_to_reg">how_to_reg</span>
+</div>
+<h3 class="text-xl font-headline font-bold text-primary mb-3">Student Presence</h3>
+<p class="text-sm text-on-surface-variant leading-relaxed mb-8 flex-grow">Pencatatan kehadiran siswa harian terintegrasi dengan sistem notifikasi orang tua.</p>
+<button class="w-full py-3 text-primary border-b border-transparent hover:border-primary font-bold text-sm transition-all text-left flex justify-between items-center group/btn">
+                            Buka Aplikasi
+                            <span class="material-symbols-outlined text-sm group-hover/btn:translate-x-1 transition-transform" data-icon="arrow_forward">arrow_forward</span>
+</button>
+</div>
+<!-- App Card 8 -->
+<div class="group bg-surface-container-lowest p-8 rounded-xl border border-outline-variant/15 hover:shadow-[0_20px_40px_rgba(0,7,103,0.06)] transition-all flex flex-col h-full">
+<div class="w-14 h-14 bg-rose-100 rounded-xl flex items-center justify-center mb-6 text-rose-700">
+<span class="material-symbols-outlined text-3xl" data-icon="psychology">psychology</span>
+</div>
+<h3 class="text-xl font-headline font-bold text-primary mb-3">Counseling</h3>
+<p class="text-sm text-on-surface-variant leading-relaxed mb-8 flex-grow">Layanan bimbingan konseling dan konsultasi karir untuk masa depan siswa yang lebih baik.</p>
+<button class="w-full py-3 text-primary border-b border-transparent hover:border-primary font-bold text-sm transition-all text-left flex justify-between items-center group/btn">
+                            Buka Aplikasi
+                            <span class="material-symbols-outlined text-sm group-hover/btn:translate-x-1 transition-transform" data-icon="arrow_forward">arrow_forward</span>
+</button>
+</div>
+<!-- App Card 9 -->
+<div class="group bg-surface-container-lowest p-8 rounded-xl border border-outline-variant/15 hover:shadow-[0_20px_40px_rgba(0,7,103,0.06)] transition-all flex flex-col h-full">
+<div class="w-14 h-14 bg-orange-100 rounded-xl flex items-center justify-center mb-6 text-orange-700">
+<span class="material-symbols-outlined text-3xl" data-icon="military_tech">military_tech</span>
+</div>
+<h3 class="text-xl font-headline font-bold text-primary mb-3">Scholarship Center</h3>
+<p class="text-sm text-on-surface-variant leading-relaxed mb-8 flex-grow">Informasi dan pendaftaran beasiswa internal maupun eksternal untuk siswa berprestasi.</p>
+<button class="w-full py-3 text-primary border-b border-transparent hover:border-primary font-bold text-sm transition-all text-left flex justify-between items-center group/btn">
+                            Buka Aplikasi
+                            <span class="material-symbols-outlined text-sm group-hover/btn:translate-x-1 transition-transform" data-icon="arrow_forward">arrow_forward</span>
+</button>
+</div>
+<!-- App Card 10 -->
+<div class="group bg-surface-container-lowest p-8 rounded-xl border border-outline-variant/15 hover:shadow-[0_20px_40px_rgba(0,7,103,0.06)] transition-all flex flex-col h-full">
+<div class="w-14 h-14 bg-indigo-100 rounded-xl flex items-center justify-center mb-6 text-indigo-700">
+<span class="material-symbols-outlined text-3xl" data-icon="admin_panel_settings">admin_panel_settings</span>
+</div>
+<h3 class="text-xl font-headline font-bold text-primary mb-3">School Admin</h3>
+<p class="text-sm text-on-surface-variant leading-relaxed mb-8 flex-grow">Pusat pengelolaan data sekolah, kurikulum, dan inventaris sarana prasarana.</p>
+<button class="w-full py-3 text-primary border-b border-transparent hover:border-primary font-bold text-sm transition-all text-left flex justify-between items-center group/btn">
+                            Buka Aplikasi
+                            <span class="material-symbols-outlined text-sm group-hover/btn:translate-x-1 transition-transform" data-icon="arrow_forward">arrow_forward</span>
+</button>
+</div>
+</div>
+</div>
+</section>
+<!-- Informational Footer -->
+<footer class="w-full bg-[#f3f4f5] border-t border-[#c6c5d4]/15 px-12 py-10 flex flex-col md:flex-row justify-between items-center gap-8">
+<div class="space-y-4 text-center md:text-left">
+<span class="font-['Manrope'] font-bold text-[#000666] text-xl">ScholarGate</span>
+<p class="font-['Inter'] text-sm antialiased text-[#454652]">© 2024 ScholarGate Academic Systems. All rights reserved.</p>
+</div>
+<div class="flex flex-wrap justify-center gap-8">
+<a class="font-['Inter'] text-sm antialiased text-[#454652] hover:text-[#000666] underline transition-all duration-300" href="#">Privacy Policy</a>
+<a class="font-['Inter'] text-sm antialiased text-[#454652] hover:text-[#000666] underline transition-all duration-300" href="#">Terms of Service</a>
+<a class="font-['Inter'] text-sm antialiased text-[#454652] hover:text-[#000666] underline transition-all duration-300" href="#">Security</a>
+<a class="font-['Inter'] text-sm antialiased text-[#454652] hover:text-[#000666] underline transition-all duration-300" href="#">Support</a>
+</div>
+</footer>
+</main>
+<!-- Contextual FAB -->
+<button class="fixed bottom-8 right-8 w-14 h-14 bg-primary text-on-primary rounded-full shadow-2xl flex items-center justify-center hover:scale-110 transition-transform z-[60]">
+<span class="material-symbols-outlined" data-icon="help_center">help_center</span>
+</button>
+</body></html>

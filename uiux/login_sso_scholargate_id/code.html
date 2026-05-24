@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>ScholarGate Identity - Secure Login</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&amp;family=Inter:wght@300;400;500;600&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            colors: {
+              "on-primary-fixed": "#000767",
+              "tertiary": "#002103",
+              "inverse-primary": "#bdc2ff",
+              "inverse-surface": "#2e3132",
+              "surface-container-high": "#e7e8e9",
+              "secondary-fixed": "#cee5ff",
+              "on-error": "#ffffff",
+              "secondary-fixed-dim": "#96ccff",
+              "on-secondary": "#ffffff",
+              "on-primary-container": "#8690ee",
+              "on-surface": "#191c1d",
+              "on-secondary-fixed": "#001d32",
+              "error": "#ba1a1a",
+              "primary": "#000666",
+              "surface": "#f8f9fa",
+              "primary-container": "#1a237e",
+              "error-container": "#ffdad6",
+              "on-secondary-container": "#00436a",
+              "primary-fixed": "#e0e0ff",
+              "on-tertiary-container": "#5aa958",
+              "on-surface-variant": "#454652",
+              "secondary": "#00639a",
+              "primary-fixed-dim": "#bdc2ff",
+              "surface-container-low": "#f3f4f5",
+              "surface-bright": "#f8f9fa",
+              "on-primary": "#ffffff",
+              "on-tertiary": "#ffffff",
+              "tertiary-fixed": "#a3f69c",
+              "surface-container-lowest": "#ffffff",
+              "on-background": "#191c1d",
+              "surface-variant": "#e1e3e4",
+              "tertiary-fixed-dim": "#88d982",
+              "outline-variant": "#c6c5d4",
+              "surface-dim": "#d9dadb",
+              "surface-container": "#edeeef",
+              "secondary-container": "#51b2fe",
+              "inverse-on-surface": "#f0f1f2",
+              "outline": "#767683",
+              "tertiary-container": "#003909",
+              "on-tertiary-fixed": "#002204",
+              "on-primary-fixed-variant": "#343d96",
+              "on-tertiary-fixed-variant": "#005312",
+              "on-error-container": "#93000a",
+              "on-secondary-fixed-variant": "#004a75",
+              "surface-tint": "#4c56af",
+              "background": "#f8f9fa",
+              "surface-container-highest": "#e1e3e4"
+            },
+            fontFamily: {
+              "headline": ["Manrope"],
+              "body": ["Inter"],
+              "label": ["Inter"]
+            },
+            borderRadius: {"DEFAULT": "0.125rem", "lg": "0.25rem", "xl": "0.5rem", "full": "0.75rem"},
+          },
+        },
+      }
+    </script>
+<style>
+      .material-symbols-outlined {
+        font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+      }
+      .signature-gradient {
+        background: linear-gradient(135deg, #000666 0%, #1a237e 100%);
+      }
+      .frosted-glass {
+        background-color: rgba(255, 255, 255, 0.8);
+        backdrop-filter: blur(20px);
+      }
+      .ghost-border {
+        outline: 1px solid rgba(198, 197, 212, 0.15);
+      }
+    </style>
+</head>
+<body class="bg-surface font-body text-on-surface min-h-screen flex flex-col">
+<!-- TopNavBar Suppression: Hidden for transactional login screen as per Shell Visibility Rule -->
+<main class="flex-grow flex items-center justify-center px-6 py-12 relative overflow-hidden">
+<!-- Background Decorative Elements (The "Digital Campus" feeling) -->
+<div class="absolute top-0 left-0 w-full h-full opacity-5 pointer-events-none">
+<div class="absolute top-[-10%] left-[-5%] w-96 h-96 rounded-full signature-gradient blur-3xl"></div>
+<div class="absolute bottom-[-10%] right-[-5%] w-96 h-96 rounded-full signature-gradient blur-3xl"></div>
+</div>
+<div class="w-full max-w-[1200px] grid md:grid-cols-2 gap-16 items-center">
+<!-- Left Side: Editorial Content (Asymmetric Layout) -->
+<div class="hidden md:flex flex-col space-y-8 pr-12">
+<div class="inline-flex items-center gap-2 bg-tertiary-fixed text-on-tertiary-fixed-variant px-3 py-1 rounded-full text-xs font-bold tracking-wide uppercase"><span class="material-symbols-outlined text-sm" data-icon="shield_lock" style="font-variation-settings: 'FILL' 1;">shield_lock</span> KEAMANAN TINGKAT AKADEMIK</div>
+<h1 class="font-headline text-6xl font-extrabold text-primary leading-tight tracking-tighter">Akses Masa <br/><span class="text-secondary">Depanmu.</span></h1>
+<p class="text-on-surface-variant text-lg leading-relaxed max-w-md">ScholarGate Identity menyediakan gerbang yang aman dan terpadu untuk mengakses catatan akademik, mata pelajaran, dan sumber daya institusi Anda.</p>
+<div class="flex items-center gap-6 mt-4">
+<div class="flex -space-x-3">
+<img class="w-10 h-10 rounded-full border-2 border-surface" data-alt="professional portrait of a graduate student smiling in a library setting with warm academic lighting" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBT7vEYbrbO88KOrPvE-uXavr4dVx4-m14HwcRdS5EsUugSI5lmdJw9DAWbgF6QrFYyeilNh-CaRSbbyX3Zqc59ZGtgPDkKwkdWcNbVwJ7BGfc93auiLQJzdzRnaICLKaoFPbdDDvSe9LtEuxRYr76aKOX502I-AqmaBMi2lBNVw1iMHyEYZQFjr3IR3ppCuT_WcV_uFeVkPejXyCoXPbF2tlPTWuX5aCvKMvdbTvGGqgQyTYok6uIu0iS-lhGQloIj9j99IQCLOUQ"/>
+<img class="w-10 h-10 rounded-full border-2 border-surface" data-alt="young male researcher in laboratory looking at camera with soft natural light" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCed5PDJqcARnq_x6livXYi_nUha78ITJbd_--wWHU5bGxj9zLgltDDpnXXfXHhr4HCaZBG5Rx1g0VCuVyOLh5OxV8viUqXQB3K_GxBRu6F8QJxCH6CBbecN0LoeNn3P4Aw3BM0GODmFr-at8tCMNNPsOvUrzVB54fb3irJKY09ifzTTY7UzuENmTf1wCl37HOSrKJbwvIGcsQTj5G12lqX1kyBO0Z7GSZo4rZ__pfNNBzO-KSNR8IHVIi_xshoQ_kCe-Idn6JT6qc"/>
+<img class="w-10 h-10 rounded-full border-2 border-surface" data-alt="academic professor in office with bookshelves background looking confident" src="https://lh3.googleusercontent.com/aida-public/AB6AXuB2TBYYe_XNSFiV7BzWBh_qxHVJqwyCKQn7GAoKMk8BzKYLAZqdjrDZ2X3-oP1gakH3Li6RAvTkfvBB5WNKkHXSUOw-sAVCthghtZNyqsTJR6NruEa6IeILABKHH-rdu4SutJf5x5sWjbCRum_veeUNQ7ViPwdm1FP15N0wnXNQxk9GJuvlHOSmzVyGkkCDdVzOVxF2Yj401_ht-a5IzRCTxp_BJ3Mpg0yWwQHLJ2RCTYCRoYQpfgaOaMRxRVyweG97fKsDLZrT6cA"/>
+</div>
+<p class="text-sm font-medium text-on-surface-variant">Dipercaya oleh 50.000+ siswa &amp; peneliti.</p>
+</div>
+</div>
+<!-- Right Side: Login Card (Central Content Hub) -->
+<div class="flex justify-center md:justify-end">
+<div class="w-full max-w-[480px] bg-surface-container-lowest p-8 md:p-12 rounded-xl shadow-[0_20px_40px_rgba(0,7,103,0.06)] ghost-border">
+<div class="mb-10 text-center md:text-left">
+<span class="font-headline text-2xl font-black text-primary mb-2 block tracking-tight">ScholarGate Identity</span>
+<h2 class="font-headline text-3xl font-bold text-on-surface mt-2">Masuk</h2>
+</div>
+<div class="space-y-6">
+<!-- Google Auth Button -->
+<button class="w-full flex items-center justify-center gap-3 py-3.5 px-4 bg-surface-container-lowest ghost-border rounded-lg text-on-surface-variant font-medium hover:bg-surface-container-low transition-all duration-150"><svg class="w-5 h-5" viewbox="0 0 24 24"><path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"></path><path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"></path><path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.27.81-.57z" fill="#FBBC05"></path><path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"></path></svg> Masuk dengan Google</button>
+<div class="relative py-4 flex items-center">
+<div class="flex-grow border-t border-outline-variant opacity-30"></div>
+<span class="flex-shrink mx-4 text-xs font-bold text-outline uppercase tracking-widest">ATAU MASUK DENGAN ID</span>
+<div class="flex-grow border-t border-outline-variant opacity-30"></div>
+</div>
+<!-- Login Form -->
+<form class="space-y-4" onsubmit="return false;">
+<div class="space-y-2">
+<label class="text-sm font-semibold text-on-surface-variant ml-1" for="student-id">Nomor Induk atau Email</label>
+<input class="w-full px-4 py-3.5 bg-surface-container-high border-none rounded-lg focus:ring-0 focus:bg-surface-container-lowest focus:border-b-2 focus:border-primary transition-all text-on-surface" id="student-id" placeholder="misal: s1234567@university.edu" type="text"/>
+</div>
+<div class="space-y-2">
+<label class="text-sm font-semibold text-on-surface-variant ml-1" for="password">Kata Sandi</label>
+<input class="w-full px-4 py-3.5 bg-surface-container-high border-none rounded-lg focus:ring-0 focus:bg-surface-container-lowest focus:border-b-2 focus:border-primary transition-all text-on-surface" id="password" placeholder="••••••••" type="password"/>
+</div>
+<div class="flex items-center justify-between py-2">
+<label class="flex items-center gap-2 cursor-pointer group">
+<input class="w-4 h-4 rounded-sm border-outline-variant text-primary focus:ring-primary/20" type="checkbox"/>
+<span class="text-sm text-on-surface-variant group-hover:text-primary transition-colors">Ingat perangkat ini</span>
+</label>
+<a class="text-sm font-semibold text-primary hover:underline transition-all" href="#">Lupa kata sandi?</a>
+</div>
+<button class="w-full signature-gradient text-on-primary py-4 rounded-lg font-bold shadow-lg shadow-primary/10 hover:opacity-90 active:opacity-80 transition-all duration-150 mt-4">Masuk ke Portal</button>
+</form>
+<!-- Instruction for new users -->
+<div class="mt-8 p-6 bg-surface-container-low rounded-xl border-l-4 border-secondary">
+<div class="flex gap-4">
+<span class="material-symbols-outlined text-secondary" data-icon="info" style="font-variation-settings: 'FILL' 1;">info</span>
+<div>
+<p class="text-sm font-bold text-on-surface">Baru pertama kali?</p>
+<p class="text-xs text-on-surface-variant mt-1 leading-relaxed">Verifikasi identitas Anda untuk mengklaim akun dan mengatur kredensial institusi Anda. <a class="text-primary font-bold hover:underline block mt-1" href="#">Klaim Akun Sekarang</a></p>
+</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+</main>
+<!-- Footer Component Integration from JSON -->
+<footer class="bg-[#f3f4f5] dark:bg-slate-950 w-full border-t border-[#c6c5d4]/15 font-inter text-sm antialiased">
+<div class="flex flex-col md:flex-row justify-between items-center px-12 py-8 gap-4 max-w-7xl mx-auto">
+<div class="text-lg font-bold text-[#454652]">ScholarGate Identity</div>
+<div class="flex flex-wrap justify-center gap-6">
+<a class="text-[#454652] dark:text-slate-500 hover:text-[#000666] dark:hover:text-white transition-all" href="#">Pusat Bantuan</a>
+<a class="text-[#454652] dark:text-slate-500 hover:text-[#000666] dark:hover:text-white transition-all" href="#">Kebijakan Privasi</a>
+<a class="text-[#454652] dark:text-slate-500 hover:text-[#000666] dark:hover:text-white transition-all" href="#">Info Pengembang</a>
+</div>
+<div class="text-[#454652] dark:text-slate-500 opacity-80">© 2024 ScholarGate Identity. Hak cipta dilindungi undang-undang.</div>
+</div>
+</footer>
+</body></html>

@@ -1,0 +1,320 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>ScholarGate | Student Profile Dashboard</title>
+<!-- Fonts -->
+<link href="https://fonts.googleapis.com" rel="preconnect"/>
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&amp;family=Manrope:wght@700;800&amp;display=swap" rel="stylesheet"/>
+<!-- Material Symbols -->
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<!-- Tailwind CSS -->
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            colors: {
+              "on-primary-fixed": "#000767",
+              "tertiary": "#002103",
+              "inverse-primary": "#bdc2ff",
+              "inverse-surface": "#2e3132",
+              "surface-container-high": "#e7e8e9",
+              "secondary-fixed": "#cee5ff",
+              "on-error": "#ffffff",
+              "secondary-fixed-dim": "#96ccff",
+              "on-secondary": "#ffffff",
+              "on-primary-container": "#8690ee",
+              "on-surface": "#191c1d",
+              "on-secondary-fixed": "#001d32",
+              "error": "#ba1a1a",
+              "primary": "#000666",
+              "surface": "#f8f9fa",
+              "primary-container": "#1a237e",
+              "error-container": "#ffdad6",
+              "on-secondary-container": "#00436a",
+              "primary-fixed": "#e0e0ff",
+              "on-tertiary-container": "#5aa958",
+              "on-surface-variant": "#454652",
+              "secondary": "#00639a",
+              "primary-fixed-dim": "#bdc2ff",
+              "surface-container-low": "#f3f4f5",
+              "surface-bright": "#f8f9fa",
+              "on-primary": "#ffffff",
+              "on-tertiary": "#ffffff",
+              "tertiary-fixed": "#a3f69c",
+              "surface-container-lowest": "#ffffff",
+              "on-background": "#191c1d",
+              "surface-variant": "#e1e3e4",
+              "tertiary-fixed-dim": "#88d982",
+              "outline-variant": "#c6c5d4",
+              "surface-dim": "#d9dadb",
+              "surface-container": "#edeeef",
+              "secondary-container": "#51b2fe",
+              "inverse-on-surface": "#f0f1f2",
+              "outline": "#767683",
+              "tertiary-container": "#003909",
+              "on-tertiary-fixed": "#002204",
+              "on-primary-fixed-variant": "#343d96",
+              "on-tertiary-fixed-variant": "#005312",
+              "on-error-container": "#93000a",
+              "on-secondary-fixed-variant": "#004a75",
+              "surface-tint": "#4c56af",
+              "background": "#f8f9fa",
+              "surface-container-highest": "#e1e3e4"
+            },
+            fontFamily: {
+              "headline": ["Manrope"],
+              "body": ["Inter"],
+              "label": ["Inter"]
+            },
+            borderRadius: {"DEFAULT": "0.125rem", "lg": "0.25rem", "xl": "0.5rem", "full": "0.75rem"},
+          },
+        },
+      }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+            vertical-align: middle;
+        }
+        body { font-family: 'Inter', sans-serif; }
+        h1, h2, h3 { font-family: 'Manrope', sans-serif; }
+        .modal-blur { filter: blur(4px); pointer-events: none; }
+    </style>
+</head>
+<body class="bg-surface text-on-surface relative">
+<!-- Modal Overlay -->
+<div class="fixed inset-0 z-[100] flex items-center justify-center p-4">
+<!-- Backdrop -->
+<div class="absolute inset-0 bg-on-surface/40 backdrop-blur-sm"></div>
+<!-- Modal Content -->
+<div class="relative bg-surface-container-lowest w-full max-w-xl rounded-xl shadow-2xl border border-outline-variant/30 overflow-hidden animate-in fade-in zoom-in duration-300">
+<div class="px-8 py-6 border-b border-outline-variant/20 flex justify-between items-center">
+<h2 class="text-xl font-black text-on-surface tracking-tight">Ajukan Perbaikan Data</h2>
+<button class="p-1 hover:bg-surface-container-high rounded-full transition-colors">
+<span class="material-symbols-outlined text-on-surface-variant">close</span>
+</button>
+</div>
+<form class="p-8 space-y-6">
+<div class="space-y-2">
+<label class="text-xs font-bold text-on-surface-variant uppercase tracking-wider">Kategori Data</label>
+<div class="relative">
+<select class="w-full bg-surface-container-high border-none rounded-sm px-4 py-3 focus:bg-surface-container-lowest focus:ring-0 focus:border-b-2 focus:border-primary transition-all font-medium text-on-surface appearance-none cursor-pointer">
+<option value="nik">NIK (Nomor Induk Kependudukan)</option>
+<option value="nisn">NISN (Nomor Induk Siswa Nasional)</option>
+<option value="nama">Nama Lengkap</option>
+<option value="tanggal_lahir">Tanggal Lahir</option>
+<option value="lainnya">Lainnya</option>
+</select>
+<span class="material-symbols-outlined absolute right-3 top-3 pointer-events-none text-on-surface-variant/60">expand_more</span>
+</div>
+</div>
+<div class="space-y-2">
+<label class="text-xs font-bold text-on-surface-variant uppercase tracking-wider">Data Baru</label>
+<input class="w-full bg-surface-container-high border-none rounded-sm px-4 py-3 focus:bg-surface-container-lowest focus:ring-0 focus:border-b-2 focus:border-primary transition-all font-medium text-on-surface" placeholder="Masukkan data yang benar" type="text"/>
+</div>
+<div class="space-y-2">
+<label class="text-xs font-bold text-on-surface-variant uppercase tracking-wider">Alasan Perubahan</label>
+<textarea class="w-full bg-surface-container-high border-none rounded-sm px-4 py-3 focus:bg-surface-container-lowest focus:ring-0 focus:border-b-2 focus:border-primary transition-all font-medium text-on-surface resize-none" placeholder="Jelaskan mengapa data perlu diperbaiki..." rows="3"></textarea>
+</div>
+<div class="space-y-2">
+<label class="text-xs font-bold text-on-surface-variant uppercase tracking-wider">Dokumen Pendukung</label>
+<div class="border-2 border-dashed border-outline-variant/50 rounded-lg p-6 flex flex-col items-center justify-center bg-surface-container-low hover:bg-surface-container-high transition-colors cursor-pointer group">
+<span class="material-symbols-outlined text-3xl text-on-surface-variant/40 group-hover:text-primary transition-colors mb-2">cloud_upload</span>
+<p class="text-sm font-medium text-on-surface-variant text-center">Unggah KTP / KK / Akte Kelahiran</p>
+<p class="text-[10px] text-on-surface-variant/60 mt-1 uppercase font-bold">PDF, JPG, PNG (Maks. 5MB)</p>
+</div>
+</div>
+<div class="pt-4 flex gap-3">
+<button class="flex-1 px-6 py-3 border border-outline text-on-surface-variant font-bold rounded-lg hover:bg-surface-container-high transition-all" type="button">Batal</button>
+<button class="flex-1 bg-primary text-on-primary px-6 py-3 rounded-lg font-bold shadow-lg shadow-primary/20 hover:opacity-90 active:scale-95 transition-all" type="submit">Kirim Pengajuan</button>
+</div>
+</form>
+</div>
+</div>
+<!-- Main Content Area -->
+<div class="modal-blur">
+<!-- TopNavBar -->
+<header class="w-full top-0 sticky z-50 bg-[#f8f9fa] dark:bg-slate-900 border-none">
+<div class="flex justify-between items-center px-8 py-4 max-w-7xl mx-auto">
+<div class="text-2xl font-black text-[#000666] dark:text-blue-500 font-manrope tracking-tight">ScholarGate</div>
+<nav class="hidden md:flex gap-8 items-center">
+<a class="text-[#454652] dark:text-slate-400 font-medium font-inter hover:text-[#000666] transition-colors" href="#">Dashboard</a>
+<a class="text-[#454652] dark:text-slate-400 font-medium font-inter hover:text-[#000666] transition-colors" href="#">Courses</a>
+<a class="text-[#454652] dark:text-slate-400 font-medium font-inter hover:text-[#000666] transition-colors" href="#">Resources</a>
+</nav>
+<div class="flex items-center gap-4">
+<button class="p-2 text-on-surface-variant hover:bg-surface-container-high rounded-full transition-colors">
+<span class="material-symbols-outlined">notifications</span>
+</button>
+<div class="flex items-center gap-3 pl-4 border-l border-outline-variant/30">
+<div class="text-right hidden sm:block">
+<p class="text-xs font-bold text-primary">Detail Pribadi</p>
+<p class="text-sm font-semibold text-on-surface">Alex Rivera</p>
+</div>
+<img alt="Student Profile Avatar" class="w-10 h-10 rounded-full border-2 border-primary-fixed shadow-sm" data-alt="portrait of a young student with a friendly expression in a brightly lit academic setting with soft bokeh background" src="https://lh3.googleusercontent.com/aida-public/AB6AXuA4Efb-1fbie8dAtyo_fI8q8Cf6wkFaWoH-YSZwAzdi8TemKQf7FLKl0a2GebGNQExetd1XItWwZZqaVA1II-6naKSQ2nmbYEt3-qkN7phffsILNZxRmGeypa0BzB_Oyvh4j3xJOnIkx4FpyY41MgQwlI8WEIoVtj2FUVJlxIFvnco9brza9hL6aR834xCwQI_yV_M_32G-xvyz0z6CgIU-KNMwnxsmN9SGWXsG4VQ_UGDy22ZmBAsf7aVq17Sw28SR77ivqY1njOs"/>
+</div>
+</div>
+</div>
+</header>
+<main class="max-w-7xl mx-auto px-8 py-12">
+<!-- Identity Chip -->
+<div class="mb-8 flex items-center gap-2">
+<span class="bg-tertiary-fixed text-on-tertiary-fixed text-[10px] font-bold uppercase tracking-widest px-3 py-1 rounded-full">IDENTITAS TERVERIFIKASI</span>
+<span class="text-on-surface-variant text-sm font-medium">Tahun Ajaran 2023/2024</span>
+</div>
+<div class="grid grid-cols-1 lg:grid-cols-12 gap-12 items-start">
+<!-- Left Column: Profile Card & Navigation -->
+<div class="lg:col-span-4 space-y-6">
+<div class="bg-surface-container-lowest rounded-xl p-8 shadow-[0_20px_40px_rgba(0,7,103,0.06)] border border-outline-variant/15">
+<div class="flex flex-col items-center text-center">
+<div class="relative mb-4">
+<img alt="Profile Image" class="w-32 h-32 rounded-full object-cover border-4 border-surface shadow-md" data-alt="close-up portrait of a male student wearing a modern navy polo shirt against a clean neutral wall" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCTVElABamXvtIMLFwgUwtMCQNEfEvOfG7cNRl36VTsQ8gbT53lGv03Mu6zn0E24Y6jwuAwStfJpeR__YkDIl3v16Ay6OiGleAp1nAGLnWOPyjdRC3he5g3l3ELKWCng6MJhGxXjXB4R_bFknFH9NUYZ6tB46bJ0tGzxKtvIl1w2cw6sXRFUEYpcr7DIszZTh3g3lorWVwuGLkGo4MKIsaRN2Hbuqk64qZloLRUjUviL5xnxz_Wv7g68xPhdZztEfOLuMFOAyRCCgc"/>
+<button class="absolute bottom-1 right-1 bg-primary text-white p-2 rounded-full shadow-lg hover:scale-110 transition-transform">
+<span class="material-symbols-outlined text-sm">edit</span>
+</button>
+</div>
+<h2 class="text-2xl font-black text-on-surface mb-1">Alex Rivera</h2>
+<p class="text-on-surface-variant font-medium text-sm">Tahun Ajaran 2023/2024</p>
+<div class="mt-8 w-full space-y-2">
+<div class="bg-surface-container-low rounded-lg p-3 flex justify-between items-center group cursor-pointer hover:bg-surface-container-high transition-colors">
+<div class="flex items-center gap-3">
+<span class="material-symbols-outlined text-primary">person</span>
+<span class="text-sm font-bold text-primary">Detail Pribadi</span>
+</div>
+<span class="material-symbols-outlined text-primary text-sm">chevron_right</span>
+</div>
+<div class="bg-transparent rounded-lg p-3 flex justify-between items-center group cursor-pointer hover:bg-surface-container-low transition-colors">
+<div class="flex items-center gap-3">
+<span class="material-symbols-outlined text-on-surface-variant">school</span>
+<span class="text-sm font-medium text-on-surface-variant">Riwayat Akademik</span>
+</div>
+<span class="material-symbols-outlined text-on-surface-variant/30 text-sm">chevron_right</span>
+</div>
+<div class="bg-transparent rounded-lg p-3 flex justify-between items-center group cursor-pointer hover:bg-surface-container-low transition-colors">
+<div class="flex items-center gap-3">
+<span class="material-symbols-outlined text-on-surface-variant">security</span>
+<span class="text-sm font-medium text-on-surface-variant">Keamanan &amp; SSO</span>
+</div>
+<span class="material-symbols-outlined text-on-surface-variant/30 text-sm">chevron_right</span>
+</div>
+</div>
+</div>
+</div>
+<!-- Academic Status Bento -->
+<div class="bg-primary-container text-on-primary-container rounded-xl p-6 relative overflow-hidden">
+<div class="relative z-10">
+<h3 class="text-lg font-bold mb-4">Status Registrasi</h3>
+<div class="flex items-center gap-4">
+<div class="bg-white/10 rounded-full w-12 h-12 flex items-center justify-center">
+<span class="material-symbols-outlined text-white">verified</span>
+</div>
+<div>
+<p class="text-xs text-on-primary-container/80 uppercase font-bold tracking-widest">Siswa Aktif</p>
+<p class="text-sm text-white font-medium">Validasi oleh Kementerian Pendidikan</p>
+</div>
+</div>
+</div>
+<div class="absolute -bottom-4 -right-4 opacity-10">
+<span class="material-symbols-outlined text-[120px]" style="font-variation-settings: 'FILL' 1;">account_balance</span>
+</div>
+</div>
+</div>
+<!-- Right Column: Form Sections -->
+<div class="lg:col-span-8 space-y-8">
+<!-- Section: Read Only School Data -->
+<section>
+<div class="flex justify-between items-end mb-6">
+<div>
+<h2 class="text-3xl font-black text-on-surface tracking-tight">Data Institusi</h2>
+<p class="text-on-surface-variant mt-1">Data terverifikasi yang disediakan oleh institusi pendidikan Anda.</p>
+</div>
+<a class="text-primary text-sm font-bold underline underline-offset-4 hover:opacity-80 transition-opacity" href="#">Ajukan perbaikan</a>
+</div>
+<div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+<div class="bg-surface-container-low p-5 rounded-lg border-l-4 border-primary/20">
+<label class="text-[10px] uppercase font-bold tracking-tighter text-on-surface-variant block mb-1">NIK (Nomor Induk Kependudukan)</label>
+<p class="text-on-surface font-semibold">3275012309990001</p>
+</div>
+<div class="bg-surface-container-low p-5 rounded-lg border-l-4 border-primary/20">
+<label class="text-[10px] uppercase font-bold tracking-tighter text-on-surface-variant block mb-1">NISN (Nomor Induk Siswa Nasional)</label>
+<p class="text-on-surface font-semibold">0051234567</p>
+</div>
+<div class="bg-surface-container-low p-5 rounded-lg border-l-4 border-primary/20">
+<label class="text-[10px] uppercase font-bold tracking-tighter text-on-surface-variant block mb-1">NIS (Nomor Induk Siswa)</label>
+<p class="text-on-surface font-semibold">2023.10.442</p>
+</div>
+<div class="bg-surface-container-low p-5 rounded-lg border-l-4 border-primary/20">
+<label class="text-[10px] uppercase font-bold tracking-tighter text-on-surface-variant block mb-1">Tanggal Lahir</label>
+<p class="text-on-surface font-semibold">September 12, 2005</p>
+</div>
+</div>
+</section>
+<!-- Section: Editable Personal Information -->
+<section>
+<div class="mb-6">
+<h2 class="text-3xl font-black text-on-surface tracking-tight">Informasi Kontak</h2>
+<p class="text-on-surface-variant mt-1">Kelola bagaimana Anda menerima pemberitahuan dan pembaruan kampus.</p>
+</div>
+<div class="bg-surface-container-lowest rounded-xl p-8 border border-outline-variant/15 shadow-sm">
+<form class="space-y-6">
+<div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+<div class="space-y-2">
+<label class="text-xs font-bold text-on-surface-variant ml-1">Alamat Email Pribadi</label>
+<div class="relative group">
+<input class="w-full bg-surface-container-high border-none rounded-sm px-4 py-3 focus:bg-surface-container-lowest focus:ring-0 focus:border-b-2 focus:border-primary transition-all font-medium text-on-surface" placeholder="e.g. name@email.com" type="email" value="alex.rivera@example.com"/>
+<div class="absolute right-3 top-3 text-on-surface-variant/40 group-focus-within:text-primary transition-colors">
+<span class="material-symbols-outlined text-sm">mail</span>
+</div>
+</div>
+</div>
+<div class="space-y-2">
+<label class="text-xs font-bold text-on-surface-variant ml-1">Nomor Telepon</label>
+<div class="relative group">
+<input class="w-full bg-surface-container-high border-none rounded-sm px-4 py-3 focus:bg-surface-container-lowest focus:ring-0 focus:border-b-2 focus:border-primary transition-all font-medium text-on-surface" placeholder="+62 000 0000 0000" type="tel" value="+62 812 3456 7890"/>
+<div class="absolute right-3 top-3 text-on-surface-variant/40 group-focus-within:text-primary transition-colors">
+<span class="material-symbols-outlined text-sm">phone_iphone</span>
+</div>
+</div>
+</div>
+</div>
+<div class="space-y-2">
+<label class="text-xs font-bold text-on-surface-variant ml-1">Alamat Tempat Tinggal</label>
+<textarea class="w-full bg-surface-container-high border-none rounded-sm px-4 py-3 focus:bg-surface-container-lowest focus:ring-0 focus:border-b-2 focus:border-primary transition-all font-medium text-on-surface resize-none" rows="3">Jl. Boulevard Gading Serpong No. 12, Tangerang, Banten 15810</textarea>
+</div>
+<div class="pt-4 flex justify-end gap-4">
+<button class="px-6 py-2.5 text-primary font-bold hover:underline transition-all" type="button">Detail Pribadi</button>
+<button class="bg-primary text-on-primary px-10 py-2.5 rounded-lg font-bold shadow-lg shadow-primary/20 hover:opacity-90 active:scale-95 transition-all" type="submit">Simpan Perubahan</button>
+</div>
+</form>
+</div>
+</section>
+<!-- Security Awareness Card -->
+<div class="bg-error-container/30 border border-error/10 p-6 rounded-xl flex gap-4 items-start">
+<span class="material-symbols-outlined text-error mt-0.5">info</span>
+<div>
+<h4 class="text-on-error-container font-bold">Pengingat Privasi</h4>
+<p class="text-on-error-container/80 text-sm mt-1 leading-relaxed">Nomor identitas nasional Anda adalah data sensitif. ScholarGate tidak pernah membagikan informasi ini dengan pengiklan pihak ketiga atau pengembang yang tidak berwenang. Hanya administrator sekolah yang memiliki akses ke catatan institusi Anda.</p>
+</div>
+</div>
+</div>
+</div>
+</main>
+<!-- Footer -->
+<footer class="w-full border-t border-[#c6c5d4]/15 bg-[#f3f4f5] dark:bg-slate-950 mt-20">
+<div class="flex flex-col md:flex-row justify-between items-center px-12 py-8 gap-4 max-w-7xl mx-auto">
+<div class="text-lg font-bold text-[#454652] font-headline">ScholarGate Identity</div>
+<div class="flex gap-8">
+<a class="text-[#454652] dark:text-slate-500 text-sm font-inter hover:text-[#000666] transition-all" href="#">Help Center</a>
+<a class="text-[#454652] dark:text-slate-500 text-sm font-inter hover:text-[#000666] transition-all" href="#">Privacy Policy</a>
+<a class="text-[#454652] dark:text-slate-500 text-sm font-inter hover:text-[#000666] transition-all" href="#">Developer Info</a>
+</div>
+<p class="text-[#454652] dark:text-slate-500 text-sm font-inter antialiased">© 2024 ScholarGate Identity. All rights reserved.</p>
+</div>
+</footer>
+</div>
+</body></html>
