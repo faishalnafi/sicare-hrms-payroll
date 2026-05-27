@@ -1383,7 +1383,7 @@ Dokumen ini adalah **spesifikasi teknis mutlak (*absolute truth*)** untuk arsite
 
 ## BAB 1: KEAMANAN TINGKAT TINGGI (HIGH-LEVEL SECURITY) & BATASAN AI
 
-Untuk mencegah pembobolan data (*data breach*) dan menjaga kerahasiaan data korporasi, AI **wajib** mengimplementasikan standar keamanan berikut dalam setiap pembuatan *codebase*:
+Untuk mencegah pembobolan data (*data breach*), manipulasi sistem, bypass otorisasi, dan pembajakan kode, seluruh aturan baku dan implementasi wajib mengikuti kebijakan keamanan ketat yang tercantum pada file khusus [security.md](file:///d:/Server/WebApp/siCare/security.md). AI **wajib** mengimplementasikan standar keamanan berikut dalam setiap pembuatan *codebase*:
 
 ### 1.1 Proteksi Injeksi & Database
 - **Prepared Statements Wajib**: DILARANG KERAS menggunakan interpolasi string langsung (seperti `$id`) ke dalam *query* SQL. Selalu gunakan *Prepared Statements* (PDO/MySQLi binding) untuk semua operasi CRUD.
@@ -1435,7 +1435,18 @@ AI wajib mematuhi standar rancangan relasional tabel berikut untuk mengakomodasi
    - `name` (VARCHAR(100))
    - `parent_id` (CHAR(36), FK ke `departments.id`, Nullable untuk level puncak)
    - `level` (INT, 1 hingga 5)
-4. **`employment_history` (Riwayat Jabatan & Mutasi)**
+   - `is_executive_entity` (BOOLEAN, default FALSE) -> *Hanya bernilai TRUE untuk departemen C-Level (CEO, CTO, dsb) agar dapat ditautkan menu spesifik.*
+4. **`system_menus` (Master Menu Navigasi)**
+   - `id` (CHAR(36), PK)
+   - `menu_name` (VARCHAR(100)) -> *Contoh: "Rekapitulasi Keuangan", "Audit Log Akses", "Monitoring KPI Produk"*
+   - `menu_key` (VARCHAR(100), UNIQUE)
+   - `description` (TEXT)
+5. **`department_menu_privileges` (Penautan Menu Eksekutif)**
+   - `id` (CHAR(36), PK)
+   - `department_id` (CHAR(36), FK) -> *Hanya boleh diisi ID departemen yang is_executive_entity = TRUE.*
+   - `menu_id` (CHAR(36), FK ke `system_menus`)
+   - `is_active` (BOOLEAN)
+6. **`employment_history` (Riwayat Jabatan & Mutasi)**
    - `id` (CHAR(36), PK)
    - `user_id` (CHAR(36), FK)
    - `department_id` (CHAR(36), FK)
@@ -1443,7 +1454,7 @@ AI wajib mematuhi standar rancangan relasional tabel berikut untuk mengakomodasi
    - `status_karyawan` (ENUM: Tetap, Kontrak, Probation)
    - `start_date` (DATE)
    - `end_date` (DATE, Nullable)
-5. **`approval_requests` (Workflow Mutasi/Perubahan Data/Role)**
+7. **`approval_requests` (Workflow Mutasi/Perubahan Data/Role)**
    - `id` (CHAR(36), PK)
    - `requester_id` (CHAR(36), FK - Pembuat *request*)
    - `target_user_id` (CHAR(36), FK - Karyawan yang datanya akan diubah)
@@ -1451,7 +1462,7 @@ AI wajib mematuhi standar rancangan relasional tabel berikut untuk mengakomodasi
    - `new_data` (JSON - Berisi struktur data baru yang akan ditimpa jika di-ACC)
    - `status` (ENUM: `PENDING`, `APPROVED`, `REJECTED`)
    - `approver_id` (CHAR(36), FK - Siapa yang mengeksekusi ACC)
-6. **`audit_logs` (Rekam Jejak Keamanan)**
+8. **`audit_logs` (Rekam Jejak Keamanan)**
    - `id` (CHAR(36), PK)
    - `user_id` (CHAR(36), FK)
    - `action` (VARCHAR: INSERT, UPDATE, DELETE, TRUNCATE)
@@ -1463,6 +1474,8 @@ AI wajib mematuhi standar rancangan relasional tabel berikut untuk mengakomodasi
 ---
 
 ## BAB 4: PRINSIP UI/UX, DESAIN & ASET EKSTERNAL
+
+Seluruh standar tata letak visual premium, palet warna malam master, efek glassmorphic, keselarasan piksel, pencegahan scroll horizontal (max-w-full), dan micro-animations wajib mengikuti aturan detail pada file panduan [design.md](file:///d:/Server/WebApp/siCare/design.md). AI/Developer dilarang melanggar panduan visual tersebut.
 
 - **Konsistensi Tema (Glassmorphism & Clean)**: Gunakan elemen antarmuka yang modern. Padukan transparansi proporsional (`bg-opacity`, `backdrop-blur`) dan *shadow* yang halus.
 - **Aset Wajib Google (Strict Constraint)**: 
@@ -1516,6 +1529,31 @@ Terdapat 8 Role Utama. Sistem mengikat *role* secara horizontal (isolasi data an
 
 ### Role 3: `executive` (C-Level, Dewan Komisaris, Komite Audit)
 - **Tugas**: Puncak hierarki. Berperan sebagai pengawas, perumus strategi makro, dan *Final Approver*.
+- **Daftar 20 Entitas C-Level Eksekutif**:
+  1. **CEO** (Chief Executive Officer) - Direktur Utama
+  2. **COO** (Chief Operating Officer) - Direktur Operasional
+  3. **CFO** (Chief Financial Officer) - Direktur Keuangan
+  4. **CTO** (Chief Technology Officer) - Direktur Teknologi
+  5. **CMO** (Chief Marketing Officer) - Direktur Pemasaran
+  6. **CHRO** (Chief Human Resources Officer) - Direktur SDM
+  7. **CIO** (Chief Information Officer) - Direktur Sistem Informasi
+  8. **CSO** (Chief Security Officer) - Direktur Keamanan
+  9. **CCO** (Chief Compliance Officer) - Direktur Kepatuhan / Legal
+  10. **CRO** (Chief Risk Officer) - Direktur Manajemen Risiko
+  11. **CDO** (Chief Data Officer) - Direktur Data & Analitik
+  12. **CPO** (Chief Product Officer) - Direktur Produk
+  13. **CLO** (Chief Legal Officer) - Direktur Hukum
+  14. **CAO** (Chief Administrative Officer) - Direktur Administrasi
+  15. **CBO** (Chief Business Officer) - Direktur Bisnis / Komersial
+  16. **CISO** (Chief Information Security Officer) - Direktur Keamanan Informasi
+  17. **CQA** (Chief Quality Assurance) - Direktur Penjaminan Mutu
+  18. **CSD** (Chief Strategy & Development) - Direktur Strategi
+  19. **CXO** (Chief Experience Officer) - Direktur Pengalaman Pelanggan
+  20. **CSCO** (Chief Supply Chain Officer) - Direktur Rantai Pasok
+- **Penautan Menu Dinamis**:
+  - Untuk menjaga fleksibilitas, aplikasi memiliki tabel `system_menus` yang berisi daftar menu global (cth: Rekap Keuangan, Log Akses, dll).
+  - Role `admin` dapat mendaftarkan menu tertentu ke sebuah departemen melalui tabel `department_menu_privileges`. Syarat mutlak: Departemen tersebut harus memiliki kolom `is_executive_entity = TRUE` (Misal: Departemen CTO).
+  - Saat `executive` login, sistem akan mengecek ia berada di departemen apa, lalu me-load (render) menu-menu spesifik yang ditautkan ke departemennya, memastikan setiap direktur hanya mendapat menu/rekapitulasi sesuai wewenang.
 - **Hak Akses Audit Log**: Secara khusus, Komite Audit menggunakan peran ini untuk membaca tabel `audit_logs`. Mereka mengawasi setiap pergerakan `superadmin`, `admin`, dan Direksi eksekutif lainnya.
 - **Hak ACC Mutasi**: Penentu akhir (menyetujui/menolak) pengajuan perpindahan jabatan atau *role* tingkat menengah ke atas.
 
@@ -1545,11 +1583,15 @@ Untuk mematuhi hukum tata kelola (*Corporate Governance*), mekanisme audit dibua
 
 1. **No Peer-to-Peer Approval**: Sesama karyawan dengan level *role* yang sama (misal sesama `hr_ops` atau sesama `employee`) tidak dapat menyetujui presensi atau cuti satu sama lain.
 2. **Auto-Hide Approval Button**: Jika `hr_ops` (atau jabatan manajemen lainnya) masuk ke portal layanan mandiri miliknya sendiri, sistem di *backend* **wajib menyembunyikan/mengunci** tombol "Approve" untuk transaksi miliknya sendiri. Tidak boleh ada satu orang pun yang menyetujui datanya sendiri.
-3. **Hierarki Vertikal**:
-   - *Staf Umum (`employee`)* diaudit presensinya oleh Kepala Divisi (`hiring_manager`), dan *payroll*-nya diproses oleh `hr_ops`.
-   - *Tim HR Ops & Rekruter (`hr_ops`, `recruiter`)* presensinya diaudit vertikal ke atas oleh **HR Manager** atau **HR Director**. Data *payroll* HR Ops dienkripsi dan hanya diakses oleh level manajemen HR/Finance di atasnya.
-   - *Kepala Divisi (`hiring_manager`)* diaudit presensinya oleh jajaran direktur/VP (`executive`).
-   - *Direksi / C-Level (`executive`)* diaudit oleh **Dewan Komisaris** melalui **Komite Audit** (menggunakan *Attendance Log* kehadiran rapat, dan akses *payroll/honorarium* terkunci di CHRO/Superadmin).
+3. **Pemuatan Menu ESS Wajib untuk Semua Karyawan Operasional**: 
+   * Seluruh pengguna dengan role `hr_ops`, `recruiter`, dan `hiring_manager` **WAJIB** memiliki menu **Employee Self-Service (ESS)** untuk melakukan presensi GPS, pengajuan cuti, dan melihat slip gaji pribadinya sendiri.
+   * Log presensi `hr_ops` akan masuk ke antrean persetujuan vertikal HR Manager / HR Director, sedangkan log presensi `hiring_manager` masuk ke antrean persetujuan Direktur fungsional atau jajaran `executive` di atasnya.
+4. **Hierarki Vertikal & Board Audit Console**:
+   * *Staf Umum (`employee`)* diaudit presensinya oleh Kepala Divisi (`hiring_manager`), dan *payroll*-nya diproses oleh `hr_ops`.
+   * *Tim HR Ops & Rekruter (`hr_ops`, `recruiter`)* presensinya diaudit vertikal ke atas oleh **HR Manager** atau **HR Director**. Data *payroll* HR Ops dienkripsi dan hanya diakses oleh level manajemen HR/Finance di atasnya.
+   * *Kepala Divisi (`hiring_manager`)* diaudit presensinya oleh jajaran direktur/VP (`executive`).
+   * *Direksi / C-Level (`executive`)* wajib mendaftarkan kehadirannya (log rapat direksi/fiduciary presence). Sistem menyediakan menu **"Board Audit & Attendance Console"** khusus untuk dewan komisaris dan Komite Audit guna memantau integritas kehadiran, pengeluaran dinas, dan tunjangan dewan direksi secara berkala.
+   * *Kandidat (`candidate`)* diisolasi penuh dari sistem operasional internal (tidak memiliki menu presensi, ESS, payroll, atau audit apa pun).
 
 ---
 
@@ -1614,5 +1656,21 @@ Karyawan tidak bisa merubah NIK KTP, NPWP, dan Nomor Rekening sembarangan demi k
 Untuk menjaga kualitas visual dan estetika premium aplikasi siCare, seluruh modul rendering avatar dan foto profil wajib mengikuti aturan ketat berikut:
 1. **Prioritas Utama**: Foto profil harus diambil dari database (kolom `profile_picture` yang diisi secara dinamis, misalnya dari akun sosial Google OAuth atau unggahan dokumen onboarding karyawan).
 2. **Prioritas Kedua**: Jika data `profile_picture` di basis data kosong, sistem wajib mengambil data avatar dari **Gravatar** menggunakan *hash* MD5 dari alamat email pengguna (`https://www.gravatar.com/avatar/{md5(email)}`).
-3. **Prioritas Ketiga (Fallback)**: Jika alamat email tersebut tidak terdaftar di Gravatar, sistem **HARUS** menggunakan avatar acak bermotif geometris yang dinamis dari Gravatar dengan parameter fallback `d=identicon` (`https://www.gravatar.com/avatar/{md5(email)}?d=identicon`).
-4. **Larangan Mutlak**: **DILARANG KERAS** menampilkan gambar profil berupa huruf inisial (letter-based avatar seperti `ui-avatars.com`) di seluruh lini aplikasi tanpa terkecuali. Seluruh antarmuka (baik tabel pengguna, sidebar, header, profil coming soon, log aktivitas, maupun modul lainnya) wajib menggunakan pola fallback identicon geometris Gravatar untuk menjaga nuansa desain yang misterius, premium, dan profesional.
+4. **Larangan Mutlak**: **DILARANG KERAS** menampilkan gambar profil berupa huruf inisial (letter-based avatar seperti `ui-avatars.com`) di seluruh lini aplikasi tanpa terkecuali. Seluruh antarmuka (baik tabel pengguna, sidebar, header, profil coming soon, log aktivitas, maupun modul lainnya) wajib menggunakan pola fallback identicon geometris Gravatar untuk menjaga nuansa desain yang misterius, premium, dan profesional.
+
+---
+
+## BAB 12: KEPATUHAN REGULASI & STANDAR MULTINASIONAL (COMPLIANCE)
+
+Untuk memastikan aplikasi **siCare** dapat digunakan oleh korporasi berskala nasional hingga multinasional (MNC), alur kerja (workflow) dan standar pengembangan wajib mengadopsi kerangka kerja hukum dan desain global berikut:
+
+### 12.1 Kepatuhan Hukum Ketenagakerjaan Indonesia (UU Cipta Kerja & PKWT/PKWTT)
+1. **Regulasi Kontrak (PKWT & PKWTT)**: Tabel `employment_history` mengklasifikasikan `status_karyawan` (Tetap/Kontrak/Probation) dengan referensi pada *Undang-Undang Ketenagakerjaan No. 13 Tahun 2003* dan *UU Cipta Kerja No. 6 Tahun 2023* beserta *PP No. 35 Tahun 2021*. Sistem akan mengirimkan notifikasi H-30 sebelum masa kontrak (PKWT) atau masa percobaan (Probation) berakhir kepada `hiring_manager` dan `hr_ops`.
+2. **Perhitungan Lembur (Overtime) & Cuti**: Alur persetujuan cuti dan lembur dihitung menggunakan rumus jam kerja standar (40 jam seminggu) berdasarkan regulasi Depnaker. Cuti tahunan akan otomatis di-reset atau diakumulasikan (carry-over) sesuai kebijakan master cuti.
+3. **Pajak PPh 21 & BPJS**: Variabel `bpjs_kes`, `bpjs_tk`, `npwp_number` pada `user_profiles` menjadi basis fundamental penghitungan PPh 21 TER (Tarif Efektif Rata-Rata) dan potongan JHT, JP, JKK, JKM, serta JKN secara dinamis dalam modul *payroll*.
+
+### 12.2 Standar Multinasional & ISO
+1. **Tata Kelola (Corporate Governance) - Segregation of Duties**: Alur persetujuan (Approval Matrix) dan audit log (BAB 7) dirancang agar mematuhi standar *Sarbanes-Oxley Act (SOX)* dan *ISO 27001* mengenai pemisahan tugas. Tidak ada entitas yang bisa mengeksekusi, menyetujui, dan mengaudit datanya sendiri. C-Level Executive (Komite Audit) memiliki visibilitas transparan terhadap seluruh log tanpa bisa merubah data transaksi.
+2. **Standar Desain Aksesibilitas (WCAG 2.1)**: Desain UI/UX (di `design.md`) berpegang pada palet warna kontras yang aman untuk mata (*Glassmorphism Dark Mode* yang elegan), menghindari scroll horizontal berlebih, serta memiliki indikator interaksi (SweetAlert2) yang jelas demi mematuhi standar *Web Content Accessibility Guidelines*.
+
+*(Akhir dari Panduan Resmi siCare HRMS)*
