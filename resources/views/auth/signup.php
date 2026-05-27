@@ -294,10 +294,13 @@
                     const formData = new FormData(this);
                     formData.append('first_name', firstName);
                     formData.append('last_name', lastName);
+                    const params = new URLSearchParams(formData);
                     
                     fetch('/auth/register', {
                         method: 'POST',
-                        body: formData
+                        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                        body: params,
+                        credentials: 'same-origin'
                     })
                     .then(res => res.json())
                     .then(data => {
@@ -316,7 +319,7 @@
                             Swal.fire('Gagal!', data.message, 'error');
                         }
                     })
-                    .catch(err => Swal.fire('Error!', 'Koneksi ke server gagal.', 'error'));
+                            .catch(err => Swal.fire('Error!', err.message || 'Koneksi ke server gagal.', 'error'));
                 });
             </script>
             

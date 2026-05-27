@@ -105,9 +105,12 @@
                         document.getElementById('signinForm').addEventListener('submit', function(e) {
                             e.preventDefault();
                             const formData = new FormData(this);
+                            const params = new URLSearchParams(formData);
                             fetch('/auth/login', {
                                 method: 'POST',
-                                body: formData
+                                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                                body: params,
+                                credentials: 'same-origin'
                             })
                             .then(res => res.json())
                             .then(data => {
@@ -126,7 +129,7 @@
                                     Swal.fire('Gagal!', data.message, 'error');
                                 }
                             })
-                            .catch(err => Swal.fire('Error!', 'Koneksi ke server gagal.', 'error'));
+                            .catch(err => Swal.fire('Error!', err.message || 'Koneksi ke server gagal.', 'error'));
                         });
                     </script>
                     

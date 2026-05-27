@@ -67,6 +67,7 @@ class SecurityMiddleware {
             }
 
             // Invalid token
+            file_put_contents(__DIR__ . '/../../storage/csrf_error.log', "CSRF Failed. Method: $method, Client: '$clientToken', Server: '$serverToken', POST: " . print_r($_POST, true) . ", COOKIE: " . print_r($_COOKIE, true) . "\n", FILE_APPEND);
             header('HTTP/1.1 403 Forbidden');
             echo json_encode(['success' => false, 'message' => 'CSRF Token Validation Failed.']);
             exit;
