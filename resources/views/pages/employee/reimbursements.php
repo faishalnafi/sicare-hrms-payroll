@@ -348,6 +348,7 @@ function getCategoryLabel($category) {
 
         <!-- Modal Body Form -->
         <form id="claimSubmitForm" onsubmit="submitClaimForm(event)" class="p-6 space-y-4">
+    <input type="hidden" name="csrf_token" value="<?= \App\Middleware\SecurityMiddleware::getCsrfToken() ?>">
             <!-- Category -->
             <div class="space-y-1.5">
                 <label for="claimCategory" class="block text-xs font-bold text-on-surface-variant uppercase">Kategori Reimbursement <span class="text-red-500">*</span></label>

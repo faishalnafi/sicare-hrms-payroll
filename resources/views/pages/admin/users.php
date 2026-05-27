@@ -106,6 +106,7 @@
 
         <!-- Form Body -->
         <form id="mutationForm" onsubmit="window.submitMutationForm(event)" class="overflow-y-auto p-6 space-y-6 custom-scrollbar font-body">
+    <input type="hidden" name="csrf_token" value="<?= \App\Middleware\SecurityMiddleware::getCsrfToken() ?>">
             <input type="hidden" id="mutId" name="id">
             
             <!-- User Summary Details Card -->

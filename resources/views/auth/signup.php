@@ -94,6 +94,7 @@
             <?php endif; ?>
             
             <form id="signupForm" class="space-y-6" action="/auth/register" method="POST" enctype="multipart/form-data">
+    <input type="hidden" name="csrf_token" value="<?= \App\Middleware\SecurityMiddleware::getCsrfToken() ?>">
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <!-- Nama Lengkap -->
                     <div class="space-y-2 md:col-span-2">

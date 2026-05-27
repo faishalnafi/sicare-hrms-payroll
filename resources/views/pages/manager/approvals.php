@@ -492,6 +492,7 @@ function getGravatarIcon($email) {
         </div>
         <!-- Form Body -->
         <form id="attendanceForm" onsubmit="submitAttendanceCorrection(event)" class="p-6 space-y-4">
+    <input type="hidden" name="csrf_token" value="<?= \App\Middleware\SecurityMiddleware::getCsrfToken() ?>">
             <input type="hidden" id="form-att-id" name="attendance_id" />
             <input type="hidden" id="form-att-date" name="date" />
 

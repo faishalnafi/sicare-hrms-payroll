@@ -91,6 +91,7 @@ $allDays = ['Mon' => 'Senin', 'Tue' => 'Selasa', 'Wed' => 'Rabu', 'Thu' => 'Kami
     </div>
 
     <form id="settingsForm" onsubmit="saveSettings(event)">
+    <input type="hidden" name="csrf_token" value="<?= \App\Middleware\SecurityMiddleware::getCsrfToken() ?>">
         <div class="grid grid-cols-1 xl:grid-cols-3 gap-6">
 
             <!-- ── Col 1–2: Main Settings ── -->

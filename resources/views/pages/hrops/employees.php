@@ -103,6 +103,7 @@
 
         <!-- Form Body -->
         <form id="employeeForm" onsubmit="submitEmployeeForm(event)" class="overflow-y-auto p-6 space-y-6 custom-scrollbar">
+    <input type="hidden" name="csrf_token" value="<?= \App\Middleware\SecurityMiddleware::getCsrfToken() ?>">
             <input type="hidden" id="employeeDbId" name="id">
             
             <div class="grid grid-cols-1 md:grid-cols-2 gap-6">

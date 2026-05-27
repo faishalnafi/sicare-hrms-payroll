@@ -48,6 +48,7 @@
 
             <!-- Edit Form -->
             <form id="deptForm" onsubmit="window.submitDeptForm(event)" class="space-y-5">
+    <input type="hidden" name="csrf_token" value="<?= \App\Middleware\SecurityMiddleware::getCsrfToken() ?>">
                 <input type="hidden" id="deptId" name="id" value="">
                 
                 <!-- Parent Dept Info -->

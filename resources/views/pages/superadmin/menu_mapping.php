@@ -29,7 +29,8 @@ require __DIR__ . '/../../parts/app_sidebar.php';
                     </div>
                 </div>
 
-                <form class="flex-1 flex flex-col space-y-3 mapping-form" data-dept-id="<?= $dept['id'] ?>">
+                <form class="flex-1 flex flex-col space-y-3 mapping-form" data-dept-id="<?= $dept['id'] ?>
+    <input type="hidden" name="csrf_token" value="<?= \App\Middleware\SecurityMiddleware::getCsrfToken() ?>">">
                     <?php 
                         $assignedMenus = $assignmentMap[$dept['id']] ?? [];
                     ?>

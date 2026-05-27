@@ -295,6 +295,7 @@ $pendingRequests = $reqQuery->fetchAll();
                 
                 <div class="bg-surface-container-lowest rounded-2xl p-6 border border-outline-variant/15 shadow-[0_12px_24px_rgba(0,6,102,0.01)]">
                     <form id="contactForm" onsubmit="saveContactChanges(event)" class="space-y-5">
+    <input type="hidden" name="csrf_token" value="<?= \App\Middleware\SecurityMiddleware::getCsrfToken() ?>">
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
                             <div class="space-y-2">
                                 <label class="text-xs font-bold text-on-surface-variant ml-1">Alamat Email Pribadi</label>
@@ -413,6 +414,7 @@ $pendingRequests = $reqQuery->fetchAll();
 
         <!-- Modal Body Form -->
         <form id="correctionForm" onsubmit="submitCorrectionRequest(event)" class="p-6 space-y-4 overflow-y-auto flex-grow">
+    <input type="hidden" name="csrf_token" value="<?= \App\Middleware\SecurityMiddleware::getCsrfToken() ?>">
             <!-- Kategori Data Select -->
             <div class="space-y-2">
                 <label class="text-xs font-bold text-on-surface-variant uppercase tracking-wider ml-1">Kategori Data <span class="text-red-500">*</span></label>

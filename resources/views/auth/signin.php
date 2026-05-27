@@ -75,7 +75,7 @@
                     
                     <!-- Login Form -->
                     <form id="signinForm" class="space-y-4" action="/auth/login" method="POST">
-                        <input type="hidden" name="csrf_token" value="dummy_token_here">
+                        <input type="hidden" name="csrf_token" value="<?= \App\Middleware\SecurityMiddleware::getCsrfToken() ?>">
                         <div class="space-y-2">
                             <label class="text-sm font-semibold text-on-surface-variant ml-1" for="employee_id">Email Karyawan</label>
                             <input class="w-full px-4 py-2.5 bg-surface-container-high border-none rounded-lg focus:ring-0 focus:bg-surface-container-lowest focus:border-b-2 focus:border-primary transition-all text-on-surface" id="email" name="email" placeholder="email@domain.com" type="email" required/>
