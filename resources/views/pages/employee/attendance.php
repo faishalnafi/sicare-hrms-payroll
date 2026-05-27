@@ -64,7 +64,7 @@ if ($userId) {
     }
 }
 
-$todayStatus = $today['status'] ?? ($isHoliday ? 'libur' : 'alpa');
+$todayStatus = ($isHoliday && !$hasClockIn) ? 'libur' : ($today['status'] ?? 'alpa');
 
 
 // Status colour helpers
@@ -96,6 +96,35 @@ function statusLabel($status) {
         'sakit/izin'  => 'Sakit / Izin',
         'libur'       => 'Libur',
         default       => 'Alpa',
+    };
+}
+
+// Clock-Out status helpers
+function clockOutStatusBadge($status) {
+    return match($status) {
+        'pulang lambat' => 'bg-amber-50 text-amber-700 border-amber-200',
+        'pulang cepat'  => 'bg-red-50 text-red-700 border-red-200',
+        'wajar', 'normal' => 'bg-emerald-50 text-emerald-700 border-emerald-200',
+        'tidak presensi pulang' => 'bg-rose-50 text-rose-700 border-rose-200',
+        default         => 'bg-surface-container-low text-on-surface-variant/40 border-outline-variant/10',
+    };
+}
+function clockOutStatusDot($status) {
+    return match($status) {
+        'pulang lambat' => 'bg-amber-500',
+        'pulang cepat'  => 'bg-red-500',
+        'wajar', 'normal' => 'bg-emerald-500',
+        'tidak presensi pulang' => 'bg-rose-500',
+        default         => 'bg-on-surface-variant/20',
+    };
+}
+function clockOutStatusLabel($status) {
+    return match($status) {
+        'pulang lambat' => 'Pulang Lambat',
+        'pulang cepat'  => 'Pulang Cepat',
+        'wajar', 'normal' => 'Wajar',
+        'tidak presensi pulang' => 'Tidak Presensi Pulang',
+        default         => '—',
     };
 }
 ?>
@@ -225,7 +254,7 @@ function statusLabel($status) {
                 <?= htmlspecialchars($holidayReason) ?>.
             </p>
             <p class="text-red-600/80 text-xs font-medium">
-                Anda tidak diwajibkan untuk melakukan absensi hari ini. Nikmati hari libur Anda!
+                Anda tidak diwajibkan untuk melakukan presensi hari ini. Nikmati hari libur Anda!
             </p>
         </div>
     </div>
@@ -258,9 +287,9 @@ function statusLabel($status) {
             <div class="flex-shrink-0 flex flex-col items-start lg:items-end gap-4 w-full lg:w-auto">
 
                 <!-- Today Status -->
-                <div class="bg-white/10 backdrop-blur-sm rounded-2xl px-5 py-4 border border-white/15 w-full lg:w-auto">
+                <div class="bg-white/10 backdrop-blur-sm rounded-2xl px-5 py-4 border border-white/15 w-full lg:w-[320px]">
                     <p class="text-white/60 text-[10px] font-bold uppercase tracking-widest mb-3">Status Hari Ini</p>
-                    <div class="grid grid-cols-2 gap-3 min-w-[240px]">
+                    <div class="grid grid-cols-2 gap-x-4 gap-y-3 min-w-[280px]">
                         <div>
                             <p class="text-white/50 text-[9px] font-semibold uppercase tracking-wider">Clock-In</p>
                             <p class="text-white font-bold text-lg font-mono mt-0.5" id="dispClockIn">
@@ -285,42 +314,54 @@ function statusLabel($status) {
                                 <?= $attData['workHoursToday'] ?>
                             </p>
                         </div>
+                        <div>
+                            <p class="text-white/50 text-[9px] font-semibold uppercase tracking-wider">Mode Masuk</p>
+                            <p class="text-white font-bold text-sm mt-0.5" id="dispModeIn">
+                                <?= ($today && !empty($today['work_mode'])) ? $today['work_mode'] : '—' ?>
+                            </p>
+                        </div>
+                        <div>
+                            <p class="text-white/50 text-[9px] font-semibold uppercase tracking-wider">Mode Pulang</p>
+                            <p class="text-white font-bold text-sm mt-0.5" id="dispModeOut">
+                                <?= ($today && !empty($today['work_mode_out'])) ? $today['work_mode_out'] : '—' ?>
+                            </p>
+                        </div>
                     </div>
                 </div>
 
                 <!-- Action Buttons -->
-                <div class="flex gap-3 w-full lg:w-auto">
+                <div class="flex gap-3 w-full lg:w-[320px]">
                     <?php if ($isHoliday && !$hasClockIn): ?>
-                    <button class="att-btn-disabled flex-1 lg:flex-none flex items-center justify-center gap-2.5 px-8 py-4 rounded-2xl text-white font-extrabold text-sm" disabled>
+                    <button class="att-btn-disabled flex-1 flex items-center justify-center gap-2.5 px-8 py-4 rounded-2xl text-white font-extrabold text-sm" disabled>
                         <span class="material-symbols-outlined">login</span>
                         Clock-In
                     </button>
-                    <button class="att-btn-disabled flex-1 lg:flex-none flex items-center justify-center gap-2.5 px-8 py-4 rounded-2xl text-white font-extrabold text-sm" disabled>
+                    <button class="att-btn-disabled flex-1 flex items-center justify-center gap-2.5 px-8 py-4 rounded-2xl text-white font-extrabold text-sm" disabled>
                         <span class="material-symbols-outlined">logout</span>
                         Clock-Out
                     </button>
                     <?php elseif (!$hasClockIn): ?>
                     <button id="btnClockIn" onclick="window.doClockIn()"
-                        class="att-btn-clockin flex-1 lg:flex-none flex items-center justify-center gap-2.5 px-8 py-4 rounded-2xl text-white font-extrabold text-sm tracking-wide">
+                        class="att-btn-clockin flex-1 flex items-center justify-center gap-2.5 px-8 py-4 rounded-2xl text-white font-extrabold text-sm tracking-wide">
                         <span class="material-symbols-outlined font-bold">login</span>
                         Clock-In
                     </button>
-                    <button class="att-btn-disabled flex-1 lg:flex-none flex items-center justify-center gap-2.5 px-8 py-4 rounded-2xl text-white font-extrabold text-sm" disabled>
+                    <button class="att-btn-disabled flex-1 flex items-center justify-center gap-2.5 px-8 py-4 rounded-2xl text-white font-extrabold text-sm" disabled>
                         <span class="material-symbols-outlined">logout</span>
                         Clock-Out
                     </button>
                     <?php elseif ($hasClockIn && !$hasClockOut): ?>
-                    <button class="att-btn-disabled flex-1 lg:flex-none flex items-center justify-center gap-2.5 px-8 py-4 rounded-2xl text-white font-extrabold text-sm" disabled>
+                    <button class="att-btn-disabled flex-1 flex items-center justify-center gap-2.5 px-8 py-4 rounded-2xl text-white font-extrabold text-sm" disabled>
                         <span class="material-symbols-outlined">login</span>
                         Clock-In ✓
                     </button>
                     <button id="btnClockOut" onclick="window.doClockOut()"
-                        class="att-btn-clockout flex-1 lg:flex-none flex items-center justify-center gap-2.5 px-8 py-4 rounded-2xl text-white font-extrabold text-sm tracking-wide">
+                        class="att-btn-clockout flex-1 flex items-center justify-center gap-2.5 px-8 py-4 rounded-2xl text-white font-extrabold text-sm tracking-wide">
                         <span class="material-symbols-outlined font-bold">logout</span>
                         Clock-Out
                     </button>
                     <?php else: ?>
-                    <div class="bg-white/10 rounded-2xl px-8 py-4 border border-white/15 flex items-center gap-3 text-white">
+                    <div class="bg-white/10 rounded-2xl px-8 py-4 border border-white/15 flex items-center justify-center gap-3 text-white w-full">
                         <span class="material-symbols-outlined text-green-400">check_circle</span>
                         <span class="font-bold text-sm">Presensi Hari Ini Selesai</span>
                     </div>
@@ -406,17 +447,19 @@ function statusLabel($status) {
                     <tr class="bg-surface text-on-surface-variant border-b border-outline-variant/10">
                         <th class="py-3 px-6 text-[10px] font-bold uppercase tracking-wider">Tanggal</th>
                         <th class="py-3 px-6 text-[10px] font-bold uppercase tracking-wider">Clock-In</th>
+                        <th class="py-3 px-6 text-[10px] font-bold uppercase tracking-wider">Status Clock-In</th>
                         <th class="py-3 px-6 text-[10px] font-bold uppercase tracking-wider">Clock-Out</th>
+                        <th class="py-3 px-6 text-[10px] font-bold uppercase tracking-wider">Status Clock-Out</th>
                         <th class="py-3 px-6 text-[10px] font-bold uppercase tracking-wider">Jam Kerja</th>
-                        <th class="py-3 px-6 text-[10px] font-bold uppercase tracking-wider">Status</th>
-                        <th class="py-3 px-6 text-[10px] font-bold uppercase tracking-wider">Mode</th>
+                        <th class="py-3 px-6 text-[10px] font-bold uppercase tracking-wider">Mode Masuk</th>
+                        <th class="py-3 px-6 text-[10px] font-bold uppercase tracking-wider">Mode Pulang</th>
                         <th class="py-3 px-6 text-[10px] font-bold uppercase tracking-wider">Metode</th>
                     </tr>
                 </thead>
                 <tbody class="divide-y divide-outline-variant/8">
                     <?php if (empty($attData['monthly'])): ?>
                     <tr>
-                        <td colspan="7" class="py-16 px-6 text-center">
+                        <td colspan="9" class="py-16 px-6 text-center">
                             <span class="material-symbols-outlined text-4xl text-outline-variant block mb-3">event_busy</span>
                             <p class="text-on-surface-variant font-semibold text-sm">Belum ada riwayat presensi bulan ini.</p>
                             <p class="text-on-surface-variant/60 text-xs mt-1">Lakukan Clock-In pertama Anda hari ini!</p>
@@ -446,41 +489,33 @@ function statusLabel($status) {
                             <div class="text-[10px] font-medium text-on-surface-variant"><?= $recDayLabel ?></div>
                         </td>
                         <td class="py-3.5 px-6">
-                            <span class="font-mono text-sm font-semibold <?= $rec['status'] === 'tepat waktu' ? 'text-emerald-600' : ($rec['status'] === 'awal' ? 'text-indigo-600' : ($rec['status'] === 'terlambat' ? 'text-amber-600' : 'text-on-surface-variant/40')) ?>">
+                            <span class="font-mono text-sm font-semibold text-on-surface-variant">
                                 <?= $cin ?>
                             </span>
-                        </td>
-                        <td class="py-3.5 px-6">
-                            <div class="flex flex-col gap-1">
-                                <span class="font-mono text-sm font-semibold text-on-surface-variant"><?= $cout ?></span>
-                                <?php if ($rec['clock_out'] && !empty($rec['clock_out_status'])): ?>
-                                    <?php
-                                        $coStat = $rec['clock_out_status'];
-                                        $coBadgeColor = match($coStat) {
-                                            'pulang lambat' => 'text-amber-600 bg-amber-50 border-amber-100',
-                                            'pulang cepat' => 'text-red-600 bg-red-50 border-red-100',
-                                            default => 'text-emerald-600 bg-emerald-50 border-emerald-100',
-                                        };
-                                        $coLabel = match($coStat) {
-                                            'pulang lambat' => 'Pulang Lambat',
-                                            'pulang cepat' => 'Pulang Cepat',
-                                            default => 'Wajar',
-                                        };
-                                    ?>
-                                    <span class="inline-flex items-center justify-center w-max px-2 py-0.5 rounded-full text-[9px] font-bold border <?= $coBadgeColor ?>">
-                                        <?= $coLabel ?>
-                                    </span>
-                                <?php endif; ?>
-                            </div>
-                        </td>
-                        <td class="py-3.5 px-6">
-                            <span class="text-sm font-semibold text-on-surface-variant"><?= $wh ?></span>
                         </td>
                         <td class="py-3.5 px-6">
                             <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold border <?= statusBadge($rec['status']) ?>">
                                 <span class="w-1.5 h-1.5 rounded-full <?= statusDot($rec['status']) ?>"></span>
                                 <?= statusLabel($rec['status']) ?>
                             </span>
+                        </td>
+                        <td class="py-3.5 px-6">
+                            <span class="font-mono text-sm font-semibold text-on-surface-variant">
+                                <?= $cout ?>
+                            </span>
+                        </td>
+                        <td class="py-3.5 px-6">
+                            <?php if ($rec['clock_out']): ?>
+                                <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold border <?= clockOutStatusBadge($rec['clock_out_status'] ?? '') ?>">
+                                    <span class="w-1.5 h-1.5 rounded-full <?= clockOutStatusDot($rec['clock_out_status'] ?? '') ?>"></span>
+                                    <?= clockOutStatusLabel($rec['clock_out_status'] ?? '') ?>
+                                </span>
+                            <?php else: ?>
+                                <span class="text-on-surface-variant/30 text-xs">—</span>
+                            <?php endif; ?>
+                        </td>
+                        <td class="py-3.5 px-6">
+                            <span class="text-sm font-semibold text-on-surface-variant"><?= $wh ?></span>
                         </td>
                         <td class="py-3.5 px-6">
                             <?php if (!empty($rec['work_mode'])): ?>
@@ -506,6 +541,35 @@ function statusLabel($status) {
                                 <span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-extrabold border <?= $modeColor ?>">
                                     <span class="material-symbols-outlined text-[12px]"><?= $modeIcon ?></span>
                                     <?= $modeText ?>
+                                </span>
+                            <?php else: ?>
+                                <span class="text-on-surface-variant/30 text-xs">—</span>
+                            <?php endif; ?>
+                        </td>
+                        <td class="py-3.5 px-6">
+                            <?php if (!empty($rec['work_mode_out'])): ?>
+                                <?php
+                                    $wmo = $rec['work_mode_out'];
+                                    $modeColorOut = match($wmo) {
+                                        'WFA' => 'bg-blue-50 text-blue-700 border-blue-200',
+                                        'WFH' => 'bg-indigo-50 text-indigo-700 border-indigo-200',
+                                        default => 'bg-emerald-50 text-emerald-700 border-emerald-200',
+                                    };
+                                    $modeIconOut = match($wmo) {
+                                        'WFA' => 'home_work',
+                                        'WFH' => 'home',
+                                        default => 'business',
+                                    };
+                                    $hasHomeSet = ($homeLat !== null && $homeLng !== null);
+                                    $modeTextOut = match($wmo) {
+                                        'WFA' => $hasHomeSet ? 'WFA/WFC' : 'WFA/WFC/WFH',
+                                        'WFH' => 'WFH',
+                                        default => 'WFO',
+                                    };
+                                ?>
+                                <span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-extrabold border <?= $modeColorOut ?>">
+                                    <span class="material-symbols-outlined text-[12px]"><?= $modeIconOut ?></span>
+                                    <?= $modeTextOut ?>
                                 </span>
                             <?php else: ?>
                                 <span class="text-on-surface-variant/30 text-xs">—</span>
@@ -619,6 +683,14 @@ function haversineM(lat1, lng1, lat2, lng2) {
     return Math.round(R * c);
 }
 
+function formatJsDistance(meters) {
+    if (meters === null || meters === undefined) return '';
+    if (meters < 1000) {
+        return Math.round(meters) + 'm';
+    }
+    return (meters / 1000).toFixed(1) + ' km';
+}
+
 // ── Live location status detector ────────────────────────────────
 function detectLocationStatus() {
     const tag  = document.getElementById('locationStatusTag');
@@ -631,7 +703,7 @@ function detectLocationStatus() {
     }
     navigator.geolocation.getCurrentPosition(pos => {
         const dist = haversineM(ATT_CFG.officeLat, ATT_CFG.officeLng, pos.coords.latitude, pos.coords.longitude);
-        const distKm = (dist / 1000).toFixed(1) + ' km';
+        const distKm = formatJsDistance(dist);
         
         let distHome = null;
         if (ATT_CFG.homeLat !== null && ATT_CFG.homeLng !== null) {
@@ -641,17 +713,17 @@ function detectLocationStatus() {
         const hasHomeSet = (ATT_CFG.homeLat !== null && ATT_CFG.homeLng !== null);
         const modeLabel = hasHomeSet ? 'WFA/WFC' : 'WFA/WFC/WFH';
 
-        if (dist <= ATT_CFG.radiusM) {
-            tag.className = 'mt-3 inline-flex items-center gap-2 px-3 py-1.5 rounded-xl text-xs font-bold bg-green-500/20 text-green-200 border border-green-400/30';
-            tag.innerHTML = '<span class="material-symbols-outlined text-sm">business</span><span>WFO · Dalam radius kantor (' + dist + 'm)</span>';
-        } else if (distHome !== null && distHome <= ATT_CFG.homeRadiusM) {
+        if (distHome !== null && distHome <= ATT_CFG.homeRadiusM) {
             tag.className = 'mt-3 inline-flex items-center gap-2 px-3 py-1.5 rounded-xl text-xs font-bold bg-indigo-500/20 text-indigo-200 border border-indigo-400/30';
-            tag.innerHTML = '<span class="material-symbols-outlined text-sm">home</span><span>WFH · Dalam radius rumah (' + distHome + 'm)</span>';
+            tag.innerHTML = '<span class="material-symbols-outlined text-sm">home</span><span>WFH · Dalam radius rumah (' + formatJsDistance(distHome) + ')</span>';
+        } else if (dist <= ATT_CFG.radiusM) {
+            tag.className = 'mt-3 inline-flex items-center gap-2 px-3 py-1.5 rounded-xl text-xs font-bold bg-green-500/20 text-green-200 border border-green-400/30';
+            tag.innerHTML = '<span class="material-symbols-outlined text-sm">business</span><span>WFO · Dalam radius kantor (' + formatJsDistance(dist) + ')</span>';
         } else if (ATT_CFG.wfaAllowed) {
             tag.className = 'mt-3 inline-flex items-center gap-2 px-3 py-1.5 rounded-xl text-xs font-bold bg-blue-500/20 text-blue-200 border border-blue-400/30';
             tag.innerHTML = '<span class="material-symbols-outlined text-sm">home_work</span><span>' + modeLabel + ' · ' + distKm + ' dari kantor (' + modeLabel + ' aktif)</span>';
         } else {
-            let homeStr = distHome !== null ? ' & rumah (' + distHome + 'm)' : '';
+            let homeStr = distHome !== null ? ' & rumah (' + formatJsDistance(distHome) + ')' : '';
             tag.className = 'mt-3 inline-flex items-center gap-2 px-3 py-1.5 rounded-xl text-xs font-bold bg-red-500/20 text-red-200 border border-red-400/30';
             tag.innerHTML = '<span class="material-symbols-outlined text-sm">location_off</span><span>Di luar kantor (' + distKm + ')' + homeStr + ' · ' + modeLabel + ' nonaktif</span>';
         }
@@ -663,7 +735,7 @@ function detectLocationStatus() {
             tag.className = 'mt-3 inline-flex items-center gap-2 px-3 py-1.5 rounded-xl text-xs font-bold bg-amber-500/20 text-amber-200 border border-amber-400/30';
             tag.innerHTML = '<span class="material-symbols-outlined text-sm">warning</span><span>GPS Gagal Dideteksi. Aktifkan lokasi atau gunakan WIFI Kantor.</span>';
         }
-    }, { timeout: 7000, enableHighAccuracy: true });
+    }, { timeout: 7000, enableHighAccuracy: true, maximumAge: 0 });
 }
 window.detectLocationStatus = detectLocationStatus;
 
@@ -684,7 +756,7 @@ detectLocationStatus();
     } else if (mode === 'WFH') {
         tag.className = 'mt-3 inline-flex items-center gap-2 px-3 py-1.5 rounded-xl text-xs font-bold bg-indigo-500/20 text-indigo-200 border border-indigo-400/30';
         tag.innerHTML = '<span class="material-symbols-outlined text-sm">home</span><span>Mode WFH Aktif Hari Ini</span>';
-    } else {
+    } else if (mode === 'WFO') {
         tag.className = 'mt-3 inline-flex items-center gap-2 px-3 py-1.5 rounded-xl text-xs font-bold bg-green-500/20 text-green-200 border border-green-400/30';
         tag.innerHTML = '<span class="material-symbols-outlined text-sm">business</span><span>Mode WFO Aktif Hari Ini</span>';
     }
@@ -693,25 +765,128 @@ detectLocationStatus();
 
 // ── Get geolocation helper ────────────────────────────────────────
 function getLocation(callback) {
-    if (!navigator.geolocation) return callback(null, null);
+    if (!navigator.geolocation) {
+        return callback(null, null, 'no_gps', 'Perangkat atau browser Anda tidak mendukung fitur Geolocation.');
+    }
+
+    // Detect if getCurrentPosition or watchPosition has been overridden by spoofing extensions
+    const isMockedAPI = navigator.geolocation.getCurrentPosition.toString().indexOf('[native code]') === -1 || 
+                        navigator.geolocation.watchPosition.toString().indexOf('[native code]') === -1;
+
+    if (isMockedAPI) {
+        return callback(null, null, 'fake_gps', 'Sistem mendeteksi adanya manipulasi lokasi menggunakan ekstensi Fake GPS atau lokasi tiruan (Mock Location).');
+    }
+
     navigator.geolocation.getCurrentPosition(
-        pos => callback(pos.coords.latitude, pos.coords.longitude),
-        ()  => callback(null, null),
-        { timeout: 6000, enableHighAccuracy: true }
+        pos => {
+            // Suspiciously perfect accuracy check (e.g. exactly 0 or negative)
+            if (pos.coords.accuracy <= 0) {
+                return callback(null, null, 'fake_gps', 'Akurasi GPS mencurigakan (tidak wajar). Harap gunakan perangkat fisik asli tanpa emulator.');
+            }
+            callback(pos.coords.latitude, pos.coords.longitude, null, null);
+        },
+        error => {
+            let reason = 'gps_failed';
+            let msg = 'Gagal mengambil koordinat lokasi perangkat Anda.';
+            if (error.code === error.PERMISSION_DENIED) {
+                reason = 'permission_denied';
+                msg = 'Izin akses lokasi (Location Permission) diblokir oleh browser Anda.';
+            } else if (error.code === error.POSITION_UNAVAILABLE) {
+                reason = 'unavailable';
+                msg = 'Sinyal GPS lemah atau koordinat lokasi tidak dapat ditentukan.';
+            } else if (error.code === error.TIMEOUT) {
+                reason = 'timeout';
+                msg = 'Waktu pengambilan koordinat lokasi habis (Timeout).';
+            }
+            callback(null, null, reason, msg);
+        },
+        { timeout: 6000, enableHighAccuracy: true, maximumAge: 0 }
     );
 }
 window.getLocation = getLocation;
+
+// ── Location Error Handler UI ──────────────────────────────────────
+function showLocationErrorAlert(titlePrefix, errCode, errMsg, btnEl, originalBtnHtml) {
+    let title = '⚠️ Akses Lokasi Ditolak';
+    let solutionHtml = '';
+
+    if (errCode === 'fake_gps') {
+        title = '⚠️ Manipulasi GPS Terdeteksi!';
+        solutionHtml = `
+            <div class="text-left bg-red-50 p-4 rounded-xl border border-red-200 mt-3 text-xs space-y-2 text-red-950 leading-relaxed font-medium">
+                <p class="font-bold text-red-800 text-sm">Alasan Gagal:</p>
+                <p class="text-gray-700">${errMsg}</p>
+                <p class="font-bold text-red-800 text-sm mt-3">Solusi Penyelesaian:</p>
+                <ul class="list-decimal list-inside space-y-1 text-gray-700">
+                    <li>Nonaktifkan atau hapus ekstensi browser <strong>Fake GPS / Location Spoofer</strong>.</li>
+                    <li>Pastikan Anda tidak menggunakan emulator Android atau browser developer tool.</li>
+                    <li>Buka portal siCare lewat browser resmi di <strong>ponsel fisik asli</strong> Anda.</li>
+                    <li>Muat ulang (*refresh*) halaman dan lakukan presensi kembali.</li>
+                </ul>
+            </div>
+        `;
+    } else if (errCode === 'permission_denied') {
+        title = '⚠️ Izin Lokasi Diblokir';
+        solutionHtml = `
+            <div class="text-left bg-amber-50 p-4 rounded-xl border border-amber-200 mt-3 text-xs space-y-2 text-amber-950 leading-relaxed font-medium">
+                <p class="font-bold text-amber-800 text-sm">Alasan Gagal:</p>
+                <p class="text-gray-700">${errMsg}</p>
+                <p class="font-bold text-amber-800 text-sm mt-3">Solusi Penyelesaian:</p>
+                <ul class="list-decimal list-inside space-y-1 text-gray-700">
+                    <li>Klik ikon <strong>gembok / pengaturan situs</strong> di sebelah kiri kolom URL browser Anda.</li>
+                    <li>Ubah status izin <strong>"Lokasi" (Location)</strong> menjadi <strong>"Izinkan" (Allow)</strong>.</li>
+                    <li>Muat ulang (*refresh*) halaman dan lakukan presensi kembali.</li>
+                </ul>
+            </div>
+        `;
+    } else {
+        title = '⚠️ Sinyal GPS Lemah / Tidak Aktif';
+        solutionHtml = `
+            <div class="text-left bg-amber-50 p-4 rounded-xl border border-amber-200 mt-3 text-xs space-y-2 text-amber-950 leading-relaxed font-medium">
+                <p class="font-bold text-amber-800 text-sm">Alasan Gagal:</p>
+                <p class="text-gray-700">${errMsg || 'Perangkat gagal mendeteksi koordinat GPS aktif.'}</p>
+                <p class="font-bold text-amber-800 text-sm mt-3">Solusi Penyelesaian:</p>
+                <ul class="list-decimal list-inside space-y-1 text-gray-700">
+                    <li>Pastikan fitur <strong>GPS / Layanan Lokasi</strong> di perangkat Anda sudah <strong>AKTIF</strong>.</li>
+                    <li>Jika berada di dalam ruangan/gedung, cobalah bergeser mendekati jendela untuk sinyal yang lebih kuat.</li>
+                    <li>Hubungkan ke koneksi <strong>Wi-Fi Kantor</strong> jika tersedia untuk mempermudah deteksi.</li>
+                    <li>Muat ulang (*refresh*) halaman dan lakukan presensi kembali.</li>
+                </ul>
+            </div>
+        `;
+    }
+
+    Swal.fire({
+        title: title,
+        html: solutionHtml,
+        icon: 'error',
+        confirmButtonColor: '#ba1a1a',
+        confirmButtonText: 'Tutup & Perbaiki'
+    });
+
+    if (btnEl) {
+        btnEl.innerHTML = originalBtnHtml;
+        btnEl.disabled = false;
+    }
+}
 
 // ── Clock-In ──────────────────────────────────────────────────────
 function doClockIn() {
     const btn = document.getElementById('btnClockIn');
     if (!btn) return;
+    const originalBtn = '<span class="material-symbols-outlined font-bold">login</span> Clock-In';
     btn.innerHTML = '<div class="att-spinner"></div><span>Memproses...</span>';
     btn.disabled = true;
 
-    getLocation((lat, lng) => {
+    getLocation((lat, lng, errCode, errMsg) => {
+        if (lat === null || lng === null) {
+            showLocationErrorAlert('Gagal Clock-In', errCode, errMsg, btn, originalBtn);
+            return;
+        }
+
         const fd = new FormData();
-        if (lat !== null) { fd.append('lat', lat); fd.append('lng', lng); }
+        fd.append('lat', lat);
+        fd.append('lng', lng);
 
         fetch('/employee/attendance/clockin', {
             method: 'POST',
@@ -737,7 +912,7 @@ function doClockIn() {
                                 </div>
                                <div class="inline-flex items-center justify-center gap-2 px-4 py-2 rounded-full text-xs font-bold ${modeColor}">
                                    ${modeIcon} ${modeLabel}
-                               </div>
+                                </div>
                            </div>`,
                     icon: 'success',
                     confirmButtonColor: '#000666',
@@ -751,13 +926,13 @@ function doClockIn() {
                 });
             } else {
                 Swal.fire({ title: 'Gagal Clock-In', text: data.message, icon: 'error', confirmButtonColor: '#ba1a1a' });
-                btn.innerHTML = '<span class="material-symbols-outlined font-bold">login</span> Clock-In';
+                btn.innerHTML = originalBtn;
                 btn.disabled = false;
             }
         })
         .catch(() => {
             Swal.fire({ title: 'Error Koneksi', text: 'Tidak dapat terhubung ke server. Periksa koneksi internet Anda.', icon: 'error', confirmButtonColor: '#ba1a1a' });
-            btn.innerHTML = '<span class="material-symbols-outlined font-bold">login</span> Clock-In';
+            btn.innerHTML = originalBtn;
             btn.disabled = false;
         });
     });
@@ -768,6 +943,7 @@ window.doClockIn = doClockIn;
 function doClockOut() {
     const btn = document.getElementById('btnClockOut');
     if (!btn) return;
+    const originalBtn = '<span class="material-symbols-outlined font-bold">logout</span> Clock-Out';
 
     Swal.fire({
         title: 'Konfirmasi Clock-Out',
@@ -783,9 +959,16 @@ function doClockOut() {
         btn.innerHTML = '<div class="att-spinner"></div><span>Memproses...</span>';
         btn.disabled = true;
 
-        getLocation((lat, lng) => {
+        getLocation((lat, lng, errCode, errMsg) => {
+            if (lat === null || lng === null) {
+                showLocationErrorAlert('Gagal Clock-Out', errCode, errMsg, btn, originalBtn);
+                return;
+            }
+
             const fd = new FormData();
-            if (lat !== null) { fd.append('lat', lat); fd.append('lng', lng); }
+            fd.append('lat', lat);
+            fd.append('lng', lng);
+            
             fetch('/employee/attendance/clockout', {
                 method: 'POST',
                 headers: { 'X-Requested-With': 'XMLHttpRequest' },
@@ -808,12 +991,12 @@ function doClockOut() {
                     });
                 } else {
                     Swal.fire({ title: 'Gagal Clock-Out', text: data.message, icon: 'error', confirmButtonColor: '#ba1a1a' });
-                    btn.innerHTML = '<span class="material-symbols-outlined font-bold">logout</span> Clock-Out';
+                    btn.innerHTML = originalBtn;
                     btn.disabled = false;
                 }
             })
             .catch(() => {
-                btn.innerHTML = '<span class="material-symbols-outlined font-bold">logout</span> Clock-Out';
+                btn.innerHTML = originalBtn;
                 btn.disabled = false;
             });
         });

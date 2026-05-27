@@ -305,7 +305,9 @@
                                 title: 'Pendaftaran Berhasil!',
                                 text: data.message,
                                 icon: 'success',
-                                confirmButtonColor: '#000666'
+                                timer: 2000,
+                                timerProgressBar: true,
+                                showConfirmButton: false
                             }).then(() => {
                                 window.location.href = data.redirect;
                             });

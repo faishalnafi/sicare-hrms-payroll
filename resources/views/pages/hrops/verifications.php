@@ -188,9 +188,11 @@ function getCategoryColor($category) {
                 <thead>
                     <tr class="bg-surface text-on-surface-variant border-b border-outline-variant/15">
                         <th class="py-4 px-6 text-[11px] font-bold uppercase tracking-wider">Karyawan</th>
-                        <th class="py-4 px-6 text-[11px] font-bold uppercase tracking-wider">Kategori & Kolom</th>
+                        <th class="py-4 px-6 text-[11px] font-bold uppercase tracking-wider">Kategori</th>
+                        <th class="py-4 px-6 text-[11px] font-bold uppercase tracking-wider">Kolom</th>
                         <th class="py-4 px-6 text-[11px] font-bold uppercase tracking-wider">Perubahan Data (Lama → Baru)</th>
-                        <th class="py-4 px-6 text-[11px] font-bold uppercase tracking-wider">Alasan & Berkas</th>
+                        <th class="py-4 px-6 text-[11px] font-bold uppercase tracking-wider">Alasan</th>
+                        <th class="py-4 px-6 text-[11px] font-bold uppercase tracking-wider">Berkas</th>
                         <th class="py-4 px-6 text-[11px] font-bold uppercase tracking-wider">Status</th>
                         <th class="py-4 px-6 text-right text-[11px] font-bold uppercase tracking-wider">Aksi</th>
                     </tr>
@@ -199,7 +201,7 @@ function getCategoryColor($category) {
                     
                     <?php if (empty($requests)): ?>
                         <tr>
-                            <td colspan="6" class="py-8 px-6 text-center text-xs font-semibold text-on-surface-variant/60">
+                            <td colspan="8" class="py-8 px-6 text-center text-xs font-semibold text-on-surface-variant/60">
                                 <span class="material-symbols-outlined text-4xl block mb-2 text-on-surface-variant/30">inbox</span>
                                 Tidak ada pengajuan koreksi data.
                             </td>
@@ -220,7 +222,7 @@ function getCategoryColor($category) {
                             }
                         ?>
                             <tr class="hover:bg-surface-container-low/30 transition-colors duration-200" id="row_<?= $r['id'] ?>" data-name="<?= strtolower(htmlspecialchars($fullName)) ?>" data-category="<?= htmlspecialchars($r['category']) ?>" data-status="<?= htmlspecialchars($r['status']) ?>">
-                                <td class="py-4 px-6">
+                                <td class="py-4 px-6 whitespace-nowrap">
                                     <div class="flex items-center gap-3">
                                         <?php if (!empty($profPic)): ?>
                                             <img src="<?= htmlspecialchars($profPic) ?>" alt="<?= htmlspecialchars($fullName) ?>" class="w-10 h-10 rounded-full object-cover shadow-sm flex-shrink-0 bg-white border border-outline-variant/10" />
@@ -233,41 +235,49 @@ function getCategoryColor($category) {
                                         </div>
                                     </div>
                                 </td>
-                                <td class="py-4 px-6">
-                                    <div class="text-[10px] font-extrabold <?= $catColor ?> px-2.5 py-1 rounded-md inline-block mb-1 uppercase tracking-wider"><?= htmlspecialchars($catLabel) ?></div>
-                                    <div class="text-xs font-bold text-on-surface"><?= htmlspecialchars($fieldLabel) ?> (`<?= htmlspecialchars($r['field']) ?>`)</div>
+                                <td class="py-4 px-6 whitespace-nowrap">
+                                    <div class="text-[10px] font-extrabold <?= $catColor ?> px-2.5 py-1 rounded-md inline-block uppercase tracking-wider"><?= htmlspecialchars($catLabel) ?></div>
                                 </td>
-                                <td class="py-4 px-6">
+                                <td class="py-4 px-6 whitespace-nowrap">
+                                    <div class="text-xs font-bold text-on-surface"><?= htmlspecialchars($fieldLabel) ?></div>
+                                    <div class="text-[10px] text-on-surface-variant/70 font-mono mt-0.5">`<?= htmlspecialchars($r['field']) ?>`</div>
+                                </td>
+                                <td class="py-4 px-6 whitespace-nowrap">
                                     <div class="flex items-center gap-2">
-                                        <span class="text-xs font-semibold text-on-surface-variant line-through font-mono"><?= htmlspecialchars($r['old_value'] ?? '-') ?></span>
-                                        <span class="material-symbols-outlined text-xs text-on-surface-variant">arrow_forward</span>
-                                        <span class="text-xs font-bold text-primary bg-primary/5 px-2 py-0.5 rounded font-mono"><?= htmlspecialchars($r['new_value']) ?></span>
+                                        <span class="text-xs font-semibold text-red-700 bg-red-50 px-2 py-0.5 rounded border border-red-100/50 font-mono line-through" title="Data Lama"><?= htmlspecialchars($r['old_value'] ?? '-') ?></span>
+                                        <span class="material-symbols-outlined text-xs text-on-surface-variant font-bold">arrow_forward</span>
+                                        <span class="text-xs font-bold text-primary bg-primary/5 px-2 py-0.5 rounded border border-primary/10 font-mono" title="Data Baru"><?= htmlspecialchars($r['new_value']) ?></span>
                                     </div>
                                 </td>
                                 <td class="py-4 px-6">
-                                    <div class="text-xs text-on-surface font-semibold max-w-[200px] truncate" title="<?= htmlspecialchars($r['reason']) ?>"><?= htmlspecialchars($r['reason']) ?></div>
-                                    <div class="mt-1">
-                                        <button onclick="viewDocument('<?= htmlspecialchars(addslashes($r['file_path'])) ?>', '<?= htmlspecialchars(addslashes($fieldLabel . ' - ' . $fullName)) ?>', '<?= htmlspecialchars(addslashes($catLabel)) ?>')" class="text-[10px] text-primary hover:underline font-extrabold flex items-center gap-0.5">
-                                            <span class="material-symbols-outlined text-xs">attach_file</span> <?= htmlspecialchars($r['file_path']) ?>
-                                        </button>
-                                    </div>
+                                    <div class="text-xs text-on-surface font-semibold min-w-[240px] max-w-[380px] break-words whitespace-normal" title="<?= htmlspecialchars($r['reason']) ?>"><?= htmlspecialchars($r['reason']) ?></div>
                                 </td>
-                                <td class="py-4 px-6" id="status_<?= $r['id'] ?>">
+                                <td class="py-4 px-6 whitespace-nowrap">
+                                    <?php if (!empty($r['file_path'])): ?>
+                                        <button onclick="viewDocument('<?= htmlspecialchars(addslashes($r['file_path'])) ?>', '<?= htmlspecialchars(addslashes($fieldLabel . ' - ' . $fullName)) ?>', '<?= htmlspecialchars(addslashes($catLabel)) ?>')" class="inline-flex items-center gap-1.5 text-xs font-extrabold text-primary hover:text-primary/80 transition-colors">
+                                            <span class="material-symbols-outlined text-sm font-bold text-primary">attachment</span>
+                                            <span>Lihat Berkas</span>
+                                        </button>
+                                    <?php else: ?>
+                                        <span class="text-on-surface-variant/30 text-xs font-semibold">—</span>
+                                    <?php endif; ?>
+                                </td>
+                                <td class="py-4 px-6 whitespace-nowrap" id="status_<?= $r['id'] ?>">
                                     <?php if ($r['status'] === 'pending'): ?>
-                                        <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold bg-amber-50 text-amber-700 border border-amber-200">
-                                            <span class="w-1.5 h-1.5 rounded-full bg-amber-500"></span> Pending Review
+                                        <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold bg-amber-50 text-amber-700 border border-amber-200 whitespace-nowrap">
+                                            <span class="w-1.5 h-1.5 rounded-full bg-amber-500 flex-shrink-0"></span> Pending Review
                                         </span>
                                     <?php elseif ($r['status'] === 'approved'): ?>
-                                        <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold bg-green-50 text-green-700 border border-green-200">
-                                            <span class="w-1.5 h-1.5 rounded-full bg-green-500"></span> Disetujui
+                                        <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold bg-green-50 text-green-700 border border-green-200 whitespace-nowrap">
+                                            <span class="w-1.5 h-1.5 rounded-full bg-green-500 flex-shrink-0"></span> Disetujui
                                         </span>
                                     <?php else: ?>
-                                        <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold bg-red-50 text-red-700 border border-red-200">
-                                            <span class="w-1.5 h-1.5 rounded-full bg-red-500"></span> Ditolak
+                                        <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold bg-red-50 text-red-700 border border-red-200 whitespace-nowrap">
+                                            <span class="w-1.5 h-1.5 rounded-full bg-red-500 flex-shrink-0"></span> Ditolak
                                         </span>
                                     <?php endif; ?>
                                 </td>
-                                <td class="py-4 px-6 text-right" id="action_<?= $r['id'] ?>">
+                                <td class="py-4 px-6 text-right whitespace-nowrap" id="action_<?= $r['id'] ?>">
                                     <?php if ($r['status'] === 'pending'): ?>
                                         <div class="flex items-center justify-end gap-2">
                                             <button onclick="rejectRequest('<?= $r['id'] ?>', '<?= htmlspecialchars(addslashes($fullName)) ?>', '<?= htmlspecialchars(addslashes($fieldLabel)) ?>')" class="bg-red-50 hover:bg-red-100 text-red-700 font-bold text-[10px] py-1.5 px-3 rounded-lg border border-red-200 transition-colors">
@@ -354,33 +364,38 @@ function getCategoryColor($category) {
             </div>
         `;
 
+        const swalConfig = {
+            title: title,
+            showDenyButton: true,
+            confirmButtonText: 'Tutup Dokumen',
+            denyButtonText: '<span class="material-symbols-outlined text-xs" style="vertical-align: middle; margin-right: 4px;">download</span>Unduh Berkas',
+            confirmButtonColor: '#000666',
+            denyButtonColor: '#ff6f00',
+        };
+
         if (isPdf) {
-            Swal.fire({
-                title: title,
-                html: htmlContent + `
-                    <div class="mt-4 p-6 bg-surface-container-low rounded-xl border border-outline-variant/10 flex flex-col items-center justify-center">
-                        <span class="material-symbols-outlined text-6xl text-red-600 mb-2">picture_as_pdf</span>
-                        <p class="text-xs font-bold text-on-surface">Dokumen PDF Terdeteksi</p>
-                        <a href="${fileUrl}" target="_blank" class="mt-3 bg-primary hover:bg-primary/95 text-white font-bold text-xs py-2 px-4 rounded flex items-center gap-1.5 transition-all">
-                            <span class="material-symbols-outlined text-sm">open_in_new</span> Buka PDF di Tab Baru
-                        </a>
-                    </div>
-                `,
-                confirmButtonText: 'Tutup Dokumen',
-                confirmButtonColor: '#000666'
-            });
+            swalConfig.html = htmlContent + `
+                <div class="mt-4 p-6 bg-surface-container-low rounded-xl border border-outline-variant/10 flex flex-col items-center justify-center">
+                    <span class="material-symbols-outlined text-6xl text-red-600 mb-2">picture_as_pdf</span>
+                    <p class="text-xs font-bold text-on-surface">Dokumen PDF Terdeteksi</p>
+                    <a href="${fileUrl}" target="_blank" class="mt-3 bg-primary hover:bg-primary/95 text-white font-bold text-xs py-2 px-4 rounded flex items-center gap-1.5 transition-all">
+                        <span class="material-symbols-outlined text-sm">open_in_new</span> Buka PDF di Tab Baru
+                    </a>
+                </div>
+            `;
         } else {
-            Swal.fire({
-                title: title,
-                html: htmlContent,
-                imageUrl: fileUrl,
-                imageWidth: 500,
-                imageHeight: 330,
-                imageAlt: title,
-                confirmButtonText: 'Tutup Dokumen',
-                confirmButtonColor: '#000666'
-            });
+            swalConfig.html = htmlContent;
+            swalConfig.imageUrl = fileUrl;
+            swalConfig.imageWidth = 500;
+            swalConfig.imageHeight = 330;
+            swalConfig.imageAlt = title;
         }
+
+        Swal.fire(swalConfig).then((result) => {
+            if (result.isDenied) {
+                window.location.href = fileUrl + '&download=1';
+            }
+        });
     }
 
     // Approve Action: Overwrites database data atomically via PHP controller
@@ -430,8 +445,8 @@ function getCategoryColor($category) {
 
                         row.setAttribute('data-status', 'approved');
                         statusTd.innerHTML = `
-                            <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold bg-green-50 text-green-700 border border-green-200 animate-fade-in">
-                                <span class="w-1.5 h-1.5 rounded-full bg-green-500"></span> Disetujui
+                            <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold bg-green-50 text-green-700 border border-green-200 animate-fade-in whitespace-nowrap">
+                                <span class="w-1.5 h-1.5 rounded-full bg-green-500 flex-shrink-0"></span> Disetujui
                             </span>
                         `;
                         actionTd.innerHTML = `<span class="text-xs text-on-surface-variant/40 font-bold italic pr-2">Selesai</span>`;
@@ -508,8 +523,8 @@ function getCategoryColor($category) {
 
                         row.setAttribute('data-status', 'rejected');
                         statusTd.innerHTML = `
-                            <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold bg-red-50 text-red-700 border border-red-200 animate-fade-in">
-                                <span class="w-1.5 h-1.5 rounded-full bg-red-500"></span> Ditolak
+                            <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold bg-red-50 text-red-700 border border-red-200 animate-fade-in whitespace-nowrap">
+                                <span class="w-1.5 h-1.5 rounded-full bg-red-500 flex-shrink-0"></span> Ditolak
                             </span>
                         `;
                         const escapedValue = result.value.replace(/'/g, "\\'").replace(/"/g, '&quot;');

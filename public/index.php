@@ -15,6 +15,33 @@ $dotenv->load();
 // Set Default Timezone to Asia/Jakarta to ensure accurate dates and times
 date_default_timezone_set($_ENV['APP_TIMEZONE'] ?? 'Asia/Jakarta');
 
+// Configure PHP Session Parameters centrally
+ini_set('session.use_strict_mode', 1);
+ini_set('session.use_cookies', 1);
+ini_set('session.use_only_cookies', 1);
+ini_set('session.cookie_httponly', 1);
+ini_set('session.cookie_samesite', 'Lax');
+
+// Set GC max lifetime to 24 hours (86400) to support server-side sliding expiry of Remember Me
+ini_set('session.gc_maxlifetime', 86400);
+
+// If user has a session cookie, check if they checked "Ingat perangkat ini"
+$cookieName = session_name();
+if (isset($_COOKIE[$cookieName])) {
+    $sid = $_COOKIE[$cookieName];
+    if (\App\Session\UnifiedSessionHandler::checkRememberMeStatus($sid)) {
+        // Set cookie lifetime to 30 days so the browser doesn't delete it on close
+        ini_set('session.cookie_lifetime', 30 * 86400);
+    }
+}
+
+// Register the custom unified session handler (Database + Redis)
+$sessionHandler = new \App\Session\UnifiedSessionHandler();
+session_set_save_handler($sessionHandler, true);
+
+// Run Global Security Middleware (CSRF, XSS Filter)
+\App\Middleware\SecurityMiddleware::run();
+
 // Simple Router
 $requestUri = parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH);
 $path = trim($requestUri, '/');
@@ -33,6 +60,26 @@ function renderView($viewPath, $data = []) {
 }
 
 // Route mapping
+if ($method === 'GET' && $path === 'database/migrate') {
+    if (session_status() === PHP_SESSION_NONE) {
+        session_start();
+    }
+    // Strict security check: Only logged-in Super Admins can run migration
+    if (!isset($_SESSION['user_id']) || ($_SESSION['role'] ?? '') !== 'superadmin') {
+        header('HTTP/1.1 403 Forbidden');
+        header('Content-Type: text/plain; charset=utf-8');
+        echo "403 Forbidden: Akses ditolak. Hanya akun Super Admin yang diizinkan memicu migrasi database.";
+        exit;
+    }
+    header('Content-Type: text/plain; charset=utf-8');
+    try {
+        require_once __DIR__ . '/../database/update_schema.php';
+    } catch (\Exception $e) {
+        echo "ERROR: " . $e->getMessage() . "\n";
+    }
+    exit;
+}
+
 if ($method === 'POST' && $path === 'auth/login') {
     (new \App\Controllers\AuthController())->login();
     exit;
@@ -105,16 +152,19 @@ if ($method === 'POST' && $path === 'auth/login') {
 } elseif ($method === 'GET' && $path === 'hrops/attendance/logs') {
     (new \App\Controllers\AttendanceController())->hrLogs();
     exit;
+} elseif ($method === 'GET' && $path === 'manager/attendance/member_monthly') {
+    (new \App\Controllers\AttendanceController())->memberMonthly();
+    exit;
 } elseif ($method === 'POST' && $path === 'hrops/attendance/correct') {
     (new \App\Controllers\AttendanceController())->correct();
     exit;
-} elseif ($method === 'POST' && $path === 'hrops/settings/save') {
+} elseif ($method === 'POST' && $path === 'admin/settings/save') {
     (new \App\Controllers\SettingsController())->save();
     exit;
-} elseif ($method === 'POST' && $path === 'hrops/holidays/add') {
+} elseif ($method === 'POST' && $path === 'admin/holidays/add') {
     (new \App\Controllers\SettingsController())->addHoliday();
     exit;
-} elseif ($method === 'POST' && $path === 'hrops/holidays/delete') {
+} elseif ($method === 'POST' && $path === 'admin/holidays/delete') {
     (new \App\Controllers\SettingsController())->deleteHoliday();
     exit;
 } elseif ($method === 'GET' && $path === 'hrops/employees/list') {
@@ -131,6 +181,18 @@ if ($method === 'POST' && $path === 'auth/login') {
     exit;
 } elseif ($method === 'POST' && $path === 'admin/departments/delete') {
     (new \App\Controllers\DepartmentController())->delete();
+    exit;
+} elseif ($method === 'GET' && $path === 'superadmin/audit/list') {
+    (new \App\Controllers\AuditLogController())->index();
+    exit;
+} elseif ($method === 'POST' && $path === 'superadmin/audit/clear') {
+    (new \App\Controllers\AuditLogController())->clearLogs();
+    exit;
+} elseif ($method === 'GET' && $path === 'superadmin/menus/list') {
+    (new \App\Controllers\MenuMappingController())->list();
+    exit;
+} elseif ($method === 'POST' && $path === 'superadmin/menus/assign') {
+    (new \App\Controllers\MenuMappingController())->assign();
     exit;
 } elseif ($method === 'GET' && $path === 'executive/approvals/list') {
     (new \App\Controllers\ApprovalController())->list();
@@ -195,7 +257,7 @@ switch ($page) {
         $content = renderView('pages/support');
         break;
     default:
-        $content = "<h1>404 Not Found</h1>";
+        $content = renderView('pages/error_404');
         break;
 }
 

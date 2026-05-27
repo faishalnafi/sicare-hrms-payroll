@@ -279,8 +279,9 @@ function getCategoryLabel($category) {
                             <div class="text-xs text-on-surface font-semibold truncate max-w-[200px]" title="<?= htmlspecialchars($claim['description']) ?>"><?= htmlspecialchars($claim['description']) ?></div>
                         </td>
                         <td class="py-4 px-6">
-                            <button onclick="viewReceipt('<?= htmlspecialchars($claim['receipt_path']) ?>', 'Rp <?= number_format($claim['amount'], 0, ',', '.') ?>')" class="text-[10px] text-primary hover:underline font-bold flex items-center gap-1 cursor-pointer">
-                                <span class="material-symbols-outlined text-sm">attach_file</span> Lihat Berkas
+                            <button onclick="viewReceipt('<?= htmlspecialchars($claim['receipt_path']) ?>', 'Rp <?= number_format($claim['amount'], 0, ',', '.') ?>')" class="text-[10px] text-primary hover:text-primary/80 no-underline hover:no-underline font-extrabold flex items-center gap-1 cursor-pointer">
+                                <span class="material-symbols-outlined text-xs font-bold text-primary hover:text-primary/80">attachment</span>
+                                <span>Lihat Berkas</span>
                             </button>
                         </td>
                         <td class="py-4 px-6">

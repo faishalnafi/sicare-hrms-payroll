@@ -204,7 +204,8 @@ function getLeaveTypeLabel($type) {
                     <tr class="bg-surface text-on-surface-variant border-b border-outline-variant/15">
                         <th class="py-4 px-6 text-[11px] font-bold uppercase tracking-wider">Tanggal Diajukan</th>
                         <th class="py-4 px-6 text-[11px] font-bold uppercase tracking-wider">Jenis Cuti</th>
-                        <th class="py-4 px-6 text-[11px] font-bold uppercase tracking-wider">Durasi & Periode</th>
+                        <th class="py-4 px-6 text-[11px] font-bold uppercase tracking-wider">Durasi</th>
+                        <th class="py-4 px-6 text-[11px] font-bold uppercase tracking-wider">Periode</th>
                         <th class="py-4 px-6 text-[11px] font-bold uppercase tracking-wider">Alasan</th>
                         <th class="py-4 px-6 text-[11px] font-bold uppercase tracking-wider">Berkas Bukti</th>
                         <th class="py-4 px-6 text-[11px] font-bold uppercase tracking-wider">Status</th>
@@ -214,7 +215,7 @@ function getLeaveTypeLabel($type) {
                 <tbody id="employeeLeavesTableBody" class="divide-y divide-outline-variant/10">
                     <?php if (empty($leaves)): ?>
                     <tr>
-                        <td colspan="7" class="py-8 text-center text-on-surface-variant font-medium text-xs">
+                        <td colspan="8" class="py-8 text-center text-on-surface-variant font-medium text-xs">
                             <span class="material-symbols-outlined text-4xl text-outline-variant mb-2">inbox</span>
                             <p>Belum ada riwayat pengajuan cuti atau izin.</p>
                         </td>
@@ -230,11 +231,11 @@ function getLeaveTypeLabel($type) {
                                 <?= getLeaveTypeLabel($leave['leave_type']) ?>
                             </span>
                         </td>
-                        <td class="py-4 px-6">
-                            <div class="font-bold text-xs text-on-surface"><?= $leave['duration'] ?> Hari</div>
-                            <div class="text-[10px] text-on-surface-variant font-mono mt-0.5">
-                                <?= date('d M Y', strtotime($leave['start_date'])) ?> - <?= date('d M Y', strtotime($leave['end_date'])) ?>
-                            </div>
+                        <td class="py-4 px-6 font-bold text-xs text-on-surface">
+                            <?= $leave['duration'] ?> Hari
+                        </td>
+                        <td class="py-4 px-6 text-[10px] text-on-surface-variant font-mono">
+                            <?= date('d M Y', strtotime($leave['start_date'])) ?> - <?= date('d M Y', strtotime($leave['end_date'])) ?>
                         </td>
                         <td class="py-4 px-6">
                             <div class="text-xs text-on-surface font-semibold truncate max-w-[200px]" title="<?= htmlspecialchars($leave['reason']) ?>">
@@ -243,8 +244,9 @@ function getLeaveTypeLabel($type) {
                         </td>
                         <td class="py-4 px-6">
                             <?php if (!empty($leave['attachment_path'])): ?>
-                            <button onclick="viewAttachment('<?= htmlspecialchars($leave['attachment_path']) ?>', '<?= htmlspecialchars(getLeaveTypeLabel($leave['leave_type'])) ?>')" class="text-[10px] text-primary hover:underline font-bold flex items-center gap-0.5 cursor-pointer">
-                                <span class="material-symbols-outlined text-xs">attach_file</span> Lihat Berkas
+                            <button onclick="viewAttachment('<?= htmlspecialchars($leave['attachment_path']) ?>', '<?= htmlspecialchars(getLeaveTypeLabel($leave['leave_type'])) ?>')" class="text-[10px] text-primary hover:text-primary/80 no-underline hover:no-underline font-extrabold flex items-center gap-1 cursor-pointer">
+                                <span class="material-symbols-outlined text-xs font-bold text-primary hover:text-primary/80">attachment</span>
+                                <span>Lihat Berkas</span>
                             </button>
                             <?php else: ?>
                             <span class="text-[10px] text-on-surface-variant/40 font-bold italic">Tanpa berkas</span>

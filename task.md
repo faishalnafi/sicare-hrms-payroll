@@ -108,11 +108,11 @@ Setiap hari fokus penuh pada pembuatan modul, backend controller, database updat
     4.  **Audit Logs & Clean Log Console**: Tampilan audit log sistem dengan tombol pembersihan aman.
     5.  **Menu & Privilege Mapping**: Modul khusus (Hanya Superadmin/Admin) untuk mendaftarkan menu (`system_menus`) dan menautkannya ke departemen eksekutif (`department_menu_privileges`).
 *   **Checklist Implementasi**:
-    *   [ ] **Tugas 1.1**: Verifikasi `git status` dan buat migrasi aman tabel database (`users`, `user_profiles`, `audit_logs`, `system_menus`, `department_menu_privileges`) menggunakan UUID v4.
-    *   [ ] **Tugas 1.2**: Implementasi Controller `AuditLogController` dengan skrip perlindungan mutlak (menyisakan log kesaksian superadmin saat log dibersihkan).
-    *   [ ] **Tugas 1.3**: Konfigurasi global Middleware pengaman (CSRF, Prepared Statements Parameter Binding, dan XSS Escape filter).
-    *   [ ] **Tugas 1.4**: Membuat antarmuka pemetaan menu dinamis (Menu Mapping) untuk mengatur hak akses fitur khusus bagi setiap entitas eksekutif.
-    *   [ ] **Tugas 1.5**: Membuat integrasi pelaporan otomatis seluruh jejak aksi superadmin ke dashboard monitoring eksekutif.
+    *   [x] **Tugas 1.1**: Verifikasi `git status` dan buat migrasi aman tabel database (`users`, `user_profiles`, `audit_logs`, `system_menus`, `department_menu_privileges`) menggunakan UUID v4.
+    *   [x] **Tugas 1.2**: Implementasi Controller `AuditLogController` dengan skrip perlindungan mutlak (menyisakan log kesaksian superadmin saat log dibersihkan).
+    *   [x] **Tugas 1.3**: Konfigurasi global Middleware pengaman (CSRF, Prepared Statements Parameter Binding, dan XSS Escape filter).
+    *   [x] **Tugas 1.4**: Membuat antarmuka pemetaan menu dinamis (Menu Mapping) untuk mengatur hak akses fitur khusus bagi setiap entitas eksekutif.
+    *   [x] **Tugas 1.5**: Membuat integrasi pelaporan otomatis seluruh jejak aksi superadmin ke dashboard monitoring eksekutif.
 
 ---
 

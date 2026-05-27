@@ -4,7 +4,7 @@ $cfg = [];
 $holidays = [];
 try {
     $db = \App\Config\Database::getInstance()->getConnection();
-    $rows = $db->query("SELECT `key`, `value` FROM hr_settings")->fetchAll();
+    $rows = $db->query("SELECT `key`, `value` FROM global_settings")->fetchAll();
     foreach ($rows as $r) { $cfg[$r['key']] = $r['value']; }
     
     $holidays = $db->query("SELECT * FROM company_holidays ORDER BY holiday_date ASC")->fetchAll();
@@ -248,7 +248,7 @@ $allDays = ['Mon' => 'Senin', 'Tue' => 'Selasa', 'Wed' => 'Rabu', 'Thu' => 'Kami
                                     class="settings-input" style="padding:.6rem" />
                                 <span class="text-xs font-semibold text-on-surface-variant whitespace-nowrap">menit</span>
                             </div>
-                            <p class="settings-helper mt-2">Batas toleransi kepulangan karyawan setelah jam pulang standar. Karyawan yang clock-out melewati batas ini akan tercatat sebagai Pulang Terlambat.</p>
+                            <p class="settings-helper mt-2">Batas toleransi kepulangan karyawan setelah jam pulang standar. Karyawan yang clock-out melewati batas ini akan tercatat sebagai Pulang Terlambat. Jika melewati hari (masuk jam 00:00) dan belum melakukan presensi pulang, maka akan tercatat sebagai Tidak Presensi Pulang.</p>
                         </div>
                     </div>
 
@@ -568,7 +568,7 @@ function updateSchedulePreview() {
                 <span class="material-symbols-outlined text-orange-600 text-sm mt-0.5">info</span>
                 <div>
                     <strong>Jam Pulang Standar ${end}</strong> &nbsp;·&nbsp; Toleransi Pulang Lambat ${coGrace} menit<br>
-                    Karyawan pulang hingga <strong>${coDeadlineStr}</strong> masih dianggap <span class="text-emerald-700 font-semibold">Wajar</span>. Pulang setelah <strong>${coDeadlineStr}</strong> tercatat sebagai <span class="text-orange-700 font-semibold">Pulang Terlambat</span>.
+                    Karyawan pulang hingga <strong>${coDeadlineStr}</strong> masih dianggap <span class="text-emerald-700 font-semibold">Wajar</span>. Pulang setelah <strong>${coDeadlineStr}</strong> tercatat sebagai <span class="text-orange-700 font-semibold">Pulang Terlambat</span>. Jika melewati hari (masuk jam 00:00) dan belum melakukan presensi pulang, maka tercatat sebagai <span class="text-rose-700 font-semibold">Tidak Presensi Pulang</span>.
                 </div>
             </div>
         `;
@@ -609,7 +609,7 @@ function saveSettings(e) {
     const fd = new FormData(document.getElementById('settingsForm'));
     // wfa_allowed checkbox doesn't have name anymore, only hidden field is captured
 
-    fetch('/hrops/settings/save', {
+    fetch('/admin/settings/save', {
         method: 'POST',
         headers: { 'X-Requested-With': 'XMLHttpRequest' },
         body: fd
@@ -699,7 +699,7 @@ function openAddHolidayModal() {
         fd.append('holiday_date', result.value.date);
         fd.append('description', result.value.desc);
         
-        fetch('/hrops/holidays/add', {
+        fetch('/admin/holidays/add', {
             method: 'POST',
             body: fd
         })
@@ -734,7 +734,7 @@ function deleteHoliday(id) {
         const fd = new FormData();
         fd.append('id', id);
         
-        fetch('/hrops/holidays/delete', {
+        fetch('/admin/holidays/delete', {
             method: 'POST',
             body: fd
         })

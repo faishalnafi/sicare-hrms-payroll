@@ -259,7 +259,7 @@ class EmployeeMasterController {
                         );
 
                         $stmtInsertReq = $db->prepare("
-                            INSERT INTO approval_requests (id, requester_id, user_id, action_type, new_data, status) 
+                            INSERT INTO approval_requests (id, requester_id, target_user_id, action_type, new_data, status) 
                             VALUES (?, ?, ?, 'MUTATION', ?, 'PENDING')
                         ");
                         $stmtInsertReq->execute([$reqUuid, $_SESSION['user_id'], $id, $newDataJson]);

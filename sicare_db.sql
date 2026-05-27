@@ -40,6 +40,7 @@ CREATE TABLE `employee_attendance` (
   `clock_out_longitude` decimal(10,7) DEFAULT NULL,
   `location_method` varchar(20) DEFAULT NULL COMMENT 'GPS or WIFI',
   `work_mode` varchar(10) DEFAULT 'WFO',
+  `work_mode_out` varchar(10) DEFAULT NULL,
   `ip_address` varchar(45) DEFAULT NULL,
   `notes` text DEFAULT NULL,
   `correction_reason` text DEFAULT NULL,
@@ -53,9 +54,9 @@ CREATE TABLE `employee_attendance` (
 -- Dumping data untuk tabel `employee_attendance`
 --
 
-INSERT INTO `employee_attendance` (`id`, `user_id`, `attendance_date`, `clock_in`, `clock_out`, `status`, `clock_in_latitude`, `clock_in_longitude`, `clock_out_latitude`, `clock_out_longitude`, `location_method`, `work_mode`, `ip_address`, `notes`, `correction_reason`, `corrected_by`, `corrected_at`, `created_at`, `updated_at`) VALUES
-('199f89f2-96e7-49ec-bcdd-4d2342fb81c6', '123e4567-e89b-12d3-a456-426614174000', '2026-05-22', '09:38:29', NULL, 'awal', -7.4626821, 112.4386198, NULL, NULL, 'GPS', 'WFA', '::1', NULL, NULL, NULL, NULL, '2026-05-22 02:38:29', '2026-05-22 02:38:29'),
-('5280c0cf-d542-4f15-b031-ca63ae6e3725', '3a5109e3-5dbf-432f-9ade-8413827ae159', '2026-05-22', '10:04:34', NULL, 'terlambat', -7.4626155, 112.4386335, NULL, NULL, 'GPS', 'WFA', '::1', NULL, NULL, NULL, NULL, '2026-05-22 03:04:34', '2026-05-22 03:04:34');
+INSERT INTO `employee_attendance` (`id`, `user_id`, `attendance_date`, `clock_in`, `clock_out`, `status`, `clock_in_latitude`, `clock_in_longitude`, `clock_out_latitude`, `clock_out_longitude`, `location_method`, `work_mode`, `work_mode_out`, `ip_address`, `notes`, `correction_reason`, `corrected_by`, `corrected_at`, `created_at`, `updated_at`) VALUES
+('199f89f2-96e7-49ec-bcdd-4d2342fb81c6', '123e4567-e89b-12d3-a456-426614174000', '2026-05-22', '09:38:29', NULL, 'awal', -7.4626821, 112.4386198, NULL, NULL, 'GPS', 'WFA', NULL, '::1', NULL, NULL, NULL, NULL, '2026-05-22 02:38:29', '2026-05-22 02:38:29'),
+('5280c0cf-d542-4f15-b031-ca63ae6e3725', '3a5109e3-5dbf-432f-9ade-8413827ae159', '2026-05-22', '10:04:34', NULL, 'terlambat', -7.4626155, 112.4386335, NULL, NULL, 'GPS', 'WFA', NULL, '::1', NULL, NULL, NULL, NULL, '2026-05-22 03:04:34', '2026-05-22 03:04:34');
 
 -- --------------------------------------------------------
 
@@ -145,10 +146,10 @@ INSERT INTO `employee_reimbursement_claims` (`id`, `user_id`, `category`, `amoun
 -- --------------------------------------------------------
 
 --
--- Struktur dari tabel `hr_settings`
+-- Struktur dari tabel `global_settings`
 --
 
-CREATE TABLE `hr_settings` (
+CREATE TABLE `global_settings` (
   `key` varchar(100) NOT NULL,
   `value` text NOT NULL,
   `label` varchar(255) DEFAULT NULL,
@@ -157,10 +158,10 @@ CREATE TABLE `hr_settings` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 --
--- Dumping data untuk tabel `hr_settings`
+-- Dumping data untuk tabel `global_settings`
 --
 
-INSERT INTO `hr_settings` (`key`, `value`, `label`, `group`, `updated_at`) VALUES
+INSERT INTO `global_settings` (`key`, `value`, `label`, `group`, `updated_at`) VALUES
 ('grace_period_min', '60', 'Toleransi Keterlambatan (menit)', 'attendance', '2026-05-22 03:16:33'),
 ('office_lat', '-7.456187902575536', 'Latitude Kantor Pusat', 'attendance', '2026-05-22 03:16:33'),
 ('office_lng', '112.44652632965536', 'Longitude Kantor Pusat', 'attendance', '2026-05-22 03:16:33'),
@@ -206,6 +207,24 @@ CREATE TABLE `users` (
   `updated_at` timestamp NULL DEFAULT current_timestamp() ON UPDATE current_timestamp()
 ) ENGINE=InnoDB DEFAULT CHARSET=latin1 COLLATE=latin1_swedish_ci;
 
+-- --------------------------------------------------------
+
+--
+-- Struktur dari tabel `sessions`
+--
+
+CREATE TABLE `sessions` (
+  `id` varchar(255) NOT NULL,
+  `user_id` char(36) DEFAULT NULL,
+  `ip_address` varchar(45) DEFAULT NULL,
+  `user_agent` text DEFAULT NULL,
+  `payload` longtext NOT NULL,
+  `last_activity` int(11) NOT NULL,
+  PRIMARY KEY (`id`),
+  KEY `sessions_user_id_index` (`user_id`),
+  KEY `sessions_last_activity_index` (`last_activity`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
 --
 -- Dumping data untuk tabel `users`
 --
@@ -249,9 +268,9 @@ ALTER TABLE `employee_reimbursement_claims`
   ADD PRIMARY KEY (`id`);
 
 --
--- Indeks untuk tabel `hr_settings`
+-- Indeks untuk tabel `global_settings`
 --
-ALTER TABLE `hr_settings`
+ALTER TABLE `global_settings`
   ADD PRIMARY KEY (`key`);
 
 --

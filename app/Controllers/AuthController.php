@@ -11,6 +11,7 @@ class AuthController {
         
         $email = $_POST['email'] ?? '';
         $password = $_POST['password'] ?? '';
+        $remember = isset($_POST['remember-me']) && ($_POST['remember-me'] === 'on' || $_POST['remember-me'] == '1' || $_POST['remember-me'] == 'true');
         
         if (empty($email) || empty($password)) {
             echo json_encode(['success' => false, 'message' => 'Email dan kata sandi wajib diisi.']);
@@ -27,6 +28,22 @@ class AuthController {
             $_SESSION['name'] = $user['first_name'] . ' ' . $user['last_name'];
             $_SESSION['email'] = $user['email'];
             $_SESSION['profile_picture'] = $user['profile_picture'];
+            
+            if ($remember) {
+                $_SESSION['remember_me'] = true;
+                
+                // Explicitly send a persistent cookie (30 days) to override the default session-only cookie
+                $params = session_get_cookie_params();
+                setcookie(
+                    session_name(),
+                    session_id(),
+                    time() + 30 * 86400,
+                    $params['path'],
+                    $params['domain'],
+                    $params['secure'] ?? false,
+                    $params['httponly'] ?? true
+                );
+            }
             
             echo json_encode(['success' => true, 'message' => 'Berhasil masuk!', 'redirect' => '/dashboard']);
         } else {

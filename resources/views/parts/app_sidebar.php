@@ -35,6 +35,7 @@ switch ($sessRole) {
         $menus[] = ['title' => 'Cuti & Izin', 'icon' => 'event_note', 'link' => '/employee/leaves'];
         $menus[] = ['title' => 'Finansial Mandiri', 'icon' => 'payments', 'link' => '/employee/finance'];
         $menus[] = ['title' => 'Reimbursement', 'icon' => 'receipt_long', 'link' => '/employee/reimbursements'];
+        $menus[] = ['title' => 'Refleksi Diri', 'icon' => 'psychology', 'link' => '/employee/reflection'];
         break;
     case 'recruiter':
         $menus[] = ['title' => 'Manajemen Lowongan', 'icon' => 'work', 'link' => '/recruiter/jobs'];
@@ -43,6 +44,7 @@ switch ($sessRole) {
         $menus[] = ['title' => 'Kontrak & Offering', 'icon' => 'history_edu', 'link' => '/recruiter/offerings'];
         break;
     case 'hiring_manager':
+        $menus[] = ['title' => 'Anggota Tim', 'icon' => 'group', 'link' => '/manager/team'];
         $menus[] = ['title' => 'Permintaan Tenaga Kerja', 'icon' => 'person_add', 'link' => '/manager/requisitions'];
         $menus[] = ['title' => 'Review Kandidat', 'icon' => 'preview', 'link' => '/manager/candidates'];
         $menus[] = ['title' => 'Lembar Wawancara', 'icon' => 'fact_check', 'link' => '/manager/interviews'];
@@ -67,7 +69,8 @@ switch ($sessRole) {
     case 'superadmin':
         $menus[] = ['title' => 'Manajemen Pengguna', 'icon' => 'manage_accounts', 'link' => '/superadmin/users'];
         $menus[] = ['title' => 'Konfigurasi Global', 'icon' => 'settings', 'link' => '/superadmin/settings'];
-        $menus[] = ['title' => 'Audit Log & Security', 'icon' => 'security', 'link' => '/superadmin/audit'];
+        $menus[] = ['title' => 'Menu Privilege Mapping', 'icon' => 'account_tree', 'link' => '/superadmin/menus/list'];
+        $menus[] = ['title' => 'Audit Log & Security', 'icon' => 'security', 'link' => '/superadmin/audit/list'];
         break;
 }
 ?>

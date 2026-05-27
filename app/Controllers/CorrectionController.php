@@ -350,6 +350,11 @@ class CorrectionController {
         header('Content-Type: ' . $mimeType);
         header('Content-Length: ' . filesize($filePath));
         header('Cache-Control: private, max-age=86400');
+        if (isset($_GET['download']) && $_GET['download'] === '1') {
+            header('Content-Disposition: attachment; filename="' . $fileName . '"');
+        } else {
+            header('Content-Disposition: inline; filename="' . $fileName . '"');
+        }
         readfile($filePath);
         exit;
     }

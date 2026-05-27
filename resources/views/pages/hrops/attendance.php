@@ -88,7 +88,7 @@ function initials($fn, $ln) {
     <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div class="space-y-1">
             <h1 class="font-headline text-3xl font-extrabold text-primary tracking-tight">Presensi Karyawan</h1>
-            <p class="text-on-surface-variant font-medium text-sm">Monitor kehadiran harian, keterlambatan, dan aktivitas absensi secara real-time.</p>
+            <p class="text-on-surface-variant font-medium text-sm">Monitor kehadiran harian, keterlambatan, dan aktivitas presensi secara real-time.</p>
         </div>
         <div class="flex items-center gap-2">
             <!-- Date picker to load different dates -->
@@ -257,17 +257,19 @@ function initials($fn, $ln) {
                         <td class="py-4 px-6">
                             <div class="flex flex-col gap-1">
                                 <span class="font-mono text-sm font-semibold text-on-surface-variant"><?= $cout ?></span>
-                                <?php if ($row['clock_out'] && !empty($row['clock_out_status'])): ?>
+                                <?php if (!empty($row['clock_out_status'])): ?>
                                     <?php
                                         $coStat = $row['clock_out_status'];
                                         $coBadgeColor = match($coStat) {
                                             'pulang lambat' => 'text-amber-600 bg-amber-50 border-amber-100',
                                             'pulang cepat' => 'text-red-600 bg-red-50 border-red-100',
+                                            'tidak presensi pulang' => 'text-rose-600 bg-rose-50 border-rose-100',
                                             default => 'text-emerald-600 bg-emerald-50 border-emerald-100',
                                         };
                                         $coLabel = match($coStat) {
                                             'pulang lambat' => 'Pulang Lambat',
                                             'pulang cepat' => 'Pulang Cepat',
+                                            'tidak presensi pulang' => 'Tidak Presensi Pulang',
                                             default => 'Wajar',
                                         };
                                     ?>
@@ -290,32 +292,56 @@ function initials($fn, $ln) {
                             </span>
                         </td>
                         <td class="py-4 px-6">
-                            <?php if (!empty($row['work_mode'])): ?>
-                                <?php
-                                    $wm = $row['work_mode'];
-                                    $modeColor = match($wm) {
-                                        'WFA' => 'bg-blue-50 text-blue-700 border-blue-200',
-                                        'WFH' => 'bg-indigo-50 text-indigo-700 border-indigo-200',
-                                        default => 'bg-emerald-50 text-emerald-700 border-emerald-200',
-                                    };
-                                    $modeIcon = match($wm) {
-                                        'WFA' => 'home_work',
-                                        'WFH' => 'home',
-                                        default => 'business',
-                                    };
-                                    $modeText = match($wm) {
-                                        'WFA' => 'WFA/WFC',
-                                        'WFH' => 'WFH',
-                                        default => 'WFO',
-                                    };
-                                ?>
-                                <div class="mb-1.5 flex">
-                                    <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-extrabold border <?= $modeColor ?>">
-                                        <span class="material-symbols-outlined text-[12px]"><?= $modeIcon ?></span>
-                                        <?= $modeText ?>
+                            <div class="flex flex-wrap items-center gap-1.5 mb-1.5">
+                                <?php if (!empty($row['work_mode'])): ?>
+                                    <?php
+                                        $wm = $row['work_mode'];
+                                        $modeColor = match($wm) {
+                                            'WFA' => 'bg-blue-50 text-blue-700 border-blue-200',
+                                            'WFH' => 'bg-indigo-50 text-indigo-700 border-indigo-200',
+                                            default => 'bg-emerald-50 text-emerald-700 border-emerald-200',
+                                        };
+                                        $modeIcon = match($wm) {
+                                            'WFA' => 'home_work',
+                                            'WFH' => 'home',
+                                            default => 'business',
+                                        };
+                                        $modeText = match($wm) {
+                                            'WFA' => 'WFA/WFC',
+                                            'WFH' => 'WFH',
+                                            default => 'WFO',
+                                        };
+                                    ?>
+                                    <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-extrabold border <?= $modeColor ?>" title="Mode Masuk">
+                                        <span class="material-symbols-outlined text-[11px]"><?= $modeIcon ?></span>
+                                        <?= $modeText ?> (Masuk)
                                     </span>
-                                </div>
-                            <?php endif; ?>
+                                <?php endif; ?>
+                                <?php if (!empty($row['work_mode_out'])): ?>
+                                    <?php
+                                        $wmo = $row['work_mode_out'];
+                                        $modeColorOut = match($wmo) {
+                                            'WFA' => 'bg-blue-50 text-blue-700 border-blue-200',
+                                            'WFH' => 'bg-indigo-50 text-indigo-700 border-indigo-200',
+                                            default => 'bg-emerald-50 text-emerald-700 border-emerald-200',
+                                        };
+                                        $modeIconOut = match($wmo) {
+                                            'WFA' => 'home_work',
+                                            'WFH' => 'home',
+                                            default => 'business',
+                                        };
+                                        $modeTextOut = match($wmo) {
+                                            'WFA' => 'WFA/WFC',
+                                            'WFH' => 'WFH',
+                                            default => 'WFO',
+                                        };
+                                    ?>
+                                    <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-extrabold border <?= $modeColorOut ?>" title="Mode Pulang">
+                                        <span class="material-symbols-outlined text-[11px]"><?= $modeIconOut ?></span>
+                                        <?= $modeTextOut ?> (Pulang)
+                                    </span>
+                                <?php endif; ?>
+                            </div>
                             <?php if ($row['location_method']): ?>
                             <div class="text-xs font-semibold text-on-surface-variant flex items-center gap-1">
                                 <span class="material-symbols-outlined text-sm <?= $row['location_method'] === 'WIFI' ? 'text-primary' : 'text-amber-600' ?>">

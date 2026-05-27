@@ -52,9 +52,23 @@ class DashboardController {
         $viewPath = 'pages/' . $path;
         $fullPath = __DIR__ . '/../../resources/views/' . $viewPath . '.php';
 
-        // Universal fallback to beautiful Coming Soon page if the view doesn't exist
+        // Universal fallback to beautiful Coming Soon page or 404 page if the view doesn't exist
         if (!file_exists($fullPath)) {
-            $viewPath = 'pages/profile_coming_soon';
+            $validUnbuilt = [
+                'candidate/jobs', 'candidate/interviews', 'candidate/offerings', 'candidate/onboarding',
+                'employee/profile', 'employee/attendance', 'employee/leaves', 'employee/finance', 'employee/reimbursements', 'employee/reflection',
+                'recruiter/jobs', 'recruiter/ats', 'recruiter/interviews', 'recruiter/offerings',
+                'manager/requisitions', 'manager/candidates', 'manager/interviews', 'manager/approvals',
+                'hrops/onboarding', 'hrops/employees', 'hrops/verifications', 'hrops/payroll',
+                'admin/departments', 'admin/users', 'admin/settings',
+                'executive/analytics', 'executive/budgets', 'executive/approvals',
+                'superadmin/users', 'superadmin/settings', 'superadmin/audit'
+            ];
+            if (in_array($path, $validUnbuilt)) {
+                $viewPath = 'pages/profile_coming_soon';
+            } else {
+                $viewPath = 'pages/error_404';
+            }
         }
 
         $isAjax = !empty($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) == 'xmlhttprequest';

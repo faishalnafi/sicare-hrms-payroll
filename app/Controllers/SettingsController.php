@@ -7,7 +7,7 @@ use Exception;
 
 /**
  * SettingsController
- * Handles reading and saving HR configuration settings from the hr_settings table.
+ * Handles reading and saving configurations from the global_settings table.
  */
 class SettingsController {
 
@@ -22,7 +22,7 @@ class SettingsController {
      */
     public function getAll(): array {
         try {
-            $stmt = $this->db->query("SELECT `key`, `value` FROM hr_settings");
+            $stmt = $this->db->query("SELECT `key`, `value` FROM global_settings");
             $rows = $stmt->fetchAll();
             $result = [];
             foreach ($rows as $row) {
@@ -39,7 +39,7 @@ class SettingsController {
      */
     public function get(string $key, $default = null) {
         try {
-            $stmt = $this->db->prepare("SELECT `value` FROM hr_settings WHERE `key` = :key LIMIT 1");
+            $stmt = $this->db->prepare("SELECT `value` FROM global_settings WHERE `key` = :key LIMIT 1");
             $stmt->execute(['key' => $key]);
             $val = $stmt->fetchColumn();
             return ($val !== false) ? $val : $default;
@@ -53,19 +53,19 @@ class SettingsController {
      */
     public function set(string $key, string $value): void {
         $this->db->prepare(
-            "INSERT INTO hr_settings (`key`, `value`) VALUES (:key, :value)
+            "INSERT INTO global_settings (`key`, `value`) VALUES (:key, :value)
              ON DUPLICATE KEY UPDATE `value` = :value2, updated_at = NOW()"
         )->execute(['key' => $key, 'value' => $value, 'value2' => $value]);
     }
 
     /**
-     * POST /hrops/settings/save — Save all settings submitted from the form.
+     * POST /admin/settings/save — Save all settings submitted from the form.
      */
     public function save() {
         header('Content-Type: application/json');
         session_start();
 
-        if (!isset($_SESSION['user_id']) || !in_array($_SESSION['role'], ['hr_ops', 'superadmin', 'admin'])) {
+        if (!isset($_SESSION['user_id']) || !in_array($_SESSION['role'], ['superadmin', 'admin'])) {
             echo json_encode(['success' => false, 'message' => 'Akses ditolak.']);
             return;
         }
@@ -122,13 +122,13 @@ class SettingsController {
     }
 
     /**
-     * POST /hrops/holidays/add — Add a new holiday.
+     * POST /admin/holidays/add — Add a new holiday.
      */
     public function addHoliday() {
         header('Content-Type: application/json');
         session_start();
 
-        if (!isset($_SESSION['user_id']) || !in_array($_SESSION['role'], ['hr_ops', 'superadmin', 'admin'])) {
+        if (!isset($_SESSION['user_id']) || !in_array($_SESSION['role'], ['superadmin', 'admin'])) {
             echo json_encode(['success' => false, 'message' => 'Akses ditolak.']);
             return;
         }
@@ -161,13 +161,13 @@ class SettingsController {
     }
 
     /**
-     * POST /hrops/holidays/delete — Delete a holiday.
+     * POST /admin/holidays/delete — Delete a holiday.
      */
     public function deleteHoliday() {
         header('Content-Type: application/json');
         session_start();
 
-        if (!isset($_SESSION['user_id']) || !in_array($_SESSION['role'], ['hr_ops', 'superadmin', 'admin'])) {
+        if (!isset($_SESSION['user_id']) || !in_array($_SESSION['role'], ['superadmin', 'admin'])) {
             echo json_encode(['success' => false, 'message' => 'Akses ditolak.']);
             return;
         }

@@ -37,14 +37,14 @@ class ApprovalController {
             
             // Fetch requests
             $stmt = $db->query("
-                SELECT ar.id, ar.requester_id, ar.user_id, ar.action_type, ar.new_data, ar.status, 
+                SELECT ar.id, ar.requester_id, ar.target_user_id AS user_id, ar.action_type, ar.new_data, ar.status, 
                        ar.rejection_reason, ar.created_at, ar.updated_at,
                        req.first_name AS req_first_name, req.last_name AS req_last_name,
                        tar.first_name AS tar_first_name, tar.last_name AS tar_last_name, tar.employee_id AS tar_employee_id,
                        app.first_name AS app_first_name, app.last_name AS app_last_name
                 FROM approval_requests ar
                 LEFT JOIN users req ON ar.requester_id = req.id
-                LEFT JOIN users tar ON ar.user_id = tar.id
+                LEFT JOIN users tar ON ar.target_user_id = tar.id
                 LEFT JOIN users app ON ar.approver_id = app.id
                 ORDER BY ar.created_at DESC
             ");
@@ -98,7 +98,7 @@ class ApprovalController {
                 return;
             }
 
-            $targetUserId = $request['user_id'];
+            $targetUserId = $request['target_user_id'];
             $parsedData = json_decode($request['new_data'], true);
             $new = $parsedData['new'] ?? null;
 

@@ -35,7 +35,7 @@ $inClause = $hasDepartment ? implode(',', array_map(fn($id) => $db->quote($id), 
 $leaves = [];
 if ($hasDepartment) {
     $stmt = $db->query("
-        SELECT r.*, u.first_name, u.last_name, u.employee_id, u.email, u.profile_picture, u.job_title
+        SELECT r.*, u.first_name, u.last_name, u.employee_id, u.email, u.profile_picture, u.job_title, u.role
         FROM employee_leave_requests r
         JOIN users u ON r.user_id = u.id
         WHERE u.department_id IN ($inClause)
@@ -48,7 +48,7 @@ if ($hasDepartment) {
 $reimbursements = [];
 if ($hasDepartment) {
     $stmt = $db->query("
-        SELECT c.*, u.first_name, u.last_name, u.employee_id, u.email, u.profile_picture, u.job_title
+        SELECT c.*, u.first_name, u.last_name, u.employee_id, u.email, u.profile_picture, u.job_title, u.role
         FROM employee_reimbursement_claims c
         JOIN users u ON c.user_id = u.id
         WHERE u.department_id IN ($inClause)
@@ -195,7 +195,7 @@ function getGravatarIcon($email) {
         </button>
         <button onclick="switchTab('attendance-tab'); fetchAttendanceLogs();" id="btn-attendance-tab" class="tab-btn flex-1 py-3 px-4 rounded-xl font-bold text-xs flex items-center justify-center gap-2 transition-all cursor-pointer text-on-surface-variant hover:bg-surface-container-low">
             <span class="material-symbols-outlined text-sm">co_present</span>
-            Presensi & Absensi Tim
+            Presensi Tim
         </button>
     </div>
 
@@ -241,7 +241,7 @@ function getGravatarIcon($email) {
                                             <img src="<?= htmlspecialchars(getGravatarIcon($req['email'])) ?>" alt="Avatar" class="w-8 h-8 rounded-full border object-cover" />
                                             <div>
                                                 <h4 class="font-extrabold text-on-surface"><?= htmlspecialchars($req['first_name'] . ' ' . $req['last_name']) ?></h4>
-                                                <p class="text-[10px] text-on-surface-variant font-medium"><?= htmlspecialchars($req['employee_id'] ?: 'Candidate Onboarding') ?></p>
+                                                <p class="text-[10px] text-on-surface-variant font-medium"><?= htmlspecialchars($req['employee_id'] ?: ($req['job_title'] ?: ucwords(str_replace('_', ' ', $req['role'] ?? 'Karyawan')))) ?></p>
                                             </div>
                                         </div>
                                     </td>
@@ -345,7 +345,7 @@ function getGravatarIcon($email) {
                                             <img src="<?= htmlspecialchars(getGravatarIcon($req['email'])) ?>" alt="Avatar" class="w-8 h-8 rounded-full border object-cover" />
                                             <div>
                                                 <h4 class="font-extrabold text-on-surface"><?= htmlspecialchars($req['first_name'] . ' ' . $req['last_name']) ?></h4>
-                                                <p class="text-[10px] text-on-surface-variant font-medium"><?= htmlspecialchars($req['employee_id'] ?: 'Candidate Onboarding') ?></p>
+                                                <p class="text-[10px] text-on-surface-variant font-medium"><?= htmlspecialchars($req['employee_id'] ?: ($req['job_title'] ?: ucwords(str_replace('_', ' ', $req['role'] ?? 'Karyawan')))) ?></p>
                                             </div>
                                         </div>
                                     </td>
@@ -453,10 +453,14 @@ function getGravatarIcon($email) {
                         <thead>
                             <tr class="bg-surface-container-low/30 border-b border-outline-variant/10 text-[10px] font-extrabold text-on-surface-variant uppercase tracking-wider">
                                 <th class="py-4 px-6">Karyawan</th>
-                                <th class="py-4 px-6">Status Kehadiran</th>
-                                <th class="py-4 px-6 text-center">Clock In</th>
-                                <th class="py-4 px-6 text-center">Clock Out</th>
-                                <th class="py-4 px-6">Metode & Mode</th>
+                                <th class="py-4 px-6 text-center">Clock-In</th>
+                                <th class="py-4 px-6 text-center">Status Clock-In</th>
+                                <th class="py-4 px-6 text-center">Clock-Out</th>
+                                <th class="py-4 px-6 text-center">Status Clock-Out</th>
+                                <th class="py-4 px-6 text-center">Jam Kerja</th>
+                                <th class="py-4 px-6 text-center">Mode Masuk</th>
+                                <th class="py-4 px-6 text-center">Mode Pulang</th>
+                                <th class="py-4 px-6 text-center">Metode</th>
                                 <th class="py-4 px-6">Alasan Koreksi</th>
                                 <th class="py-4 px-6 text-center">Aksi</th>
                             </tr>
@@ -523,7 +527,7 @@ function getGravatarIcon($email) {
             <!-- Reason -->
             <div class="space-y-1">
                 <label class="text-[10px] font-extrabold text-on-surface-variant uppercase tracking-wider">Alasan Koreksi / Input Manual</label>
-                <textarea id="form-att-reason" name="reason" placeholder="Contoh: Terjadi kendala mesin absensi / penugasan dinas luar kota..." rows="3" class="w-full p-2.5 border border-outline-variant/30 bg-surface-container-low text-xs rounded-xl text-on-surface focus:outline-none focus:border-primary"></textarea>
+                <textarea id="form-att-reason" name="reason" placeholder="Contoh: Terjadi kendala mesin presensi / penugasan dinas luar kota..." rows="3" class="w-full p-2.5 border border-outline-variant/30 bg-surface-container-low text-xs rounded-xl text-on-surface focus:outline-none focus:border-primary"></textarea>
             </div>
 
             <!-- Buttons -->
@@ -762,7 +766,7 @@ function getGravatarIcon($email) {
                 if (data.rows.length === 0) {
                     tbody.innerHTML = `
                     <tr>
-                        <td colspan="7" class="py-12 px-6 text-center text-on-surface-variant font-medium">
+                        <td colspan="11" class="py-12 px-6 text-center text-on-surface-variant font-medium">
                             <span class="material-symbols-outlined text-4xl text-outline-variant block mb-2">sensor_occupied</span>
                             Tidak ada data presensi tim yang tercatat pada tanggal ${formatDateIndoStr(date)}.
                         </td>
@@ -772,13 +776,115 @@ function getGravatarIcon($email) {
 
                 let html = '';
                 data.rows.forEach((r, index) => {
-                    const statusBadge = getAttendanceStatusBadge(r.status);
-                    const clockInStr = r.clock_in ? r.clock_in.substring(0, 5) : '-';
-                    const clockOutStr = r.clock_out ? r.clock_out.substring(0, 5) : '-';
-                    const modeLabel = r.work_mode === 'WFA' ? 'WFA (Kerja Lintas Lokasi)' : 'WFO (Kantor Pusat)';
-                    const methodLabel = r.location_method || '-';
+                    const clockInStr = r.clock_in ? r.clock_in.substring(0, 5) : '--:--';
+                    const clockOutStr = r.clock_out ? r.clock_out.substring(0, 5) : '--:--';
+                    
+                    // Status Clock-In Badge
+                    const statusBadgeClass = getAttendanceStatusBadgeClass(r.status);
+                    const statusBadgeDot = getAttendanceStatusBadgeDot(r.status);
+                    const statusBadgeLabel = getAttendanceStatusBadgeLabel(r.status);
+                    const statusClockInHtml = `
+                        <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold border ${statusBadgeClass}">
+                            <span class="w-1.5 h-1.5 rounded-full ${statusBadgeDot}"></span>
+                            ${statusBadgeLabel}
+                        </span>
+                    `;
+
+                    // Status Clock-Out Badge
+                    let statusClockOutHtml = '<span class="text-on-surface-variant/30 text-xs">—</span>';
+                    if (r.clock_out) {
+                        const statusOutClass = getClockOutStatusBadgeClass(r.clock_out_status);
+                        const statusOutDot = getClockOutStatusBadgeDot(r.clock_out_status);
+                        const statusOutLabel = getClockOutStatusBadgeLabel(r.clock_out_status);
+                        statusClockOutHtml = `
+                            <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold border ${statusOutClass}">
+                                <span class="w-1.5 h-1.5 rounded-full ${statusOutDot}"></span>
+                                ${statusOutLabel}
+                            </span>
+                        `;
+                    }
+
+                    // Jam Kerja Calculation
+                    let workingHours = '-';
+                    if (r.clock_in && r.clock_out) {
+                        const parseTimeToSeconds = (t) => {
+                            if (!t) return 0;
+                            const pts = t.split(':');
+                            return parseInt(pts[0])*3600 + parseInt(pts[1])*60 + (parseInt(pts[2] || 0));
+                        };
+                        const diffSec = parseTimeToSeconds(r.clock_out) - parseTimeToSeconds(r.clock_in);
+                        if (diffSec > 0) {
+                            const hours = Math.floor(diffSec / 3600);
+                            const minutes = Math.floor((diffSec % 3600) / 60);
+                            workingHours = `${hours}j ${minutes}m`;
+                        } else {
+                            workingHours = '0j 0m';
+                        }
+                    }
+
+                    // Mode Masuk (Clock-in Mode)
+                    let modeMasukHtml = '<span class="text-on-surface-variant/30 text-xs">—</span>';
+                    if (r.work_mode) {
+                        let color = 'bg-emerald-50 text-emerald-700 border-emerald-200';
+                        let icon = 'business';
+                        let text = 'WFO';
+                        if (r.work_mode === 'WFA') {
+                            color = 'bg-blue-50 text-blue-700 border-blue-200';
+                            icon = 'home_work';
+                            text = 'WFA/WFC';
+                        } else if (r.work_mode === 'WFH') {
+                            color = 'bg-indigo-50 text-indigo-700 border-indigo-200';
+                            icon = 'home';
+                            text = 'WFH';
+                        }
+                        modeMasukHtml = `
+                            <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-extrabold border ${color}">
+                                <span class="material-symbols-outlined text-[11px]">${icon}</span>
+                                ${text}
+                            </span>
+                        `;
+                    }
+
+                    // Mode Pulang (Clock-out Mode)
+                    let modePulangHtml = '<span class="text-on-surface-variant/30 text-xs">—</span>';
+                    if (r.work_mode_out) {
+                        let colorOut = 'bg-emerald-50 text-emerald-700 border-emerald-200';
+                        let iconOut = 'business';
+                        let textOut = 'WFO';
+                        if (r.work_mode_out === 'WFA') {
+                            colorOut = 'bg-blue-50 text-blue-700 border-blue-200';
+                            iconOut = 'home_work';
+                            textOut = 'WFA/WFC';
+                        } else if (r.work_mode_out === 'WFH') {
+                            colorOut = 'bg-indigo-50 text-indigo-700 border-indigo-200';
+                            iconOut = 'home';
+                            textOut = 'WFH';
+                        }
+                        modePulangHtml = `
+                            <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-extrabold border ${colorOut}">
+                                <span class="material-symbols-outlined text-[11px]">${iconOut}</span>
+                                ${textOut}
+                            </span>
+                        `;
+                    }
+
+                    // Metode Location
+                    let metodeHtml = '<span class="text-on-surface-variant/30 text-xs">—</span>';
+                    if (r.location_method) {
+                        let icon = 'location_on';
+                        if (r.location_method === 'WIFI') {
+                            icon = 'wifi';
+                        }
+                        metodeHtml = `
+                            <span class="inline-flex items-center gap-1 text-[11px] font-extrabold text-amber-600">
+                                <span class="material-symbols-outlined text-xs text-amber-500">${icon}</span>
+                                ${escapeHtml(r.location_method)}
+                            </span>
+                        `;
+                    }
+
                     const reasonText = r.correction_reason || '-';
-                    const hash = md5(r.email.trim().toLowerCase());
+                    const hash = md5((r.email || '').trim().toLowerCase());
                     const avatar = `https://www.gravatar.com/avatar/${hash}?d=identicon&s=80`;
 
                     html += `
@@ -787,20 +893,19 @@ function getGravatarIcon($email) {
                             <div class="flex items-center gap-3">
                                 <img src="${avatar}" alt="Avatar" class="w-8 h-8 rounded-full border object-cover" />
                                 <div>
-                                    <h4 class="font-extrabold text-on-surface">${escapeHtml(r.first_name)} ${escapeHtml(r.last_name)}</h4>
-                                    <p class="text-[10px] text-on-surface-variant font-medium">${escapeHtml(r.employee_id || 'Candidate')}</p>
+                                    <h4 class="font-extrabold text-on-surface whitespace-nowrap">${escapeHtml(r.first_name)} ${escapeHtml(r.last_name)}</h4>
+                                    <p class="text-[10px] text-on-surface-variant font-medium">${escapeHtml(r.employee_id || r.position || 'Karyawan')}</p>
                                 </div>
                             </div>
                         </td>
-                        <td class="py-4 px-6">${statusBadge}</td>
-                        <td class="py-4 px-6 text-center font-extrabold text-primary">${clockInStr}</td>
-                        <td class="py-4 px-6 text-center font-extrabold text-primary">${clockOutStr}</td>
-                        <td class="py-4 px-6">
-                            <div class="space-y-0.5">
-                                <p class="font-bold text-on-surface text-[11px]">${modeLabel}</p>
-                                <p class="text-[9px] text-on-surface-variant font-medium">Metode: ${escapeHtml(methodLabel)}</p>
-                            </div>
-                        </td>
+                        <td class="py-4 px-6 text-center font-mono font-semibold text-on-surface-variant text-sm whitespace-nowrap">${clockInStr}</td>
+                        <td class="py-4 px-6 text-center whitespace-nowrap">${statusClockInHtml}</td>
+                        <td class="py-4 px-6 text-center font-mono font-semibold text-on-surface-variant text-sm whitespace-nowrap">${clockOutStr}</td>
+                        <td class="py-4 px-6 text-center whitespace-nowrap">${statusClockOutHtml}</td>
+                        <td class="py-4 px-6 text-center text-sm font-semibold text-on-surface-variant whitespace-nowrap">${workingHours}</td>
+                        <td class="py-4 px-6 text-center whitespace-nowrap">${modeMasukHtml}</td>
+                        <td class="py-4 px-6 text-center whitespace-nowrap">${modePulangHtml}</td>
+                        <td class="py-4 px-6 text-center whitespace-nowrap">${metodeHtml}</td>
                         <td class="py-4 px-6 max-w-xs truncate" title="${escapeHtml(reasonText)}">${escapeHtml(reasonText)}</td>
                         <td class="py-4 px-6 text-center">
                             <button onclick="openEditAttendanceModalByIndex(${index})" class="p-1.5 text-primary bg-primary/5 hover:bg-primary/10 rounded-lg border border-primary/20 transition-colors cursor-pointer" title="Koreksi Presensi">
@@ -811,29 +916,71 @@ function getGravatarIcon($email) {
                 });
                 tbody.innerHTML = html;
             } else {
-                tbody.innerHTML = `<tr><td colspan="7" class="py-8 px-6 text-center text-red-600 font-bold">${data.message}</td></tr>`;
+                tbody.innerHTML = `<tr><td colspan="11" class="py-8 px-6 text-center text-red-600 font-bold">${data.message}</td></tr>`;
             }
         });
     }
 
-    function getAttendanceStatusBadge(status) {
-        const classes = {
-            'tepat waktu': 'bg-green-50 text-green-700 border-green-200/50',
-            'terlambat': 'bg-amber-50 text-amber-700 border-amber-200/50',
-            'awal': 'bg-blue-50 text-blue-700 border-blue-200/50',
-            'alpa': 'bg-red-50 text-red-700 border-red-200/50',
-            'sakit/izin': 'bg-purple-50 text-purple-700 border-purple-200/50'
-        };
-        const labels = {
-            'tepat waktu': 'Tepat Waktu',
-            'terlambat': 'Terlambat',
-            'awal': 'Masuk Awal',
-            'alpa': 'Alpa',
-            'sakit/izin': 'Sakit/Izin'
-        };
-        const c = classes[status] ?? 'bg-gray-50 text-gray-700 border-gray-200';
-        const l = labels[status] ?? status.toUpperCase();
-        return `<span class="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-extrabold border ${c}">${l}</span>`;
+    function getAttendanceStatusBadgeClass(status) {
+        switch (status) {
+            case 'tepat waktu': return 'bg-emerald-50 text-emerald-700 border-emerald-200';
+            case 'awal':        return 'bg-indigo-50 text-indigo-700 border-indigo-200';
+            case 'terlambat':   return 'bg-amber-50 text-amber-700 border-amber-200';
+            case 'sakit/izin':  return 'bg-blue-50 text-blue-700 border-blue-200';
+            case 'libur':       return 'bg-indigo-50 text-indigo-700 border-indigo-200';
+            default:            return 'bg-red-50 text-red-700 border-red-200';
+        }
+    }
+    function getAttendanceStatusBadgeDot(status) {
+        switch (status) {
+            case 'tepat waktu': return 'bg-emerald-500';
+            case 'awal':        return 'bg-indigo-500';
+            case 'terlambat':   return 'bg-amber-500';
+            case 'sakit/izin':  return 'bg-blue-500';
+            case 'libur':       return 'bg-indigo-500';
+            default:            return 'bg-red-500';
+        }
+    }
+    function getAttendanceStatusBadgeLabel(status) {
+        switch (status) {
+            case 'tepat waktu': return 'Tepat Waktu';
+            case 'awal':        return 'Masuk Awal';
+            case 'terlambat':   return 'Terlambat';
+            case 'sakit/izin':  return 'Sakit / Izin';
+            case 'libur':       return 'Libur';
+            default:            return 'Alpa';
+        }
+    }
+
+    function getClockOutStatusBadgeClass(status) {
+        switch (status) {
+            case 'pulang lambat': return 'bg-amber-50 text-amber-700 border-amber-200';
+            case 'pulang cepat':  return 'bg-red-50 text-red-700 border-red-200';
+            case 'wajar':
+            case 'normal':        return 'bg-emerald-50 text-emerald-700 border-emerald-200';
+            case 'tidak presensi pulang': return 'bg-rose-50 text-rose-700 border-rose-200';
+            default:              return 'bg-surface-container-low text-on-surface-variant/40 border-outline-variant/10';
+        }
+    }
+    function getClockOutStatusBadgeDot(status) {
+        switch (status) {
+            case 'pulang lambat': return 'bg-amber-500';
+            case 'pulang cepat':  return 'bg-red-500';
+            case 'wajar':
+            case 'normal':        return 'bg-emerald-500';
+            case 'tidak presensi pulang': return 'bg-rose-500';
+            default:              return 'bg-on-surface-variant/20';
+        }
+    }
+    function getClockOutStatusBadgeLabel(status) {
+        switch (status) {
+            case 'pulang lambat': return 'Pulang Lambat';
+            case 'pulang cepat':  return 'Pulang Cepat';
+            case 'wajar':
+            case 'normal':        return 'Wajar';
+            case 'tidak presensi pulang': return 'Tidak Presensi Pulang';
+            default:              return '—';
+        }
     }
 
     function formatDateIndoStr(dateStr) {
@@ -1002,7 +1149,7 @@ function getGravatarIcon($email) {
 
         document.getElementById('select-employee-container').classList.add('hidden');
         document.getElementById('display-employee-container').classList.remove('hidden');
-        document.getElementById('form-att-display-name').innerText = `${record.first_name} ${record.last_name} (${record.employee_id || 'Candidate'})`;
+        document.getElementById('form-att-display-name').innerText = `${record.first_name} ${record.last_name} (${record.employee_id || record.position || 'Karyawan'})`;
         
         if (record.clock_in) document.getElementById('form-att-clock-in').value = record.clock_in.substring(0, 5);
         if (record.clock_out) document.getElementById('form-att-clock-out').value = record.clock_out.substring(0, 5);

@@ -41,8 +41,13 @@ $alamatDomisili = !empty($dbUser['alamat_domisili']) ? $dbUser['alamat_domisili'
 $homeLat = $dbUser['home_latitude'] ?? '';
 $homeLng = $dbUser['home_longitude'] ?? '';
 
-// Fetch pending correction requests
-$reqQuery = $db->prepare("SELECT * FROM employee_data_correction_requests WHERE user_id = :id AND status = 'pending' ORDER BY created_at DESC");
+// Fetch pending, approved, and rejected correction requests within the last 1 month
+$reqQuery = $db->prepare("
+    SELECT * FROM employee_data_correction_requests 
+    WHERE user_id = :id 
+      AND (status = 'pending' OR created_at >= DATE_SUB(NOW(), INTERVAL 1 MONTH))
+    ORDER BY created_at DESC
+");
 $reqQuery->execute(['id' => $_SESSION['user_id']]);
 $pendingRequests = $reqQuery->fetchAll();
 ?>
@@ -125,21 +130,40 @@ $pendingRequests = $reqQuery->fetchAll();
             <?php if (count($pendingRequests) > 0): ?>
             <div class="bg-surface-container-lowest rounded-2xl p-5 border border-outline-variant/15 shadow-[0_12px_24px_rgba(0,6,102,0.01)] space-y-4">
                 <div class="flex items-center gap-2 pb-3 border-b border-outline-variant/10">
-                    <span class="material-symbols-outlined text-amber-500 text-xl">pending_actions</span>
-                    <h3 class="text-sm font-extrabold text-on-surface">Status Pengajuan (<span class="text-amber-500"><?php echo count($pendingRequests); ?></span>)</h3>
+                    <span class="material-symbols-outlined text-primary text-xl">fact_check</span>
+                    <h3 class="text-sm font-extrabold text-on-surface">Status Pengajuan (<span class="text-primary"><?php echo count($pendingRequests); ?></span>)</h3>
                 </div>
                 <div class="space-y-3">
                     <?php foreach($pendingRequests as $req): 
                         // Format field label simply
                         $fieldLabel = ucwords(str_replace('_', ' ', $req['field']));
+                        
+                        // Dynamic borders & badges depending on status
+                        if ($req['status'] === 'pending') {
+                            $leftBorder = 'border-l-4 border-l-amber-500';
+                            $badge = '<span class="text-[9px] font-bold text-amber-600 bg-amber-100 px-2 py-0.5 rounded uppercase flex-shrink-0 whitespace-nowrap">Pending</span>';
+                        } elseif ($req['status'] === 'approved') {
+                            $leftBorder = 'border-l-4 border-l-green-500';
+                            $badge = '<span class="text-[9px] font-bold text-green-700 bg-green-100 px-2 py-0.5 rounded uppercase flex-shrink-0 whitespace-nowrap">Disetujui</span>';
+                        } else {
+                            $leftBorder = 'border-l-4 border-l-red-500';
+                            $badge = '<span class="text-[9px] font-bold text-red-700 bg-red-100 px-2 py-0.5 rounded uppercase flex-shrink-0 whitespace-nowrap">Ditolak</span>';
+                        }
                     ?>
-                    <div class="bg-surface-container-low/40 p-3.5 rounded-xl border border-outline-variant/10 relative">
-                        <div class="flex justify-between items-start mb-1">
-                            <label class="text-[9px] uppercase font-bold tracking-wider text-on-surface-variant/80 block w-[70%] truncate" title="<?php echo htmlspecialchars($fieldLabel); ?>"><?php echo htmlspecialchars($fieldLabel); ?></label>
-                            <span class="text-[9px] font-bold text-amber-600 bg-amber-100 px-2 py-0.5 rounded uppercase flex-shrink-0">Pending</span>
+                    <div class="bg-surface-container-low/40 p-3.5 rounded-xl border border-outline-variant/10 relative <?php echo $leftBorder; ?> transition-all hover:shadow-sm">
+                        <div class="flex justify-between items-start mb-1.5 gap-2">
+                            <label class="text-[9px] uppercase font-black tracking-wider text-on-surface-variant/80 block truncate" title="<?php echo htmlspecialchars($fieldLabel); ?>"><?php echo htmlspecialchars($fieldLabel); ?></label>
+                            <?php echo $badge; ?>
                         </div>
                         <p class="text-xs font-bold text-on-surface truncate" title="<?php echo htmlspecialchars($req['new_value']); ?>"><?php echo htmlspecialchars($req['new_value']); ?></p>
-                        <p class="text-[10px] text-on-surface-variant mt-1 line-clamp-1 italic" title="<?php echo htmlspecialchars($req['reason']); ?>">"<?php echo htmlspecialchars($req['reason']); ?>"</p>
+                        <p class="text-[10px] text-on-surface-variant mt-1 italic break-words whitespace-normal leading-relaxed" title="<?php echo htmlspecialchars($req['reason']); ?>">"<?php echo htmlspecialchars($req['reason']); ?>"</p>
+                        
+                        <?php if ($req['status'] === 'rejected' && !empty($req['rejection_reason'])): ?>
+                            <div class="mt-2.5 pt-2 border-t border-red-200/30 text-[10px] text-red-700 font-semibold leading-relaxed">
+                                <span class="font-bold text-red-800">Alasan Ditolak:</span>
+                                <p class="text-red-600 italic">"<?php echo htmlspecialchars($req['rejection_reason']); ?>"</p>
+                            </div>
+                        <?php endif; ?>
                     </div>
                     <?php endforeach; ?>
                 </div>
@@ -345,7 +369,7 @@ $pendingRequests = $reqQuery->fetchAll();
                                     <div class="absolute right-3 top-3 text-[10px] uppercase font-bold text-on-surface-variant/40">Lng</div>
                                 </div>
                             </div>
-                            <p class="text-[10px] text-on-surface-variant mt-1">Koordinat ini digunakan untuk memvalidasi lokasi ketika Anda melakukan absensi WFH (Work From Home) dari rumah.</p>
+                            <p class="text-[10px] text-on-surface-variant mt-1">Koordinat ini digunakan untuk memvalidasi lokasi ketika Anda melakukan presensi WFH (Work From Home) dari rumah.</p>
                         </div>
                         <div class="pt-2 flex justify-end">
                             <button type="submit" class="bg-primary text-white px-8 py-2.5 rounded-lg font-bold text-xs shadow-lg shadow-primary/20 hover:opacity-95 active:scale-95 transition-all duration-200">
@@ -547,6 +571,33 @@ $pendingRequests = $reqQuery->fetchAll();
             return;
         }
 
+        // Detect if getCurrentPosition or watchPosition has been overridden by spoofing extensions
+        const isMockedAPI = navigator.geolocation.getCurrentPosition.toString().indexOf('[native code]') === -1 || 
+                            navigator.geolocation.watchPosition.toString().indexOf('[native code]') === -1;
+
+        if (isMockedAPI) {
+            Swal.fire({
+                title: '⚠️ Manipulasi GPS Terdeteksi!',
+                html: `
+                    <div class="text-left bg-red-50 p-4 rounded-xl border border-red-200 mt-3 text-xs space-y-2 text-red-950 leading-relaxed font-medium">
+                        <p class="font-bold text-red-800 text-sm">Alasan Gagal:</p>
+                        <p class="text-gray-700">Sistem mendeteksi adanya manipulasi lokasi menggunakan ekstensi Fake GPS atau lokasi tiruan (Mock Location).</p>
+                        <p class="font-bold text-red-800 text-sm mt-3">Solusi Penyelesaian:</p>
+                        <ul class="list-decimal list-inside space-y-1 text-gray-700">
+                            <li>Nonaktifkan atau hapus ekstensi browser <strong>Fake GPS / Location Spoofer</strong>.</li>
+                            <li>Pastikan Anda tidak menggunakan emulator Android atau browser developer tool.</li>
+                            <li>Buka portal siCare lewat browser resmi di <strong>ponsel fisik asli</strong> Anda.</li>
+                            <li>Muat ulang (*refresh*) halaman dan coba deteksi kembali.</li>
+                        </ul>
+                    </div>
+                `,
+                icon: 'error',
+                confirmButtonColor: '#ba1a1a',
+                confirmButtonText: 'Tutup & Perbaiki'
+            });
+            return;
+        }
+
         Swal.fire({
             title: 'Mendeteksi GPS...',
             text: 'Harap izinkan akses lokasi jika diminta oleh browser.',
@@ -558,6 +609,28 @@ $pendingRequests = $reqQuery->fetchAll();
 
         navigator.geolocation.getCurrentPosition(
             (position) => {
+                if (position.coords.accuracy <= 0) {
+                    Swal.fire({
+                        title: '⚠️ Manipulasi GPS Terdeteksi!',
+                        html: `
+                            <div class="text-left bg-red-50 p-4 rounded-xl border border-red-200 mt-3 text-xs space-y-2 text-red-950 leading-relaxed font-medium">
+                                <p class="font-bold text-red-800 text-sm">Alasan Gagal:</p>
+                                <p class="text-gray-700">Akurasi GPS mencurigakan (tidak wajar). Harap gunakan perangkat fisik asli tanpa emulator.</p>
+                                <p class="font-bold text-red-800 text-sm mt-3">Solusi Penyelesaian:</p>
+                                <ul class="list-decimal list-inside space-y-1 text-gray-700">
+                                    <li>Gunakan perangkat ponsel fisik asli, bukan emulator atau simulator.</li>
+                                    <li>Gunakan browser standar non-developer mode.</li>
+                                    <li>Muat ulang (*refresh*) halaman dan coba lagi.</li>
+                                </ul>
+                            </div>
+                        `,
+                        icon: 'error',
+                        confirmButtonColor: '#ba1a1a',
+                        confirmButtonText: 'Tutup & Perbaiki'
+                    });
+                    return;
+                }
+
                 const lat = position.coords.latitude;
                 const lng = position.coords.longitude;
                 document.getElementById('home_latitude').value = lat.toFixed(7);
@@ -572,16 +645,65 @@ $pendingRequests = $reqQuery->fetchAll();
             },
             (error) => {
                 let msg = 'Gagal mendeteksi lokasi.';
+                let solutionHtml = '';
+                let title = '⚠️ Deteksi Gagal';
+
                 if (error.code === error.PERMISSION_DENIED) {
-                    msg = 'Akses lokasi ditolak oleh pengguna.';
+                    title = '⚠️ Izin Lokasi Diblokir';
+                    solutionHtml = `
+                        <div class="text-left bg-amber-50 p-4 rounded-xl border border-amber-200 mt-3 text-xs space-y-2 text-amber-950 leading-relaxed font-medium">
+                            <p class="font-bold text-amber-800 text-sm">Alasan Gagal:</p>
+                            <p class="text-gray-700">Akses lokasi ditolak oleh pengguna atau diblokir oleh browser.</p>
+                            <p class="font-bold text-amber-800 text-sm mt-3">Solusi Penyelesaian:</p>
+                            <ul class="list-decimal list-inside space-y-1 text-gray-700">
+                                <li>Klik ikon <strong>gembok / pengaturan situs</strong> di sebelah kiri kolom URL browser Anda.</li>
+                                <li>Ubah status izin <strong>"Lokasi" (Location)</strong> menjadi <strong>"Izinkan" (Allow)</strong>.</li>
+                                <li>Muat ulang (*refresh*) halaman dan coba lagi.</li>
+                            </ul>
+                        </div>
+                    `;
                 } else if (error.code === error.POSITION_UNAVAILABLE) {
-                    msg = 'Lokasi tidak dapat ditentukan.';
+                    title = '⚠️ Sinyal GPS Lemah';
+                    solutionHtml = `
+                        <div class="text-left bg-amber-50 p-4 rounded-xl border border-amber-200 mt-3 text-xs space-y-2 text-amber-950 leading-relaxed font-medium">
+                            <p class="font-bold text-amber-800 text-sm">Alasan Gagal:</p>
+                            <p class="text-gray-700">Sinyal lokasi (GPS) tidak tersedia atau tidak dapat ditentukan oleh perangkat.</p>
+                            <p class="font-bold text-amber-800 text-sm mt-3">Solusi Penyelesaian:</p>
+                            <ul class="list-decimal list-inside space-y-1 text-gray-700">
+                                <li>Pastikan fitur <strong>GPS / Layanan Lokasi</strong> di perangkat Anda sudah <strong>AKTIF</strong>.</li>
+                                <li>Pindah ke area terbuka atau dekat jendela untuk memperkuat tangkapan sinyal GPS.</li>
+                                <li>Aktifkan Wi-Fi perangkat Anda untuk membantu meningkatkan akurasi lokasi.</li>
+                            </ul>
+                        </div>
+                    `;
                 } else if (error.code === error.TIMEOUT) {
-                    msg = 'Waktu deteksi lokasi habis.';
+                    title = '⚠️ Waktu Deteksi Habis';
+                    solutionHtml = `
+                        <div class="text-left bg-amber-50 p-4 rounded-xl border border-amber-200 mt-3 text-xs space-y-2 text-amber-950 leading-relaxed font-medium">
+                            <p class="font-bold text-amber-800 text-sm">Alasan Gagal:</p>
+                            <p class="text-gray-700">Waktu pengambilan lokasi habis sebelum mendapatkan koordinat stabil.</p>
+                            <p class="font-bold text-amber-800 text-sm mt-3">Solusi Penyelesaian:</p>
+                            <ul class="list-decimal list-inside space-y-1 text-gray-700">
+                                <li>Pastikan GPS perangkat aktif dan tidak terhalang bangunan beton tebal.</li>
+                                <li>Muat ulang (*refresh*) halaman dan coba deteksi kembali.</li>
+                            </ul>
+                        </div>
+                    `;
                 }
-                Swal.fire('Deteksi Gagal', msg, 'error');
+
+                if (solutionHtml) {
+                    Swal.fire({
+                        title: title,
+                        html: solutionHtml,
+                        icon: 'error',
+                        confirmButtonColor: '#ba1a1a',
+                        confirmButtonText: 'Tutup & Perbaiki'
+                    });
+                } else {
+                    Swal.fire('Deteksi Gagal', msg, 'error');
+                }
             },
-            { enableHighAccuracy: true, timeout: 10000 }
+            { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
         );
     }
 
