@@ -118,3 +118,10 @@ Stack trace:
 #2 D:\Server\WebApp\siCare\public\index.php(191): App\Controllers\AuditLogController->index()
 #3 {main}
   thrown in D:\Server\WebApp\siCare\resources\views\pages\superadmin\audit_logs.php on line 10
+[27-May-2026 23:15:23 Asia/Jakarta] PHP Fatal error:  Uncaught Error: Class "App\Helpers\AuthHelper" not found in D:\Server\WebApp\siCare\resources\views\pages\superadmin\audit_logs.php:10
+Stack trace:
+#0 D:\Server\WebApp\siCare\public\index.php(61): require()
+#1 D:\Server\WebApp\siCare\app\Controllers\AuditLogController.php(33): renderView('pages/superadmi...', Array)
+#2 D:\Server\WebApp\siCare\public\index.php(191): App\Controllers\AuditLogController->index()
+#3 {main}
+  thrown in D:\Server\WebApp\siCare\resources\views\pages\superadmin\audit_logs.php on line 10
