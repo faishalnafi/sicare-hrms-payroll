@@ -67,6 +67,7 @@ switch ($sessRole) {
         $menus[] = ['title' => 'Persetujuan Mutasi', 'icon' => 'published_with_changes', 'link' => '/executive/approvals'];
         break;
     case 'superadmin':
+        $menus[] = ['title' => 'Struktur Departemen', 'icon' => 'account_tree', 'link' => '/admin/departments'];
         $menus[] = ['title' => 'Manajemen Pengguna', 'icon' => 'manage_accounts', 'link' => '/superadmin/users'];
         $menus[] = ['title' => 'Konfigurasi Global', 'icon' => 'settings', 'link' => '/superadmin/settings'];
         $menus[] = ['title' => 'Menu Privilege Mapping', 'icon' => 'account_tree', 'link' => '/superadmin/menus/list'];
