@@ -1,0 +1,16 @@
+[27-May-2026 22:55:44 Asia/Jakarta] PHP Notice:  session_start(): Ignoring session_start() because a session is already active (started from D:\Server\WebApp\siCare\app\Middleware\SecurityMiddleware.php on line 49) in D:\Server\WebApp\siCare\app\Controllers\AuthController.php on line 25
+[27-May-2026 22:57:57 Asia/Jakarta] PHP Fatal error:  Uncaught Error: Class "App\Helpers\AuthHelper" not found in D:\Server\WebApp\siCare\app\Controllers\MenuMappingController.php:10
+Stack trace:
+#0 D:\Server\WebApp\siCare\public\index.php(197): App\Controllers\MenuMappingController->list()
+#1 {main}
+  thrown in D:\Server\WebApp\siCare\app\Controllers\MenuMappingController.php on line 10
+[27-May-2026 22:57:59 Asia/Jakarta] PHP Fatal error:  Uncaught Error: Class "App\Helpers\AuthHelper" not found in D:\Server\WebApp\siCare\app\Controllers\AuditLogController.php:11
+Stack trace:
+#0 D:\Server\WebApp\siCare\public\index.php(191): App\Controllers\AuditLogController->index()
+#1 {main}
+  thrown in D:\Server\WebApp\siCare\app\Controllers\AuditLogController.php on line 11
+[27-May-2026 22:58:01 Asia/Jakarta] PHP Fatal error:  Uncaught Error: Class "App\Helpers\AuthHelper" not found in D:\Server\WebApp\siCare\app\Controllers\MenuMappingController.php:10
+Stack trace:
+#0 D:\Server\WebApp\siCare\public\index.php(197): App\Controllers\MenuMappingController->list()
+#1 {main}
+  thrown in D:\Server\WebApp\siCare\app\Controllers\MenuMappingController.php on line 10

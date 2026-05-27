@@ -2,12 +2,13 @@
 namespace App\Controllers;
 
 use App\Config\Database;
-use App\Helpers\AuthHelper;
-use App\Helpers\ViewHelper;
+
 
 class MenuMappingController {
     public function list() {
-        if (!AuthHelper::hasRole('superadmin') && !AuthHelper::hasRole('admin')) {
+        if (session_status() === PHP_SESSION_NONE) session_start();
+        $role = $_SESSION['role'] ?? '';
+        if ($role !== 'superadmin' && $role !== 'admin') {
             header('HTTP/1.1 403 Forbidden');
             die('Access Denied');
         }
@@ -35,16 +36,27 @@ class MenuMappingController {
             $assignmentMap[$p['department_id']][] = $p['menu_id'];
         }
 
-        ViewHelper::render('pages/superadmin/menu_mapping', [
+        $data = [
             'menus' => $menus, 
             'departments' => $depts,
             'assignmentMap' => $assignmentMap,
             'title' => 'Menu Privilege Mapping'
-        ]);
+        ];
+
+        $isAjax = !empty($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) == 'xmlhttprequest';
+        if ($isAjax) {
+            echo renderView('pages/superadmin/menu_mapping', $data);
+        } else {
+            $content = renderView('pages/superadmin/menu_mapping', $data);
+            $page = 'superadmin_menus_list';
+            require __DIR__ . '/../../resources/views/layouts/app.php';
+        }
     }
 
     public function assign() {
-        if (!AuthHelper::hasRole('superadmin') && !AuthHelper::hasRole('admin')) {
+        if (session_status() === PHP_SESSION_NONE) session_start();
+        $role = $_SESSION['role'] ?? '';
+        if ($role !== 'superadmin' && $role !== 'admin') {
             echo json_encode(['success' => false, 'message' => 'Unauthorized']);
             exit;
         }
@@ -85,9 +97,9 @@ class MenuMappingController {
             }
 
             // Log action if superadmin
-            if (AuthHelper::hasRole('superadmin')) {
-                $user = AuthHelper::getUser();
-                $actorName = $user['first_name'] . ' ' . ($user['last_name'] ?? '');
+            if ($role === 'superadmin') {
+                $actorName = $_SESSION['name'] ?? 'Superadmin';
+                $userId = $_SESSION['user_id'] ?? 'unknown';
                 $logId = sprintf('%04x%04x-%04x-%04x-%04x-%04x%04x%04x',
                     mt_rand(0, 0xffff), mt_rand(0, 0xffff), mt_rand(0, 0xffff),
                     mt_rand(0, 0x0fff) | 0x4000, mt_rand(0, 0x3fff) | 0x8000,
@@ -98,7 +110,7 @@ class MenuMappingController {
                 $stmtLog = $db->prepare("INSERT INTO audit_logs (id, user_id, action, table_name, ip_address, description) VALUES (?, ?, ?, ?, ?, ?)");
                 $stmtLog->execute([
                     $logId,
-                    $user['id'],
+                    $userId,
                     'UPDATE',
                     'department_menu_privileges',
                     $_SERVER['REMOTE_ADDR'] ?? 'Unknown',
