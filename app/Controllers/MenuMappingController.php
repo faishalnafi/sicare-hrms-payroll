@@ -37,7 +37,7 @@ class MenuMappingController {
         }
 
         $data = [
-            'menus' => $menus, 
+            'systemMenus' => $menus, 
             'departments' => $depts,
             'assignmentMap' => $assignmentMap,
             'title' => 'Menu Privilege Mapping'

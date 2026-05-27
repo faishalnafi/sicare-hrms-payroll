@@ -29,13 +29,13 @@ require __DIR__ . '/../../parts/app_sidebar.php';
                     </div>
                 </div>
 
-                <form class="flex-1 flex flex-col space-y-3 mapping-form" data-dept-id="<?= $dept['id'] ?>
-    <input type="hidden" name="csrf_token" value="<?= \App\Middleware\SecurityMiddleware::getCsrfToken() ?>">">
+                <form class="flex-1 flex flex-col space-y-3 mapping-form" data-dept-id="<?= $dept['id'] ?>">
+                    <input type="hidden" name="csrf_token" value="<?= \App\Middleware\SecurityMiddleware::getCsrfToken() ?>">
                     <?php 
                         $assignedMenus = $assignmentMap[$dept['id']] ?? [];
                     ?>
                     <div class="space-y-2 flex-1">
-                        <?php foreach ($menus as $menu): ?>
+                        <?php foreach ($systemMenus as $menu): ?>
                             <?php $isChecked = in_array($menu['id'], $assignedMenus); ?>
                             <label class="flex items-start gap-3 p-3 rounded-lg border <?= $isChecked ? 'border-blue-500/40 bg-blue-500/10' : 'border-white/5 bg-white/5' ?> hover:bg-white/10 cursor-pointer transition-all">
                                 <div class="mt-0.5">

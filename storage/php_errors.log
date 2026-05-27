@@ -14,3 +14,100 @@ Stack trace:
 #0 D:\Server\WebApp\siCare\public\index.php(197): App\Controllers\MenuMappingController->list()
 #1 {main}
   thrown in D:\Server\WebApp\siCare\app\Controllers\MenuMappingController.php on line 10
+[27-May-2026 23:01:46 Asia/Jakarta] PHP Warning:  Undefined array key "id" in D:\Server\WebApp\siCare\resources\views\pages\superadmin\menu_mapping.php on line 39
+[27-May-2026 23:01:46 Asia/Jakarta] PHP Warning:  Undefined array key "id" in D:\Server\WebApp\siCare\resources\views\pages\superadmin\menu_mapping.php on line 42
+[27-May-2026 23:01:46 Asia/Jakarta] PHP Warning:  Undefined array key "menu_name" in D:\Server\WebApp\siCare\resources\views\pages\superadmin\menu_mapping.php on line 45
+[27-May-2026 23:01:46 Asia/Jakarta] PHP Deprecated:  htmlspecialchars(): Passing null to parameter #1 ($string) of type string is deprecated in D:\Server\WebApp\siCare\resources\views\pages\superadmin\menu_mapping.php on line 45
+[27-May-2026 23:01:46 Asia/Jakarta] PHP Warning:  Undefined array key "description" in D:\Server\WebApp\siCare\resources\views\pages\superadmin\menu_mapping.php on line 46
+[27-May-2026 23:01:46 Asia/Jakarta] PHP Deprecated:  htmlspecialchars(): Passing null to parameter #1 ($string) of type string is deprecated in D:\Server\WebApp\siCare\resources\views\pages\superadmin\menu_mapping.php on line 46
+[27-May-2026 23:01:46 Asia/Jakarta] PHP Warning:  Undefined array key "id" in D:\Server\WebApp\siCare\resources\views\pages\superadmin\menu_mapping.php on line 39
+[27-May-2026 23:01:46 Asia/Jakarta] PHP Warning:  Undefined array key "id" in D:\Server\WebApp\siCare\resources\views\pages\superadmin\menu_mapping.php on line 42
+[27-May-2026 23:01:46 Asia/Jakarta] PHP Warning:  Undefined array key "menu_name" in D:\Server\WebApp\siCare\resources\views\pages\superadmin\menu_mapping.php on line 45
+[27-May-2026 23:01:46 Asia/Jakarta] PHP Deprecated:  htmlspecialchars(): Passing null to parameter #1 ($string) of type string is deprecated in D:\Server\WebApp\siCare\resources\views\pages\superadmin\menu_mapping.php on line 45
+[27-May-2026 23:01:46 Asia/Jakarta] PHP Warning:  Undefined array key "description" in D:\Server\WebApp\siCare\resources\views\pages\superadmin\menu_mapping.php on line 46
+[27-May-2026 23:01:46 Asia/Jakarta] PHP Deprecated:  htmlspecialchars(): Passing null to parameter #1 ($string) of type string is deprecated in D:\Server\WebApp\siCare\resources\views\pages\superadmin\menu_mapping.php on line 46
+[27-May-2026 23:01:46 Asia/Jakarta] PHP Warning:  Undefined array key "id" in D:\Server\WebApp\siCare\resources\views\pages\superadmin\menu_mapping.php on line 39
+[27-May-2026 23:01:46 Asia/Jakarta] PHP Warning:  Undefined array key "id" in D:\Server\WebApp\siCare\resources\views\pages\superadmin\menu_mapping.php on line 42
+[27-May-2026 23:01:46 Asia/Jakarta] PHP Warning:  Undefined array key "menu_name" in D:\Server\WebApp\siCare\resources\views\pages\superadmin\menu_mapping.php on line 45
+[27-May-2026 23:01:46 Asia/Jakarta] PHP Deprecated:  htmlspecialchars(): Passing null to parameter #1 ($string) of type string is deprecated in D:\Server\WebApp\siCare\resources\views\pages\superadmin\menu_mapping.php on line 45
+[27-May-2026 23:01:46 Asia/Jakarta] PHP Warning:  Undefined array key "description" in D:\Server\WebApp\siCare\resources\views\pages\superadmin\menu_mapping.php on line 46
+[27-May-2026 23:01:46 Asia/Jakarta] PHP Deprecated:  htmlspecialchars(): Passing null to parameter #1 ($string) of type string is deprecated in D:\Server\WebApp\siCare\resources\views\pages\superadmin\menu_mapping.php on line 46
+[27-May-2026 23:01:46 Asia/Jakarta] PHP Warning:  Undefined array key "id" in D:\Server\WebApp\siCare\resources\views\pages\superadmin\menu_mapping.php on line 39
+[27-May-2026 23:01:46 Asia/Jakarta] PHP Warning:  Undefined array key "id" in D:\Server\WebApp\siCare\resources\views\pages\superadmin\menu_mapping.php on line 42
+[27-May-2026 23:01:46 Asia/Jakarta] PHP Warning:  Undefined array key "menu_name" in D:\Server\WebApp\siCare\resources\views\pages\superadmin\menu_mapping.php on line 45
+[27-May-2026 23:01:46 Asia/Jakarta] PHP Deprecated:  htmlspecialchars(): Passing null to parameter #1 ($string) of type string is deprecated in D:\Server\WebApp\siCare\resources\views\pages\superadmin\menu_mapping.php on line 45
+[27-May-2026 23:01:46 Asia/Jakarta] PHP Warning:  Undefined array key "description" in D:\Server\WebApp\siCare\resources\views\pages\superadmin\menu_mapping.php on line 46
+[27-May-2026 23:01:46 Asia/Jakarta] PHP Deprecated:  htmlspecialchars(): Passing null to parameter #1 ($string) of type string is deprecated in D:\Server\WebApp\siCare\resources\views\pages\superadmin\menu_mapping.php on line 46
+[27-May-2026 23:01:46 Asia/Jakarta] PHP Warning:  Undefined array key "id" in D:\Server\WebApp\siCare\resources\views\pages\superadmin\menu_mapping.php on line 39
+[27-May-2026 23:01:46 Asia/Jakarta] PHP Warning:  Undefined array key "id" in D:\Server\WebApp\siCare\resources\views\pages\superadmin\menu_mapping.php on line 42
+[27-May-2026 23:01:46 Asia/Jakarta] PHP Warning:  Undefined array key "menu_name" in D:\Server\WebApp\siCare\resources\views\pages\superadmin\menu_mapping.php on line 45
+[27-May-2026 23:01:46 Asia/Jakarta] PHP Deprecated:  htmlspecialchars(): Passing null to parameter #1 ($string) of type string is deprecated in D:\Server\WebApp\siCare\resources\views\pages\superadmin\menu_mapping.php on line 45
+[27-May-2026 23:01:46 Asia/Jakarta] PHP Warning:  Undefined array key "description" in D:\Server\WebApp\siCare\resources\views\pages\superadmin\menu_mapping.php on line 46
+[27-May-2026 23:01:46 Asia/Jakarta] PHP Deprecated:  htmlspecialchars(): Passing null to parameter #1 ($string) of type string is deprecated in D:\Server\WebApp\siCare\resources\views\pages\superadmin\menu_mapping.php on line 46
+[27-May-2026 23:01:51 Asia/Jakarta] PHP Fatal error:  Uncaught Error: Class "App\Helpers\AuthHelper" not found in D:\Server\WebApp\siCare\resources\views\pages\superadmin\audit_logs.php:10
+Stack trace:
+#0 D:\Server\WebApp\siCare\public\index.php(61): require()
+#1 D:\Server\WebApp\siCare\app\Controllers\AuditLogController.php(33): renderView('pages/superadmi...', Array)
+#2 D:\Server\WebApp\siCare\public\index.php(191): App\Controllers\AuditLogController->index()
+#3 {main}
+  thrown in D:\Server\WebApp\siCare\resources\views\pages\superadmin\audit_logs.php on line 10
+[27-May-2026 23:01:52 Asia/Jakarta] PHP Warning:  Undefined array key "id" in D:\Server\WebApp\siCare\resources\views\pages\superadmin\menu_mapping.php on line 39
+[27-May-2026 23:01:52 Asia/Jakarta] PHP Warning:  Undefined array key "id" in D:\Server\WebApp\siCare\resources\views\pages\superadmin\menu_mapping.php on line 42
+[27-May-2026 23:01:52 Asia/Jakarta] PHP Warning:  Undefined array key "menu_name" in D:\Server\WebApp\siCare\resources\views\pages\superadmin\menu_mapping.php on line 45
+[27-May-2026 23:01:52 Asia/Jakarta] PHP Deprecated:  htmlspecialchars(): Passing null to parameter #1 ($string) of type string is deprecated in D:\Server\WebApp\siCare\resources\views\pages\superadmin\menu_mapping.php on line 45
+[27-May-2026 23:01:52 Asia/Jakarta] PHP Warning:  Undefined array key "description" in D:\Server\WebApp\siCare\resources\views\pages\superadmin\menu_mapping.php on line 46
+[27-May-2026 23:01:52 Asia/Jakarta] PHP Deprecated:  htmlspecialchars(): Passing null to parameter #1 ($string) of type string is deprecated in D:\Server\WebApp\siCare\resources\views\pages\superadmin\menu_mapping.php on line 46
+[27-May-2026 23:01:52 Asia/Jakarta] PHP Warning:  Undefined array key "id" in D:\Server\WebApp\siCare\resources\views\pages\superadmin\menu_mapping.php on line 39
+[27-May-2026 23:01:52 Asia/Jakarta] PHP Warning:  Undefined array key "id" in D:\Server\WebApp\siCare\resources\views\pages\superadmin\menu_mapping.php on line 42
+[27-May-2026 23:01:52 Asia/Jakarta] PHP Warning:  Undefined array key "menu_name" in D:\Server\WebApp\siCare\resources\views\pages\superadmin\menu_mapping.php on line 45
+[27-May-2026 23:01:52 Asia/Jakarta] PHP Deprecated:  htmlspecialchars(): Passing null to parameter #1 ($string) of type string is deprecated in D:\Server\WebApp\siCare\resources\views\pages\superadmin\menu_mapping.php on line 45
+[27-May-2026 23:01:52 Asia/Jakarta] PHP Warning:  Undefined array key "description" in D:\Server\WebApp\siCare\resources\views\pages\superadmin\menu_mapping.php on line 46
+[27-May-2026 23:01:52 Asia/Jakarta] PHP Deprecated:  htmlspecialchars(): Passing null to parameter #1 ($string) of type string is deprecated in D:\Server\WebApp\siCare\resources\views\pages\superadmin\menu_mapping.php on line 46
+[27-May-2026 23:01:52 Asia/Jakarta] PHP Warning:  Undefined array key "id" in D:\Server\WebApp\siCare\resources\views\pages\superadmin\menu_mapping.php on line 39
+[27-May-2026 23:01:52 Asia/Jakarta] PHP Warning:  Undefined array key "id" in D:\Server\WebApp\siCare\resources\views\pages\superadmin\menu_mapping.php on line 42
+[27-May-2026 23:01:52 Asia/Jakarta] PHP Warning:  Undefined array key "menu_name" in D:\Server\WebApp\siCare\resources\views\pages\superadmin\menu_mapping.php on line 45
+[27-May-2026 23:01:52 Asia/Jakarta] PHP Deprecated:  htmlspecialchars(): Passing null to parameter #1 ($string) of type string is deprecated in D:\Server\WebApp\siCare\resources\views\pages\superadmin\menu_mapping.php on line 45
+[27-May-2026 23:01:52 Asia/Jakarta] PHP Warning:  Undefined array key "description" in D:\Server\WebApp\siCare\resources\views\pages\superadmin\menu_mapping.php on line 46
+[27-May-2026 23:01:52 Asia/Jakarta] PHP Deprecated:  htmlspecialchars(): Passing null to parameter #1 ($string) of type string is deprecated in D:\Server\WebApp\siCare\resources\views\pages\superadmin\menu_mapping.php on line 46
+[27-May-2026 23:01:52 Asia/Jakarta] PHP Warning:  Undefined array key "id" in D:\Server\WebApp\siCare\resources\views\pages\superadmin\menu_mapping.php on line 39
+[27-May-2026 23:01:52 Asia/Jakarta] PHP Warning:  Undefined array key "id" in D:\Server\WebApp\siCare\resources\views\pages\superadmin\menu_mapping.php on line 42
+[27-May-2026 23:01:52 Asia/Jakarta] PHP Warning:  Undefined array key "menu_name" in D:\Server\WebApp\siCare\resources\views\pages\superadmin\menu_mapping.php on line 45
+[27-May-2026 23:01:52 Asia/Jakarta] PHP Deprecated:  htmlspecialchars(): Passing null to parameter #1 ($string) of type string is deprecated in D:\Server\WebApp\siCare\resources\views\pages\superadmin\menu_mapping.php on line 45
+[27-May-2026 23:01:52 Asia/Jakarta] PHP Warning:  Undefined array key "description" in D:\Server\WebApp\siCare\resources\views\pages\superadmin\menu_mapping.php on line 46
+[27-May-2026 23:01:52 Asia/Jakarta] PHP Deprecated:  htmlspecialchars(): Passing null to parameter #1 ($string) of type string is deprecated in D:\Server\WebApp\siCare\resources\views\pages\superadmin\menu_mapping.php on line 46
+[27-May-2026 23:01:52 Asia/Jakarta] PHP Warning:  Undefined array key "id" in D:\Server\WebApp\siCare\resources\views\pages\superadmin\menu_mapping.php on line 39
+[27-May-2026 23:01:52 Asia/Jakarta] PHP Warning:  Undefined array key "id" in D:\Server\WebApp\siCare\resources\views\pages\superadmin\menu_mapping.php on line 42
+[27-May-2026 23:01:52 Asia/Jakarta] PHP Warning:  Undefined array key "menu_name" in D:\Server\WebApp\siCare\resources\views\pages\superadmin\menu_mapping.php on line 45
+[27-May-2026 23:01:52 Asia/Jakarta] PHP Deprecated:  htmlspecialchars(): Passing null to parameter #1 ($string) of type string is deprecated in D:\Server\WebApp\siCare\resources\views\pages\superadmin\menu_mapping.php on line 45
+[27-May-2026 23:01:52 Asia/Jakarta] PHP Warning:  Undefined array key "description" in D:\Server\WebApp\siCare\resources\views\pages\superadmin\menu_mapping.php on line 46
+[27-May-2026 23:01:52 Asia/Jakarta] PHP Deprecated:  htmlspecialchars(): Passing null to parameter #1 ($string) of type string is deprecated in D:\Server\WebApp\siCare\resources\views\pages\superadmin\menu_mapping.php on line 46
+[27-May-2026 23:05:32 Asia/Jakarta] PHP Warning:  Undefined array key "id" in D:\Server\WebApp\siCare\resources\views\pages\superadmin\menu_mapping.php on line 39
+[27-May-2026 23:05:32 Asia/Jakarta] PHP Warning:  Undefined array key "id" in D:\Server\WebApp\siCare\resources\views\pages\superadmin\menu_mapping.php on line 42
+[27-May-2026 23:05:32 Asia/Jakarta] PHP Warning:  Undefined array key "menu_name" in D:\Server\WebApp\siCare\resources\views\pages\superadmin\menu_mapping.php on line 45
+[27-May-2026 23:05:32 Asia/Jakarta] PHP Deprecated:  htmlspecialchars(): Passing null to parameter #1 ($string) of type string is deprecated in D:\Server\WebApp\siCare\resources\views\pages\superadmin\menu_mapping.php on line 45
+[27-May-2026 23:05:32 Asia/Jakarta] PHP Warning:  Undefined array key "description" in D:\Server\WebApp\siCare\resources\views\pages\superadmin\menu_mapping.php on line 46
+[27-May-2026 23:05:32 Asia/Jakarta] PHP Deprecated:  htmlspecialchars(): Passing null to parameter #1 ($string) of type string is deprecated in D:\Server\WebApp\siCare\resources\views\pages\superadmin\menu_mapping.php on line 46
+[27-May-2026 23:05:32 Asia/Jakarta] PHP Warning:  Undefined array key "id" in D:\Server\WebApp\siCare\resources\views\pages\superadmin\menu_mapping.php on line 39
+[27-May-2026 23:05:32 Asia/Jakarta] PHP Warning:  Undefined array key "id" in D:\Server\WebApp\siCare\resources\views\pages\superadmin\menu_mapping.php on line 42
+[27-May-2026 23:05:32 Asia/Jakarta] PHP Warning:  Undefined array key "menu_name" in D:\Server\WebApp\siCare\resources\views\pages\superadmin\menu_mapping.php on line 45
+[27-May-2026 23:05:32 Asia/Jakarta] PHP Deprecated:  htmlspecialchars(): Passing null to parameter #1 ($string) of type string is deprecated in D:\Server\WebApp\siCare\resources\views\pages\superadmin\menu_mapping.php on line 45
+[27-May-2026 23:05:32 Asia/Jakarta] PHP Warning:  Undefined array key "description" in D:\Server\WebApp\siCare\resources\views\pages\superadmin\menu_mapping.php on line 46
+[27-May-2026 23:05:32 Asia/Jakarta] PHP Deprecated:  htmlspecialchars(): Passing null to parameter #1 ($string) of type string is deprecated in D:\Server\WebApp\siCare\resources\views\pages\superadmin\menu_mapping.php on line 46
+[27-May-2026 23:05:32 Asia/Jakarta] PHP Warning:  Undefined array key "id" in D:\Server\WebApp\siCare\resources\views\pages\superadmin\menu_mapping.php on line 39
+[27-May-2026 23:05:32 Asia/Jakarta] PHP Warning:  Undefined array key "id" in D:\Server\WebApp\siCare\resources\views\pages\superadmin\menu_mapping.php on line 42
+[27-May-2026 23:05:32 Asia/Jakarta] PHP Warning:  Undefined array key "menu_name" in D:\Server\WebApp\siCare\resources\views\pages\superadmin\menu_mapping.php on line 45
+[27-May-2026 23:05:32 Asia/Jakarta] PHP Deprecated:  htmlspecialchars(): Passing null to parameter #1 ($string) of type string is deprecated in D:\Server\WebApp\siCare\resources\views\pages\superadmin\menu_mapping.php on line 45
+[27-May-2026 23:05:32 Asia/Jakarta] PHP Warning:  Undefined array key "description" in D:\Server\WebApp\siCare\resources\views\pages\superadmin\menu_mapping.php on line 46
+[27-May-2026 23:05:32 Asia/Jakarta] PHP Deprecated:  htmlspecialchars(): Passing null to parameter #1 ($string) of type string is deprecated in D:\Server\WebApp\siCare\resources\views\pages\superadmin\menu_mapping.php on line 46
+[27-May-2026 23:05:32 Asia/Jakarta] PHP Warning:  Undefined array key "id" in D:\Server\WebApp\siCare\resources\views\pages\superadmin\menu_mapping.php on line 39
+[27-May-2026 23:05:32 Asia/Jakarta] PHP Warning:  Undefined array key "id" in D:\Server\WebApp\siCare\resources\views\pages\superadmin\menu_mapping.php on line 42
+[27-May-2026 23:05:32 Asia/Jakarta] PHP Warning:  Undefined array key "menu_name" in D:\Server\WebApp\siCare\resources\views\pages\superadmin\menu_mapping.php on line 45
+[27-May-2026 23:05:32 Asia/Jakarta] PHP Deprecated:  htmlspecialchars(): Passing null to parameter #1 ($string) of type string is deprecated in D:\Server\WebApp\siCare\resources\views\pages\superadmin\menu_mapping.php on line 45
+[27-May-2026 23:05:32 Asia/Jakarta] PHP Warning:  Undefined array key "description" in D:\Server\WebApp\siCare\resources\views\pages\superadmin\menu_mapping.php on line 46
+[27-May-2026 23:05:32 Asia/Jakarta] PHP Deprecated:  htmlspecialchars(): Passing null to parameter #1 ($string) of type string is deprecated in D:\Server\WebApp\siCare\resources\views\pages\superadmin\menu_mapping.php on line 46
+[27-May-2026 23:05:32 Asia/Jakarta] PHP Warning:  Undefined array key "id" in D:\Server\WebApp\siCare\resources\views\pages\superadmin\menu_mapping.php on line 39
+[27-May-2026 23:05:32 Asia/Jakarta] PHP Warning:  Undefined array key "id" in D:\Server\WebApp\siCare\resources\views\pages\superadmin\menu_mapping.php on line 42
+[27-May-2026 23:05:32 Asia/Jakarta] PHP Warning:  Undefined array key "menu_name" in D:\Server\WebApp\siCare\resources\views\pages\superadmin\menu_mapping.php on line 45
+[27-May-2026 23:05:32 Asia/Jakarta] PHP Deprecated:  htmlspecialchars(): Passing null to parameter #1 ($string) of type string is deprecated in D:\Server\WebApp\siCare\resources\views\pages\superadmin\menu_mapping.php on line 45
+[27-May-2026 23:05:32 Asia/Jakarta] PHP Warning:  Undefined array key "description" in D:\Server\WebApp\siCare\resources\views\pages\superadmin\menu_mapping.php on line 46
+[27-May-2026 23:05:32 Asia/Jakarta] PHP Deprecated:  htmlspecialchars(): Passing null to parameter #1 ($string) of type string is deprecated in D:\Server\WebApp\siCare\resources\views\pages\superadmin\menu_mapping.php on line 46
