@@ -26,8 +26,6 @@ services:
     environment:
       MYSQL_DATABASE: ${DB_DATABASE:-sicare_db}
       MYSQL_ROOT_PASSWORD: ${DB_PASSWORD:-root}
-      MYSQL_PASSWORD: ${DB_PASSWORD:-root}
-      MYSQL_USER: ${DB_USERNAME:-root}
     ports:
       - "3306:3306"
     volumes:

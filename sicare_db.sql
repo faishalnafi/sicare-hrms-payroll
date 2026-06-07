@@ -50,13 +50,7 @@ CREATE TABLE `employee_attendance` (
   `updated_at` timestamp NULL DEFAULT current_timestamp() ON UPDATE current_timestamp()
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
---
--- Dumping data untuk tabel `employee_attendance`
---
 
-INSERT INTO `employee_attendance` (`id`, `user_id`, `attendance_date`, `clock_in`, `clock_out`, `status`, `clock_in_latitude`, `clock_in_longitude`, `clock_out_latitude`, `clock_out_longitude`, `location_method`, `work_mode`, `work_mode_out`, `ip_address`, `notes`, `correction_reason`, `corrected_by`, `corrected_at`, `created_at`, `updated_at`) VALUES
-('199f89f2-96e7-49ec-bcdd-4d2342fb81c6', '123e4567-e89b-12d3-a456-426614174000', '2026-05-22', '09:38:29', NULL, 'awal', -7.4626821, 112.4386198, NULL, NULL, 'GPS', 'WFA', NULL, '::1', NULL, NULL, NULL, NULL, '2026-05-22 02:38:29', '2026-05-22 02:38:29'),
-('5280c0cf-d542-4f15-b031-ca63ae6e3725', '3a5109e3-5dbf-432f-9ade-8413827ae159', '2026-05-22', '10:04:34', NULL, 'terlambat', -7.4626155, 112.4386335, NULL, NULL, 'GPS', 'WFA', NULL, '::1', NULL, NULL, NULL, NULL, '2026-05-22 03:04:34', '2026-05-22 03:04:34');
 
 -- --------------------------------------------------------
 
@@ -79,12 +73,7 @@ CREATE TABLE `employee_data_correction_requests` (
   `updated_at` timestamp NULL DEFAULT current_timestamp() ON UPDATE current_timestamp()
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
---
--- Dumping data untuk tabel `employee_data_correction_requests`
---
 
-INSERT INTO `employee_data_correction_requests` (`id`, `user_id`, `category`, `field`, `old_value`, `new_value`, `reason`, `file_path`, `status`, `rejection_reason`, `created_at`, `updated_at`) VALUES
-('76ba871c-4aa9-49a2-bcc5-3bb63592071c', '123e4567-e89b-12d3-a456-426614174000', 'kependudukan', 'nama_sesuai_ktp', NULL, 'Faishal Nafi Rabbani', 'test', 'f9172a1212b3fce796b338f92bff006b.jpg', 'approved', NULL, '2026-05-22 02:35:26', '2026-05-22 02:36:03');
 
 -- --------------------------------------------------------
 
@@ -107,14 +96,7 @@ CREATE TABLE `employee_leave_requests` (
   `updated_at` timestamp NULL DEFAULT current_timestamp() ON UPDATE current_timestamp()
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
---
--- Dumping data untuk tabel `employee_leave_requests`
---
 
-INSERT INTO `employee_leave_requests` (`id`, `user_id`, `leave_type`, `start_date`, `end_date`, `duration`, `reason`, `attachment_path`, `status`, `rejection_reason`, `created_at`, `updated_at`) VALUES
-('16060a4a-fc94-4dd1-8812-d3171a2e14c0', '123e4567-e89b-12d3-a456-426614174000', 'cuti sakit', '2026-05-27', '2026-05-28', 2, 'besaran', 'd8250cbc1819dd791d4c6c33f65a3fba.jpg', 'pending', NULL, '2026-05-22 02:45:57', '2026-05-22 02:45:57'),
-('371fa181-0693-4c66-8848-0af4c96f5258', '3a5109e3-5dbf-432f-9ade-8413827ae159', 'cuti sakit', '2026-05-27', '2026-05-28', 2, 'apagitu', '96833f9595429ce203aec9297666902d.png', 'pending', NULL, '2026-05-22 03:06:23', '2026-05-22 03:06:23'),
-('d4885b9c-32ff-4fd4-a01a-4e95aa3c71e1', '123e4567-e89b-12d3-a456-426614174000', 'izin khusus', '2026-05-23', '2026-05-24', 2, 'Cuti Bersama', NULL, 'approved', NULL, '2026-05-22 02:43:17', '2026-05-22 02:45:25');
 
 -- --------------------------------------------------------
 
@@ -135,13 +117,7 @@ CREATE TABLE `employee_reimbursement_claims` (
   `updated_at` timestamp NULL DEFAULT current_timestamp() ON UPDATE current_timestamp()
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
---
--- Dumping data untuk tabel `employee_reimbursement_claims`
---
 
-INSERT INTO `employee_reimbursement_claims` (`id`, `user_id`, `category`, `amount`, `description`, `receipt_path`, `status`, `rejection_reason`, `created_at`, `updated_at`) VALUES
-('6bd7ffeb-5b20-4b43-96f1-7232e9f89220', '3a5109e3-5dbf-432f-9ade-8413827ae159', 'operasional', 60000.00, 'mmm', '420e1c6025d34b8b4d04af1738fce194.jpg', 'pending', NULL, '2026-05-22 03:07:21', '2026-05-22 03:07:21'),
-('e7d71e11-7de1-4ada-8a7b-28bcde869085', '123e4567-e89b-12d3-a456-426614174000', 'makan', 30000.00, 'Jajan', '2fa9e6c2ac88d49481052926b2bd6abd.jpg', 'approved', NULL, '2026-05-22 02:43:46', '2026-05-22 02:44:20');
 
 -- --------------------------------------------------------
 
@@ -230,13 +206,7 @@ CREATE TABLE `sessions` (
 --
 
 INSERT INTO `users` (`id`, `employee_id`, `first_name`, `last_name`, `email`, `profile_picture`, `no_telepon`, `alamat_domisili`, `ktp_nik`, `nama_sesuai_ktp`, `alamat_ktp`, `bank_name`, `bank_account_number`, `npwp_number`, `bpjs_tk`, `bpjs_kes`, `tanggal_lahir`, `status_pernikahan`, `jenis_kelamin`, `annual_leave_quota`, `job_title`, `base_salary`, `password_hash`, `role`, `created_at`, `updated_at`) VALUES
-('0f850153-f9f8-4885-8526-0fdaa39a9a05', NULL, 'Super', 'Admin', 'superadmin@mail.com', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 12, NULL, 0.00, '$2y$10$gG4JoCXt7HNhb2nlWEPYIeYtBKq9PkdVuTzRqdhkLHwBpzMcnTPne', 'superadmin', '2026-05-21 09:45:48', '2026-05-21 09:45:48'),
-('103ac93e-3e5f-4516-b072-92343b7fbba9', NULL, 'HR Ops', 'Admin', 'hrops@mail.com', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 12, NULL, 0.00, '$2y$10$lnUgafMJbJmgR.6eyN4JBuZUL.GvzQT5Jnr.XAEKzNiMeIXDQxpf.', 'hr_ops', '2026-05-21 09:45:49', '2026-05-21 13:37:11'),
-('123e4567-e89b-12d3-a456-426614174000', 'LOSS2026', 'Faishal', 'Nafi', 'dummy@mail.com', NULL, NULL, NULL, NULL, 'Faishal Nafi Rabbani', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 12, NULL, 0.00, '.pqDzmc3Ll.DL2cAsOcEYNBcLcD0FuIXHQU65W4XngeUwoNEu', 'employee', '2026-05-21 23:08:12', '2026-05-22 02:49:34'),
-('212160be-4f24-46ab-bbe3-360ffce355fe', NULL, 'Hiring', 'Manager', 'hiring@mail.com', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 12, NULL, 0.00, '$2y$10$1L8Q90o/zMXAcQMI1W.a0ezXtorA9bSZuXetIlK/D.BAyOBGlc/ve', 'hiring_manager', '2026-05-21 09:45:49', '2026-05-21 09:45:49'),
-('3a5109e3-5dbf-432f-9ade-8413827ae159', NULL, 'Faishal Nafi\'', NULL, 'faishalnafi50@gmail.com', 'https://lh3.googleusercontent.com/a/ACg8ocK5lDf8t2v-q5Pv2Mk3HB0WqScHCiap5IJCUQFctgIyGgOIwJhfrw=s96-c', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 12, NULL, 0.00, '$2y$10$UTPBXDHeyVV6fxbVY7JN7eVPTk60HJ0Rax.pykSVLSweOAjNuZikS', 'employee', '2026-05-22 02:50:23', '2026-05-22 02:56:38'),
-('81298f6c-5a1e-4270-b51a-7a39aba5aaea', NULL, 'Senior', 'Recruiter', 'recruiter@mail.com', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 12, NULL, 0.00, '$2y$10$JaZ7NToWCc74Tfjxu5SmV.YXR1Vq5a5q8d6Z.C1l.wCsYEUP6LIqS', 'recruiter', '2026-05-21 09:45:49', '2026-05-21 09:45:49'),
-('d94171a7-52c8-4965-b5d4-9515ffc3171c', NULL, 'Chief', 'Executive', 'executive@mail.com', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 12, NULL, 0.00, '$2y$10$ACaMXmzyVnPuHYwVVaGDbOH4oqFi6HSqFvTRlYz0hBFJs6nckRgNe', 'executive', '2026-05-21 09:45:49', '2026-05-21 09:45:49');
+('0f850153-f9f8-4885-8526-0fdaa39a9a05', NULL, 'Super', 'Admin', 'superadmin@mail.com', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 12, NULL, 0.00, '$2y$10$gG4JoCXt7HNhb2nlWEPYIeYtBKq9PkdVuTzRqdhkLHwBpzMcnTPne', 'superadmin', '2026-05-21 09:45:48', '2026-05-21 09:45:48');
 
 --
 -- Indexes for dumped tables

@@ -5,11 +5,6 @@
 
 $start = microtime(true);
 
-ini_set('display_errors', 1);
-ini_set('log_errors', 1);
-ini_set('error_log', __DIR__ . '/../storage/php_errors.log');
-error_reporting(E_ALL);
-
 // Register the Composer autoloader
 require __DIR__.'/../vendor/autoload.php';
 
@@ -43,9 +38,6 @@ if (isset($_COOKIE[$cookieName])) {
 // Register the custom unified session handler (Database + Redis)
 $sessionHandler = new \App\Session\UnifiedSessionHandler();
 session_set_save_handler($sessionHandler, true);
-
-// Run Global Security Middleware (CSRF, XSS Filter)
-\App\Middleware\SecurityMiddleware::run();
 
 // Simple Router
 $requestUri = parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH);
@@ -181,23 +173,32 @@ if ($method === 'POST' && $path === 'auth/login') {
 } elseif ($method === 'POST' && $path === 'hrops/employees/delete') {
     (new \App\Controllers\EmployeeMasterController())->delete();
     exit;
+} elseif ($method === 'POST' && $path === 'hrops/payroll/generate') {
+    (new \App\Controllers\PayrollController())->generate();
+    exit;
+} elseif ($method === 'GET' && $path === 'hrops/payroll/list') {
+    (new \App\Controllers\PayrollController())->list();
+    exit;
+} elseif ($method === 'POST' && $path === 'hrops/payroll/update-status') {
+    (new \App\Controllers\PayrollController())->updateStatus();
+    exit;
+} elseif ($method === 'POST' && $path === 'hrops/payroll/update-bonus') {
+    (new \App\Controllers\PayrollController())->updateBonus();
+    exit;
+} elseif ($method === 'POST' && $path === 'hrops/payroll/update-overtime') {
+    (new \App\Controllers\PayrollController())->updateOvertime();
+    exit;
+} elseif ($method === 'POST' && $path === 'hrops/payroll/update-other-deduction') {
+    (new \App\Controllers\PayrollController())->updateOtherDeduction();
+    exit;
+} elseif ($method === 'POST' && $path === 'hrops/payroll/delete') {
+    (new \App\Controllers\PayrollController())->delete();
+    exit;
 } elseif ($method === 'POST' && $path === 'admin/departments/save') {
     (new \App\Controllers\DepartmentController())->save();
     exit;
 } elseif ($method === 'POST' && $path === 'admin/departments/delete') {
     (new \App\Controllers\DepartmentController())->delete();
-    exit;
-} elseif ($method === 'GET' && $path === 'superadmin/audit/list') {
-    (new \App\Controllers\AuditLogController())->index();
-    exit;
-} elseif ($method === 'POST' && $path === 'superadmin/audit/clear') {
-    (new \App\Controllers\AuditLogController())->clearLogs();
-    exit;
-} elseif ($method === 'GET' && $path === 'superadmin/menus/list') {
-    (new \App\Controllers\MenuMappingController())->list();
-    exit;
-} elseif ($method === 'POST' && $path === 'superadmin/menus/assign') {
-    (new \App\Controllers\MenuMappingController())->assign();
     exit;
 } elseif ($method === 'GET' && $path === 'executive/approvals/list') {
     (new \App\Controllers\ApprovalController())->list();

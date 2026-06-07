@@ -279,6 +279,13 @@ try {
         'base_salary' => 20000000.00
     ]);
 
+    // Seed HR Hiring Manager (HR Operations Director)
+    $hrManagerId = upsertUser($db, 'hr.manager@mail.com', 'hiring_manager', 'Zanuba', 'Arifatul Khafsoh', $passwordHash, [
+        'department_id' => $deptHr,
+        'job_title' => 'HR Operations Director',
+        'base_salary' => 18000000.00
+    ]);
+
     // Seed HR Ops Admin
     upsertUser($db, 'hrops@mail.com', 'hr_ops', 'HR Ops', 'Admin', $passwordHash, [
         'department_id' => $deptHr,
@@ -922,6 +929,18 @@ try {
         echo "work_mode column may already exist or not supported: " . $ex->getMessage() . "\n";
     }
 
+    // 13.5 Create company_holidays table
+    $db->exec("
+        CREATE TABLE IF NOT EXISTS company_holidays (
+            id CHAR(36) NOT NULL PRIMARY KEY,
+            holiday_date DATE NOT NULL,
+            description VARCHAR(255) NOT NULL,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            UNIQUE KEY uq_holiday_date (holiday_date)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+    ");
+    echo "Table company_holidays created or verified.\n";
+
     // 14. Create global_settings table
     $db->exec("
         CREATE TABLE IF NOT EXISTS global_settings (
@@ -947,6 +966,17 @@ try {
         // --- WFA ---
         ['wfa_allowed',       'true',         'Izinkan Work From Anywhere (WFA)', 'wfa'],
         ['wfa_days',          '',             'Hari WFA Diizinkan (kosong=semua)','wfa'],
+        // --- Payroll ---
+        ['payroll_tunj_jabatan_pct', '15',            'Persentase Tunjangan Jabatan (%)', 'payroll'],
+        ['payroll_tunj_jabatan_cap', '2500000',       'Batas Maksimal Tunjangan Jabatan', 'payroll'],
+        ['payroll_tunj_transport',   '1500000',       'Tunjangan Transport Flat (IDR)',   'payroll'],
+        ['payroll_tunj_komunikasi',  '500000',        'Tunjangan Komunikasi Flat (IDR)',  'payroll'],
+        // --- General App/Company Info ---
+        ['app_name',                 'siCare',                 'Nama Aplikasi',                    'general'],
+        ['app_company_name',         'PT SI CARE ENTERPRISE',  'Nama Perusahaan (PT)',             'general'],
+        ['app_logo_icon',            'local_police',           'Logo Aplikasi (Material Icon)',    'general'],
+        ['app_logo_type',            'icon',                   'Tipe Logo (icon/image)',           'general'],
+        ['app_logo_image',           '',                       'URL Logo Gambar',                  'general'],
     ];
 
     $stmtSetting = $db->prepare("
@@ -973,6 +1003,80 @@ try {
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
     ");
     echo "Table sessions created or verified.\n";
+
+    // 17. Create employee_payroll table
+    $createPayrollTableQuery = "
+        CREATE TABLE IF NOT EXISTS employee_payroll (
+            id CHAR(36) PRIMARY KEY,
+            user_id CHAR(36) NOT NULL,
+            month_year VARCHAR(15) NOT NULL,
+            base_salary DECIMAL(15,2) DEFAULT 0.00,
+            tunj_jabatan DECIMAL(15,2) DEFAULT 0.00,
+            tunj_transport_makan DECIMAL(15,2) DEFAULT 0.00,
+            tunj_komunikasi DECIMAL(15,2) DEFAULT 0.00,
+            bonus DECIMAL(15,2) DEFAULT 0.00,
+            reimbursement DECIMAL(15,2) DEFAULT 0.00,
+            overtime DECIMAL(15,2) DEFAULT 0.00,
+            bpjs_tk DECIMAL(15,2) DEFAULT 0.00,
+            bpjs_kes DECIMAL(15,2) DEFAULT 0.00,
+            pph21 DECIMAL(15,2) DEFAULT 0.00,
+            other_deduction DECIMAL(15,2) DEFAULT 0.00,
+            net_salary DECIMAL(15,2) DEFAULT 0.00,
+            status VARCHAR(20) DEFAULT 'Draft',
+            payment_date TIMESTAMP NULL DEFAULT NULL,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+            UNIQUE KEY uq_user_month (user_id, month_year),
+            FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+    ";
+
+    try {
+        $db->exec($createPayrollTableQuery);
+        echo "Table employee_payroll created successfully.\n";
+    } catch (Exception $ex) {
+        echo "Table creation with FK failed, fallback to table without constraint...\n";
+        $createPayrollTableNoFK = "
+            CREATE TABLE IF NOT EXISTS employee_payroll (
+                id CHAR(36) PRIMARY KEY,
+                user_id CHAR(36) NOT NULL,
+                month_year VARCHAR(15) NOT NULL,
+                base_salary DECIMAL(15,2) DEFAULT 0.00,
+                tunj_jabatan DECIMAL(15,2) DEFAULT 0.00,
+                tunj_transport_makan DECIMAL(15,2) DEFAULT 0.00,
+                tunj_komunikasi DECIMAL(15,2) DEFAULT 0.00,
+                bonus DECIMAL(15,2) DEFAULT 0.00,
+                reimbursement DECIMAL(15,2) DEFAULT 0.00,
+                overtime DECIMAL(15,2) DEFAULT 0.00,
+                bpjs_tk DECIMAL(15,2) DEFAULT 0.00,
+                bpjs_kes DECIMAL(15,2) DEFAULT 0.00,
+                pph21 DECIMAL(15,2) DEFAULT 0.00,
+                other_deduction DECIMAL(15,2) DEFAULT 0.00,
+                net_salary DECIMAL(15,2) DEFAULT 0.00,
+                status VARCHAR(20) DEFAULT 'Draft',
+                payment_date TIMESTAMP NULL DEFAULT NULL,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+                UNIQUE KEY uq_user_month (user_id, month_year)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+        ";
+        $db->exec($createPayrollTableNoFK);
+        echo "Table employee_payroll created without FK constraint successfully.\n";
+    }
+
+    // Add overtime and other_deduction columns to employee_payroll if they don't exist
+    try {
+        $db->exec("ALTER TABLE employee_payroll ADD COLUMN overtime DECIMAL(15,2) DEFAULT 0.00 AFTER reimbursement");
+        echo "Column 'overtime' added to employee_payroll table.\n";
+    } catch (Exception $e) {
+        // Column may already exist
+    }
+    try {
+        $db->exec("ALTER TABLE employee_payroll ADD COLUMN other_deduction DECIMAL(15,2) DEFAULT 0.00 AFTER pph21");
+        echo "Column 'other_deduction' added to employee_payroll table.\n";
+    } catch (Exception $e) {
+        // Column may already exist
+    }
 
 } catch (Exception $e) {
     echo "ERROR: " . $e->getMessage() . "\n";

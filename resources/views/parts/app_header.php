@@ -5,6 +5,11 @@ $sessRole  = $_SESSION['role'] ?? 'Employee';
 $profilePic = $_SESSION['profile_picture'] ?? null;
 
 $db = \App\Config\Database::getInstance()->getConnection();
+$appName = $db->query("SELECT `value` FROM global_settings WHERE `key` = 'app_name' LIMIT 1")->fetchColumn() ?: 'siCare';
+$appLogoIcon = $db->query("SELECT `value` FROM global_settings WHERE `key` = 'app_logo_icon' LIMIT 1")->fetchColumn() ?: 'local_police';
+$appLogoType = $db->query("SELECT `value` FROM global_settings WHERE `key` = 'app_logo_type' LIMIT 1")->fetchColumn() ?: 'icon';
+$appLogoImage = $db->query("SELECT `value` FROM global_settings WHERE `key` = 'app_logo_image' LIMIT 1")->fetchColumn() ?: '';
+
 if (isset($_SESSION['user_id'])) {
     $userQuery = $db->prepare("SELECT profile_picture FROM users WHERE id = :id");
     $userQuery->execute(['id' => $_SESSION['user_id']]);
@@ -16,7 +21,7 @@ if (isset($_SESSION['user_id'])) {
 
 if (empty($profilePic)) {
     $hash = md5(strtolower(trim($sessEmail)));
-    $profilePic = "https://www.gravatar.com/avatar/{$hash}?d=identicon&s=200";
+    $profilePic = "https://www.gravatar.com/avatar/{$hash}?d=404&s=200";
 }
 ?>
 <header class="w-full top-0 sticky z-30 bg-[#f8f9fa]/95 backdrop-blur-sm border-b border-outline-variant/20 shadow-sm">
@@ -30,13 +35,18 @@ if (empty($profilePic)) {
                 <span class="material-symbols-outlined">menu</span>
             </button>
             <div class="hidden lg:flex items-center gap-2 text-on-surface-variant select-none">
-                <span class="text-xs font-bold text-primary bg-primary/5 px-2.5 py-1 rounded-md uppercase tracking-wider">siCare Portal</span>
+                <span class="text-xs font-bold text-primary bg-primary/5 px-2.5 py-1 rounded-md uppercase tracking-wider"><?= htmlspecialchars($appName) ?> Portal</span>
                 <span class="text-xs text-outline-variant">/</span>
                 <span class="text-xs font-semibold text-on-surface-variant">Layanan Karyawan</span>
             </div>
             <!-- Small logo for Mobile -->
             <a href="/dashboard" data-spa class="lg:hidden text-xl font-black text-[#000666] font-headline tracking-tight flex items-center gap-1.5 hover:opacity-90 transition-opacity">
-                <span class="material-symbols-outlined text-primary text-2xl">local_police</span> siCare
+                <?php if ($appLogoType === 'image' && !empty($appLogoImage)): ?>
+                    <img src="<?= htmlspecialchars($appLogoImage) ?>" class="h-6 w-auto object-contain flex-shrink-0" alt="Logo" />
+                <?php else: ?>
+                    <span class="material-symbols-outlined text-primary text-2xl"><?= htmlspecialchars($appLogoIcon) ?></span>
+                <?php endif; ?>
+                <?= htmlspecialchars($appName) ?>
             </a>
         </div>
         
@@ -49,7 +59,8 @@ if (empty($profilePic)) {
                     <p class="text-[10px] font-black text-primary uppercase tracking-wider"><?php echo htmlspecialchars($sessRole); ?></p>
                     <p class="text-sm font-semibold text-on-surface"><?php echo htmlspecialchars($sessName); ?></p>
                 </div>
-                <img alt="User Avatar" class="w-10 h-10 rounded-full border-2 border-primary/20 shadow-sm object-cover bg-white" src="<?php echo htmlspecialchars($profilePic); ?>"/>
+                <?php $sessEmailHash = md5(strtolower(trim($sessEmail))); ?>
+                <img alt="User Avatar" class="w-10 h-10 rounded-full border-2 border-primary/20 shadow-sm object-cover bg-white" src="<?php echo htmlspecialchars($profilePic); ?>" onerror="window.handleAvatarError(this, '<?= $sessEmailHash ?>')" />
             </div>
         </div>
     </div>

@@ -110,11 +110,11 @@ class EmployeeMasterController {
                 $users = $stmt->fetchAll(PDO::FETCH_ASSOC);
             }
             
-            // Format empty profile pictures to use direct Gravatar identicon
+            // Format empty profile pictures to use direct Gravatar 404 for fallback
             foreach ($users as &$u) {
                 if (empty($u['profile_picture'])) {
                     $h = md5(strtolower(trim($u['email'])));
-                    $u['profile_picture'] = "https://www.gravatar.com/avatar/{$h}?d=identicon&s=200";
+                    $u['profile_picture'] = "https://www.gravatar.com/avatar/{$h}?d=404&s=200";
                 }
             }
             
@@ -146,7 +146,32 @@ class EmployeeMasterController {
         $role              = $_POST['role'] ?? 'employee';
         $job_title         = $_POST['job_title'] ?? null;
         $department_id     = !empty($_POST['department_id']) ? $_POST['department_id'] : null;
-        $base_salary       = str_replace(',', '', $_POST['base_salary'] ?? '0');
+        $rawSalary = $_POST['base_salary'] ?? '0';
+        $rawSalary = preg_replace('/^[Rr][Pp]\.?\s*/', '', trim($rawSalary));
+        if (strpos($rawSalary, '.') !== false && strpos($rawSalary, ',') !== false) {
+            if (strrpos($rawSalary, ',') > strrpos($rawSalary, '.')) {
+                $rawSalary = str_replace('.', '', $rawSalary);
+                $rawSalary = str_replace(',', '.', $rawSalary);
+            } else {
+                $rawSalary = str_replace(',', '', $rawSalary);
+            }
+        } else {
+            if (strpos($rawSalary, ',') !== false) {
+                if (preg_match('/,\d{2}$/', $rawSalary)) {
+                    $rawSalary = str_replace(',', '.', $rawSalary);
+                } else {
+                    $rawSalary = str_replace(',', '', $rawSalary);
+                }
+            }
+            if (strpos($rawSalary, '.') !== false) {
+                if (substr_count($rawSalary, '.') === 1 && preg_match('/\.\d{1,2}$/', $rawSalary)) {
+                    // keep dot as decimal
+                } else {
+                    $rawSalary = str_replace('.', '', $rawSalary);
+                }
+            }
+        }
+        $base_salary        = (float)$rawSalary;
         $annual_leave_quota = (int)($_POST['annual_leave_quota'] ?? 12);
         $password          = $_POST['password'] ?? '';
 

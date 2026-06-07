@@ -180,7 +180,7 @@ function getEmployeePosition($email) {
 
         <!-- Reimbursements Requests Table -->
         <div class="overflow-x-auto">
-            <table class="w-full text-left border-collapse">
+            <table class="min-w-[1200px] w-full text-left border-collapse">
                 <thead>
                     <tr class="bg-surface text-on-surface-variant border-b border-outline-variant/15">
                         <th class="py-4 px-6 text-[11px] font-bold uppercase tracking-wider">Karyawan</th>
@@ -205,22 +205,17 @@ function getEmployeePosition($email) {
                         $claimFirstName = (string)($claim['first_name'] ?? '');
                         $claimLastName = (string)($claim['last_name'] ?? '');
                         $fullname = trim($claimFirstName . ' ' . $claimLastName);
-                        $initials = strtoupper(
-                            ($claimFirstName !== '' ? substr($claimFirstName, 0, 1) : '') .
-                            ($claimLastName !== '' ? substr($claimLastName, 0, 1) : '')
-                        );
+                        $hash = md5(strtolower(trim($claim['email'] ?? '')));
+                        $avatarUrl = !empty($claim['profile_picture']) ? $claim['profile_picture'] : "https://www.gravatar.com/avatar/{$hash}?d=404&s=120";
                     ?>
                     <tr class="hover:bg-surface-container-low/30 transition-colors" data-name="<?= htmlspecialchars(strtolower($fullname)) ?>" data-status="<?= htmlspecialchars($claim['status']) ?>" data-category="<?= htmlspecialchars($claim['category']) ?>">
                         <td class="py-4 px-6">
-                            <div class="flex items-center gap-3">
-                                <?php if (!empty($claim['profile_picture'])): ?>
-                                    <img src="<?= htmlspecialchars($claim['profile_picture']) ?>" alt="Avatar" class="w-10 h-10 rounded-full object-cover" />
-                                <?php else: ?>
-                                    <div class="w-10 h-10 rounded-full bg-primary/10 text-primary font-bold text-sm flex items-center justify-center"><?= $initials ?></div>
-                                <?php endif; ?>
-                                <div>
-                                    <div class="font-extrabold text-sm text-on-surface"><?= htmlspecialchars($fullname) ?></div>
-                                    <div class="text-[11px] text-on-surface-variant font-semibold"><?= getEmployeePosition($claim['email']) ?> • <span class="font-mono text-primary font-bold"><?= htmlspecialchars($claim['employee_id'] ?? '') ?></span></div>
+                            <div class="flex items-center gap-3 w-52 min-w-[200px]">
+                                <img src="<?= htmlspecialchars($avatarUrl) ?>" alt="Avatar" class="w-10 h-10 rounded-full object-cover border border-outline-variant/30 flex-shrink-0" onerror="window.handleAvatarError(this, '<?= $hash ?>')" />
+                                <div class="min-w-0">
+                                    <div class="font-extrabold text-sm text-on-surface line-clamp-2 whitespace-normal break-words leading-tight" title="<?= htmlspecialchars($fullname) ?>"><?= htmlspecialchars($fullname) ?></div>
+                                    <div class="text-[10px] text-on-surface-variant font-semibold truncate" title="<?= getEmployeePosition($claim['email']) ?>"><?= getEmployeePosition($claim['email']) ?></div>
+                                    <div class="text-[9px] text-primary font-bold font-mono mt-0.5"><?= htmlspecialchars($claim['employee_id'] ?? '') ?></div>
                                 </div>
                             </div>
                         </td>
@@ -229,17 +224,17 @@ function getEmployeePosition($email) {
                                 <?= getCategoryLabel($claim['category']) ?>
                             </span>
                         </td>
-                        <td class="py-4 px-6 font-mono text-sm font-bold text-on-surface">
+                        <td class="py-4 px-6 font-mono text-sm font-bold text-on-surface whitespace-nowrap">
                             Rp <?= number_format($claim['amount'], 0, ',', '.') ?>
                         </td>
-                        <td class="py-4 px-6">
-                            <div class="text-xs text-on-surface font-semibold truncate max-w-[200px]" title="<?= htmlspecialchars($claim['description']) ?>"><?= htmlspecialchars($claim['description']) ?></div>
+                        <td class="py-4 px-6 min-w-[380px]">
+                            <p class="text-xs font-semibold text-on-surface-variant leading-relaxed break-words" title="<?= htmlspecialchars($claim['description']) ?>"><?= htmlspecialchars($claim['description']) ?></p>
                         </td>
-                        <td class="py-4 px-6">
+                        <td class="py-4 px-6 whitespace-nowrap">
                             <?php 
                                 $receiptPath = (string)($claim['receipt_path'] ?? ''); 
                             ?>
-                            <button onclick="viewReceipt('<?= htmlspecialchars($receiptPath) ?>', 'Kuitansi <?= htmlspecialchars(addslashes($fullname)) ?>', 'Rp <?= number_format($claim['amount'], 0, ',', '.') ?>')" class="text-[10px] text-primary hover:underline font-bold flex items-center gap-0.5 cursor-pointer">
+                            <button onclick="viewReceipt('<?= htmlspecialchars($receiptPath) ?>', 'Kuitansi <?= htmlspecialchars(addslashes($fullname)) ?>', 'Rp <?= number_format($claim['amount'], 0, ',', '.') ?>')" class="text-[10px] text-primary hover:underline font-bold flex items-center gap-0.5 cursor-pointer whitespace-nowrap">
                                 <span class="material-symbols-outlined text-xs">receipt</span> <?= htmlspecialchars(strlen($receiptPath) > 25 ? substr($receiptPath, 0, 10) . '...' . substr($receiptPath, -8) : $receiptPath) ?>
                             </button>
                         </td>

@@ -13,10 +13,3 @@ CREATE TABLE IF NOT EXISTS users (
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 );
 
--- Seed dummy user (employee@mail.com / password)
--- bcrypt hash for 'password' is '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi'
-INSERT INTO users (id, employee_id, first_name, last_name, email, password_hash, role)
-SELECT '123e4567-e89b-12d3-a456-426614174000', 'EMP-001', 'Dummy', 'Employee', 'employee@mail.com', '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 'employee'
-WHERE NOT EXISTS (
-    SELECT id FROM users WHERE email = 'employee@mail.com'
-);

@@ -214,21 +214,18 @@ function getCategoryColor($category) {
                             $catLabel = getCategoryLabel($r['category']);
                             $catColor = getCategoryColor($r['category']);
                             $fieldLabel = getFieldLabel($r['field']);
-
-                            $profPic = $r['profile_picture'];
-                            if (empty($profPic) && !empty($r['email'])) {
-                                $hash = md5(strtolower(trim($r['email'])));
-                                $profPic = "https://unavatar.io/" . urlencode($r['email']) . "?fallback=" . urlencode("https://www.gravatar.com/avatar/{$hash}?d=identicon&s=150");
-                            }
                         ?>
                             <tr class="hover:bg-surface-container-low/30 transition-colors duration-200" id="row_<?= $r['id'] ?>" data-name="<?= strtolower(htmlspecialchars($fullName)) ?>" data-category="<?= htmlspecialchars($r['category']) ?>" data-status="<?= htmlspecialchars($r['status']) ?>">
                                 <td class="py-4 px-6 whitespace-nowrap">
                                     <div class="flex items-center gap-3">
-                                        <?php if (!empty($profPic)): ?>
-                                            <img src="<?= htmlspecialchars($profPic) ?>" alt="<?= htmlspecialchars($fullName) ?>" class="w-10 h-10 rounded-full object-cover shadow-sm flex-shrink-0 bg-white border border-outline-variant/10" />
-                                        <?php else: ?>
-                                            <div class="w-10 h-10 rounded-full border border-primary/10 bg-primary/5 text-primary font-extrabold text-xs flex items-center justify-center flex-shrink-0"><?= $initials ?></div>
-                                        <?php endif; ?>
+                                        <?php 
+                                            $profPic = $r['profile_picture'];
+                                            $hash = md5(strtolower(trim($r['email'])));
+                                            if (empty($profPic)) {
+                                                $profPic = "https://www.gravatar.com/avatar/{$hash}?d=404&s=150";
+                                            }
+                                        ?>
+                                        <img src="<?= htmlspecialchars($profPic) ?>" onerror="window.handleAvatarError(this, '<?= $hash ?>')" alt="<?= htmlspecialchars($fullName) ?>" class="w-10 h-10 rounded-full object-cover shadow-sm flex-shrink-0 bg-white border border-outline-variant/10" />
                                         <div>
                                             <div class="font-extrabold text-sm text-on-surface"><?= htmlspecialchars($fullName) ?></div>
                                             <div class="text-[11px] text-on-surface-variant font-semibold"><?= htmlspecialchars($position) ?> • <span class="font-mono text-primary font-bold"><?= htmlspecialchars($r['employee_id'] ?? 'EMP-N/A') ?></span></div>

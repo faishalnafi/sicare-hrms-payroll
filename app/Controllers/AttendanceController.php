@@ -61,6 +61,40 @@ class AttendanceController {
                 UNIQUE KEY `uq_holiday_date` (`holiday_date`)
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
 
+            // employment_contracts table
+            try {
+                $this->db->exec("CREATE TABLE IF NOT EXISTS `employment_contracts` (
+                    `id` CHAR(36) NOT NULL,
+                    `user_id` CHAR(36) NOT NULL,
+                    `contract_number` VARCHAR(50) NOT NULL,
+                    `contract_type` VARCHAR(50) NOT NULL COMMENT 'PKWT, PKWTT, INTERN, PROBATION',
+                    `start_date` DATE NOT NULL,
+                    `end_date` DATE DEFAULT NULL COMMENT 'NULL for permanent / PKWTT',
+                    `status` VARCHAR(20) NOT NULL DEFAULT 'ACTIVE' COMMENT 'ACTIVE, EXPIRED, TERMINATED',
+                    `created_at` TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP,
+                    `updated_at` TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+                    PRIMARY KEY (`id`),
+                    UNIQUE KEY `contract_number` (`contract_number`),
+                    KEY `user_id` (`user_id`),
+                    CONSTRAINT `employment_contracts_ibfk_1` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
+            } catch (Exception $ex) {
+                $this->db->exec("CREATE TABLE IF NOT EXISTS `employment_contracts` (
+                    `id` CHAR(36) NOT NULL,
+                    `user_id` CHAR(36) NOT NULL,
+                    `contract_number` VARCHAR(50) NOT NULL,
+                    `contract_type` VARCHAR(50) NOT NULL COMMENT 'PKWT, PKWTT, INTERN, PROBATION',
+                    `start_date` DATE NOT NULL,
+                    `end_date` DATE DEFAULT NULL COMMENT 'NULL for permanent / PKWTT',
+                    `status` VARCHAR(20) NOT NULL DEFAULT 'ACTIVE' COMMENT 'ACTIVE, EXPIRED, TERMINATED',
+                    `created_at` TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP,
+                    `updated_at` TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+                    PRIMARY KEY (`id`),
+                    UNIQUE KEY `contract_number` (`contract_number`),
+                    KEY `user_id` (`user_id`)
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
+            }
+
             // weekly_holidays default
             $stmtWk = $this->db->query("SELECT 1 FROM global_settings WHERE `key` = 'weekly_holidays'");
             if (!$stmtWk->fetch()) {
@@ -405,7 +439,7 @@ class AttendanceController {
         }
     }
 
-    private function backfillAlpa(string $userId) {
+    private function backfillAlpa(string $userId, ?string $targetMonth = null) {
         $today = date('Y-m-d');
         
         // 1. Update past days where user clocked in but never clocked out to 'tidak presensi pulang'
@@ -435,8 +469,8 @@ class AttendanceController {
         
         $joinDate = $contractStartDate ?: $userCreatedDate;
         
-        // Effective start date is the maximum of the start of the current month and the employee's start/join date
-        $startOfMonth = date('Y-m-01');
+        // Effective start date is the maximum of the start of the target/current month and the employee's start/join date
+        $startOfMonth = $targetMonth ? $targetMonth . '-01' : date('Y-m-01');
         $startDate = ($joinDate > $startOfMonth) ? $joinDate : $startOfMonth;
         
         // Get work end time
@@ -444,7 +478,16 @@ class AttendanceController {
         $currentTime = date('H:i:s');
         
         // If current time is past work end time today, they are considered Alpa today (lewat dari jam clock-out/kerja dianggap alpa)
-        $endDate = ($currentTime >= $workEndTime . ':00') ? $today : date('Y-m-d', strtotime('-1 day'));
+        $currentYearMonth = date('Y-m');
+        if ($targetMonth && $targetMonth !== $currentYearMonth) {
+            $endDate = date('Y-m-t', strtotime($startOfMonth));
+            $maxEndDate = ($currentTime >= $workEndTime . ':00') ? $today : date('Y-m-d', strtotime('-1 day'));
+            if ($endDate > $maxEndDate) {
+                $endDate = $maxEndDate;
+            }
+        } else {
+            $endDate = ($currentTime >= $workEndTime . ':00') ? $today : date('Y-m-d', strtotime('-1 day'));
+        }
         
         // If effective start date is in the future relative to endDate, do nothing
         if ($startDate > $endDate) {
@@ -867,11 +910,16 @@ class AttendanceController {
             }
         }
 
-        // Run backfill to make sure records are up to date
-        $this->backfillAlpa($userId);
+        $month = $_GET['month'] ?? date('m');
+        $year = $_GET['year'] ?? date('Y');
+        $month = str_pad($month, 2, '0', STR_PAD_LEFT);
+        $targetMonth = "$year-$month";
 
-        $monthStart = date('Y-m-01');
-        $monthEnd   = date('Y-m-t');
+        // Run backfill to make sure records are up to date
+        $this->backfillAlpa($userId, $targetMonth);
+
+        $monthStart = "$targetMonth-01";
+        $monthEnd   = date('Y-m-t', strtotime($monthStart));
 
         $stmt = $this->db->prepare("
             SELECT * FROM employee_attendance 

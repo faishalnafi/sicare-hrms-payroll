@@ -5,9 +5,44 @@ $sessRole  = $_SESSION['role'] ?? 'employee';
 
 // Fetch dynamic user data from DB
 $db = \App\Config\Database::getInstance()->getConnection();
-$userQuery = $db->prepare("SELECT * FROM users WHERE id = :id");
+$companyName = $db->query("SELECT `value` FROM global_settings WHERE `key` = 'app_company_name' LIMIT 1")->fetchColumn() ?: 'PT SI CARE ENTERPRISE';
+$companyNameForStamp = $companyName;
+if (stripos($companyName, 'Mango') !== false) {
+    $companyNameForStamp = 'PT. MANGO TEKNUSA INOVASI';
+}
+$appName = $db->query("SELECT `value` FROM global_settings WHERE `key` = 'app_name' LIMIT 1")->fetchColumn() ?: 'siCare';
+$appLogoIcon = $db->query("SELECT `value` FROM global_settings WHERE `key` = 'app_logo_icon' LIMIT 1")->fetchColumn() ?: 'local_police';
+$appLogoType = $db->query("SELECT `value` FROM global_settings WHERE `key` = 'app_logo_type' LIMIT 1")->fetchColumn() ?: 'icon';
+$appLogoImage = $db->query("SELECT `value` FROM global_settings WHERE `key` = 'app_logo_image' LIMIT 1")->fetchColumn() ?: '';
+
+$bpjsTkPct = (float)($db->query("SELECT `value` FROM global_settings WHERE `key` = 'payroll_bpjs_tk_pct' LIMIT 1")->fetchColumn() ?: 2);
+$bpjsKesPct = (float)($db->query("SELECT `value` FROM global_settings WHERE `key` = 'payroll_bpjs_kes_pct' LIMIT 1")->fetchColumn() ?: 1);
+$pph21Pct = (float)($db->query("SELECT `value` FROM global_settings WHERE `key` = 'payroll_pph21_pct' LIMIT 1")->fetchColumn() ?: 2.5);
+
+// Fetch HR Director (Hiring Manager of HR department) dynamically, fallback to Zanuba Arifatul Khafsoh
+$hrQuery = $db->query("
+    SELECT u.first_name, u.last_name, u.job_title 
+    FROM users u
+    JOIN departments d ON u.department_id = d.id
+    WHERE u.role = 'hiring_manager' AND (d.name LIKE '%Human Resources%' OR d.name LIKE '%HR%')
+    LIMIT 1
+");
+$hrDirectorData = $hrQuery->fetch();
+$hrDirectorName = $hrDirectorData ? trim($hrDirectorData['first_name'] . ' ' . ($hrDirectorData['last_name'] ?? '')) : 'Zanuba Arifatul Khafsoh';
+$hrDirectorTitle = $hrDirectorData ? ($hrDirectorData['job_title'] ?? 'HR Operations Director') : 'HR Operations Director';
+
+$userQuery = $db->prepare("
+    SELECT u.*, d.name AS department_name
+    FROM users u
+    LEFT JOIN departments d ON u.department_id = d.id
+    WHERE u.id = :id
+");
 $userQuery->execute(['id' => $_SESSION['user_id']]);
 $dbUser = $userQuery->fetch();
+
+$jobTitle = $dbUser['job_title'] ?? 'Karyawan';
+$deptName = $dbUser['department_name'] ?? '';
+$jobAndDept = !empty($deptName) ? "{$jobTitle} / {$deptName}" : $jobTitle;
 
 $employeeId = $dbUser['employee_id'] ?? 'EMP-2026-0033';
 $ktpNik = $dbUser['ktp_nik'] ?? '3275012309990001';
@@ -22,99 +57,275 @@ $statusPernikahan = $dbUser['status_pernikahan'] ?? 'Belum Menikah';
 $jenisKelamin = $dbUser['jenis_kelamin'] ?? 'Laki-Laki';
 
 // Base Salary setup based on profile
-$baseSalary = !empty($dbUser['base_salary']) ? (float)$dbUser['base_salary'] : 12000000;
+$baseSalary = !empty($dbUser['base_salary']) ? (float)$dbUser['base_salary'] : 0;
 
-// Generate monthly payslips dynamically (January - May 2026)
-$months = [
-    [
-        'code' => '05-2026',
-        'month_name' => 'Mei 2026',
-        'date' => '25 Mei 2026',
-        'tunj_jabatan' => 2500000,
-        'tunj_transport_makan' => 1500000,
-        'tunj_komunikasi' => 500000,
-        'bonus' => 0,
-        'thr' => 0,
-        'pph21' => round($baseSalary * 0.025),
-    ],
-    [
-        'code' => '04-2026',
-        'month_name' => 'April 2026',
-        'date' => '24 April 2026',
-        'tunj_jabatan' => 2500000,
-        'tunj_transport_makan' => 1500000,
-        'tunj_komunikasi' => 500000,
-        'bonus' => 0,
-        'thr' => $baseSalary, // Eid THR equivalent to 1-month salary!
-        'pph21' => round($baseSalary * 0.06), // Higher tax rate on THR month
-    ],
-    [
-        'code' => '03-2026',
-        'month_name' => 'Maret 2026',
-        'date' => '25 Maret 2026',
-        'tunj_jabatan' => 2500000,
-        'tunj_transport_makan' => 1350000, // Slightly lower due to remote days
-        'tunj_komunikasi' => 500000,
-        'bonus' => 500000, // Project incentive
-        'thr' => 0,
-        'pph21' => round($baseSalary * 0.026),
-    ],
-    [
-        'code' => '02-2026',
-        'month_name' => 'Februari 2026',
-        'date' => '25 Februari 2026',
-        'tunj_jabatan' => 2500000,
-        'tunj_transport_makan' => 1450000,
-        'tunj_komunikasi' => 500000,
-        'bonus' => 0,
-        'thr' => 0,
-        'pph21' => round($baseSalary * 0.024),
-    ],
-    [
-        'code' => '01-2026',
-        'month_name' => 'Januari 2026',
-        'date' => '25 Januari 2026',
-        'tunj_jabatan' => 2500000,
-        'tunj_transport_makan' => 1500000,
-        'tunj_komunikasi' => 500000,
-        'bonus' => 1000000, // New year bonus
-        'thr' => 0,
-        'pph21' => round($baseSalary * 0.028),
-    ],
+// ======================================================
+// FETCH APPROVED PAYROLL RECORDS FROM DATABASE
+// Only show Approved or Paid records for the current year
+// ======================================================
+$currentYear = date('Y');
+
+// Fetch all approved payroll records for this user in the current year
+$payrollStmt = $db->prepare("
+    SELECT ep.*
+    FROM employee_payroll ep
+    WHERE ep.user_id = :user_id
+      AND ep.status IN ('Approved', 'Paid')
+      AND ep.month_year LIKE :year_pattern
+    ORDER BY ep.month_year DESC
+");
+$payrollStmt->execute([
+    'user_id'      => $_SESSION['user_id'],
+    'year_pattern' => '%-' . $currentYear,
+]);
+$approvedPayrolls = $payrollStmt->fetchAll(\PDO::FETCH_ASSOC);
+
+// Build months array from DB records
+$months = [];
+$monthNames = [
+    '01' => 'Januari', '02' => 'Februari', '03' => 'Maret',
+    '04' => 'April',   '05' => 'Mei',       '06' => 'Juni',
+    '07' => 'Juli',    '08' => 'Agustus',   '09' => 'September',
+    '10' => 'Oktober', '11' => 'November',  '12' => 'Desember'
 ];
 
-// Calculated variables for latest month (Mei 2026)
-$latest = $months[0];
-$latestTotalEarnings = $baseSalary + $latest['tunj_jabatan'] + $latest['tunj_transport_makan'] + $latest['tunj_komunikasi'] + $latest['bonus'] + $latest['thr'];
-$latestBpjsTk = round($baseSalary * 0.02); // 2% employee contribution
-$latestBpjsKes = round($baseSalary * 0.01); // 1% employee contribution
-$latestTotalDeductions = $latestBpjsTk + $latestBpjsKes + $latest['pph21'];
-$latestNetPay = $latestTotalEarnings - $latestTotalDeductions;
+foreach ($approvedPayrolls as $record) {
+    // month_year format: MM-YYYY
+    $parts = explode('-', $record['month_year']);
+    $mm = $parts[0] ?? '01';
+    $yyyy = $parts[1] ?? $currentYear;
+    $monthName = ($monthNames[$mm] ?? $mm) . ' ' . $yyyy;
+
+    // Format payment_date (approved/transfer date)
+    $paymentDateRaw = $record['payment_date'] ?? null;
+    $paymentDateFormatted = '';
+    if ($paymentDateRaw) {
+        $ts = strtotime($paymentDateRaw);
+        $bulan = ['','Januari','Februari','Maret','April','Mei','Juni','Juli','Agustus','September','Oktober','November','Desember'];
+        $paymentDateFormatted = date('j', $ts) . ' ' . $bulan[(int)date('n', $ts)] . ' ' . date('Y', $ts);
+    }
+
+    // Calculate dynamic working days count
+    $workingDaysCount = 22; // default
+    $weeklyHolidays = ['Sat', 'Sun'];
+    $val = $db->query("SELECT `value` FROM global_settings WHERE `key` = 'weekly_holidays' LIMIT 1")->fetchColumn();
+    if (!empty($val)) {
+        $weeklyHolidays = array_filter(array_map('trim', explode(',', $val)));
+    }
+    $stmtHolidays = $db->prepare("
+        SELECT holiday_date 
+        FROM company_holidays 
+        WHERE MONTH(holiday_date) = ? AND YEAR(holiday_date) = ?
+    ");
+    $stmtHolidays->execute([intval($mm), intval($yyyy)]);
+    $companyHolidays = $stmtHolidays->fetchAll(\PDO::FETCH_COLUMN) ?: [];
+
+    $daysInMonth = (int)date('t', strtotime(sprintf('%04d-%02d-01', intval($yyyy), intval($mm))));
+    $workingDays = 0;
+    for ($day = 1; $day <= $daysInMonth; $day++) {
+        $dateStr = sprintf('%04d-%02d-%02d', intval($yyyy), intval($mm), $day);
+        $ts = strtotime($dateStr);
+        $dayName = date('D', $ts);
+        if (!in_array($dayName, $weeklyHolidays) && !in_array($dateStr, $companyHolidays)) {
+            $workingDays++;
+        }
+    }
+    $workingDaysCount = $workingDays > 0 ? $workingDays : 22;
+
+    // Calculate present days (clock-in)
+    $stmtPresent = $db->prepare("
+        SELECT COUNT(*) 
+        FROM employee_attendance 
+        WHERE user_id = :user_id 
+          AND status IN ('tepat waktu', 'awal', 'terlambat')
+          AND MONTH(attendance_date) = :month 
+          AND YEAR(attendance_date) = :year
+    ");
+    $stmtPresent->execute([
+        'user_id' => $_SESSION['user_id'],
+        'month'   => intval($mm),
+        'year'    => intval($yyyy)
+    ]);
+    $presentDaysCount = (int)$stmtPresent->fetchColumn();
+
+    // Calculate unpaid leave days
+    $stmtLeaves = $db->prepare("
+        SELECT start_date, end_date 
+        FROM employee_leave_requests
+        WHERE user_id = :user_id
+          AND status = 'approved'
+          AND LOWER(leave_type) = 'cuti tidak dibayar'
+          AND start_date <= :last_day
+          AND end_date >= :first_day
+    ");
+    $firstDay = sprintf('%04d-%02d-01', intval($yyyy), intval($mm));
+    $lastDay = date('Y-m-t', strtotime($firstDay));
+    $stmtLeaves->execute([
+        'user_id' => $_SESSION['user_id'],
+        'first_day' => $firstDay,
+        'last_day' => $lastDay
+    ]);
+    $leaves = $stmtLeaves->fetchAll(\PDO::FETCH_ASSOC);
+    $unpaidDays = 0;
+    foreach ($leaves as $l) {
+        $start = max(strtotime($firstDay), strtotime($l['start_date']));
+        $end = min(strtotime($lastDay), strtotime($l['end_date']));
+        for ($curr = $start; $curr <= $end; $curr = strtotime('+1 day', $curr)) {
+            $currDateStr = date('Y-m-d', $curr);
+            $dayName = date('D', $curr);
+            if (!in_array($dayName, $weeklyHolidays) && !in_array($currDateStr, $companyHolidays)) {
+                $unpaidDays++;
+            }
+        }
+    }
+
+    // Calculate alpa days
+    $stmtAlpa = $db->prepare("
+        SELECT COUNT(*) 
+        FROM employee_attendance
+        WHERE user_id = :user_id
+          AND status = 'alpa'
+          AND MONTH(attendance_date) = :month
+          AND YEAR(attendance_date) = :year
+    ");
+    $stmtAlpa->execute([
+        'user_id' => $_SESSION['user_id'],
+        'month' => intval($mm),
+        'year' => intval($yyyy)
+    ]);
+    $alpaDays = (int)$stmtAlpa->fetchColumn();
+
+    // Calculate late days
+    $stmtLate = $db->prepare("
+        SELECT COUNT(*) 
+        FROM employee_attendance
+        WHERE user_id = :user_id
+          AND status = 'terlambat'
+          AND MONTH(attendance_date) = :month
+          AND YEAR(attendance_date) = :year
+    ");
+    $stmtLate->execute([
+        'user_id' => $_SESSION['user_id'],
+        'month' => intval($mm),
+        'year' => intval($yyyy)
+    ]);
+    $lateDays = (int)$stmtLate->fetchColumn();
+
+    // Calculate deductions
+    $unpaidDeduction = 0.0;
+    if ($workingDaysCount > 0 && $unpaidDays > 0) {
+        $unpaidDeduction = ($record['base_salary'] / $workingDaysCount) * $unpaidDays;
+    }
+    $alpaDeduction = 0.0;
+    if ($workingDaysCount > 0 && $alpaDays > 0) {
+        $alpaDeduction = ($record['base_salary'] / $workingDaysCount) * $alpaDays;
+    }
+    $latePenalty = 50000.0;
+    $latePenaltyVal = $db->query("SELECT `value` FROM global_settings WHERE `key` = 'payroll_late_deduction' LIMIT 1")->fetchColumn();
+    if ($latePenaltyVal !== false && $latePenaltyVal !== null) {
+        $latePenalty = (float)$latePenaltyVal;
+    }
+    $lateDeduction = $lateDays * $latePenalty;
+
+    $tunjanganTotal = (float)$record['tunj_jabatan'] + (float)$record['tunj_transport_makan'] + (float)$record['tunj_komunikasi'] + (float)$record['bonus'] + (float)$record['reimbursement'];
+    $totDed = (float)$record['bpjs_tk'] + (float)$record['bpjs_kes'] + (float)$record['pph21'] + (float)$record['other_deduction'];
+    $grossEarning = (float)$record['base_salary'] + $tunjanganTotal + (float)$record['overtime'];
+    $netPay = (float)$record['net_salary'];
+
+    $months[] = [
+        'id'                     => $record['id'],
+        'code'                   => $record['month_year'],
+        'month_name'             => $monthName,
+        'date'                   => $paymentDateFormatted,
+        'status'                 => $record['status'],
+        'base_salary'            => (float)$record['base_salary'],
+        'tunj_jabatan'           => (float)$record['tunj_jabatan'],
+        'tunj_transport_makan'   => (float)$record['tunj_transport_makan'],
+        'tunj_komunikasi'        => (float)$record['tunj_komunikasi'],
+        'bonus'                  => (float)$record['bonus'],
+        'thr'                    => 0,
+        'overtime'               => (float)$record['overtime'],
+        'reimbursement'          => (float)$record['reimbursement'],
+        'other_deduction'        => (float)$record['other_deduction'],
+        'unpaid_leave_days'      => $unpaidDays,
+        'unpaid_leave_deduction' => $unpaidDeduction,
+        'alpa_days'              => $alpaDays,
+        'alpa_deduction'         => $alpaDeduction,
+        'late_days'              => $lateDays,
+        'late_deduction'         => $lateDeduction,
+        'bpjs_tk'                => (float)$record['bpjs_tk'],
+        'bpjs_kes'               => (float)$record['bpjs_kes'],
+        'pph21'                  => (float)$record['pph21'],
+        'tunjangan_total'        => $tunjanganTotal,
+        'total_deductions'       => $totDed + $unpaidDeduction + $alpaDeduction + $lateDeduction,
+        'gross_earning'          => $grossEarning - $unpaidDeduction - $alpaDeduction - $lateDeduction,
+        'net_pay'                => $netPay,
+        'working_days'           => $workingDaysCount,
+        'present_days'           => $presentDaysCount,
+    ];
+}
+
+// Latest month (most recent approved payroll)
+$hasApprovedPayroll = !empty($months);
+$latest = $hasApprovedPayroll ? $months[0] : null;
+$latestNetPay = $latest ? $latest['net_pay'] : 0;
+$latestDate = $latest ? $latest['date'] : '';
+$latestBaseSalary = $latest ? $latest['base_salary'] : $baseSalary;
 ?>
 
 <style>
     @media print {
-        body {
-            visibility: hidden !important;
+        @page {
+            size: A4 portrait;
+            margin: 1.27cm; /* Narrow margin */
         }
-        #printArea, #printArea * {
-            visibility: visible !important;
+        body.printing-active > :not(#printArea) {
+            display: none !important;
         }
-        #printArea {
+        body.printing-active #printArea {
             display: block !important;
-            position: absolute !important;
-            left: 0 !important;
-            top: 0 !important;
-            width: 100% !important;
             background: white !important;
             color: black !important;
-            padding: 24px !important;
-            margin: 0 !important;
+            width: 100% !important;
             box-shadow: none !important;
             border: none !important;
+            margin: 0 !important;
+            padding: 0 !important;
+        }
+        body.printing-active #printArea * {
+            visibility: visible !important;
         }
         .no-print {
             display: none !important;
+        }
+        
+        /* Force print layout styles to maintain side-by-side structure */
+        #printArea .print-row {
+            display: flex !important;
+            flex-direction: row !important;
+            justify-content: space-between !important;
+            align-items: center !important;
+        }
+        #printArea .print-row-end {
+            display: flex !important;
+            flex-direction: row !important;
+            justify-content: space-between !important;
+            align-items: flex-end !important;
+        }
+        #printArea .print-grid-4 {
+            display: grid !important;
+            grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
+            gap: 1.5rem !important;
+        }
+        #printArea .print-grid-6 {
+            display: grid !important;
+            grid-template-columns: repeat(6, minmax(0, 1fr)) !important;
+            gap: 1.5rem !important;
+        }
+        #printArea .print-grid-2 {
+            display: grid !important;
+            grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+            gap: 2rem !important;
         }
     }
 </style>
@@ -138,17 +349,27 @@ $latestNetPay = $latestTotalEarnings - $latestTotalDeductions;
                 <span class="material-symbols-outlined text-primary text-2xl bg-primary/5 p-2 rounded-xl">payments</span>
             </div>
             <div class="mt-4">
-                <h3 class="text-3xl font-black text-on-surface font-headline tracking-tight">
-                    Rp <?= number_format($latestNetPay, 0, ',', '.') ?>
-                </h3>
-                <p class="text-[11px] font-semibold text-green-600 flex items-center gap-1 mt-1">
-                    <span class="material-symbols-outlined text-xs">check_circle</span>
-                    Ditransfer pada <?= $latest['date'] ?>
-                </p>
+                <?php if ($hasApprovedPayroll): ?>
+                    <h3 class="text-3xl font-black text-on-surface font-headline tracking-tight">
+                        Rp <?= number_format($latestNetPay, 0, ',', '.') ?>
+                    </h3>
+                    <p class="text-[11px] font-semibold text-green-600 flex items-center gap-1 mt-1">
+                        <span class="material-symbols-outlined text-xs">check_circle</span>
+                        Ditransfer pada <?= htmlspecialchars($latestDate) ?>
+                    </p>
+                <?php else: ?>
+                    <h3 class="text-2xl font-black text-on-surface-variant/60 font-headline tracking-tight">
+                        —
+                    </h3>
+                    <p class="text-[11px] font-semibold text-on-surface-variant/60 flex items-center gap-1 mt-1">
+                        <span class="material-symbols-outlined text-xs">schedule</span>
+                        Menunggu approval payroll
+                    </p>
+                <?php endif; ?>
             </div>
             <div class="mt-4 pt-4 border-t border-outline-variant/10 text-xs text-on-surface-variant flex justify-between font-medium">
                 <span>Metode Transfer</span>
-                <span class="font-bold text-on-surface">Payroll Auto-Credit</span>
+                <span class="font-bold text-on-surface"><?= $hasApprovedPayroll ? 'Payroll Auto-Credit' : '-' ?></span>
             </div>
         </div>
 
@@ -213,7 +434,7 @@ $latestNetPay = $latestTotalEarnings - $latestTotalDeductions;
             <div class="p-6 border-b border-outline-variant/10 flex justify-between items-center bg-gradient-to-r from-surface-container-lowest to-surface-container-low/30">
                 <div>
                     <h2 class="text-lg font-extrabold text-on-surface font-headline">Riwayat Slip Gaji</h2>
-                    <p class="text-xs text-on-surface-variant mt-0.5">Daftar slip gaji resmi Anda untuk periode berjalan di tahun 2026.</p>
+                    <p class="text-xs text-on-surface-variant mt-0.5">Daftar slip gaji resmi yang telah disetujui untuk tahun <?= $currentYear ?>.</p>
                 </div>
             </div>
 
@@ -230,32 +451,37 @@ $latestNetPay = $latestTotalEarnings - $latestTotalDeductions;
                         </tr>
                     </thead>
                     <tbody class="divide-y divide-outline-variant/8">
-                        <?php foreach ($months as $m): 
-                            $totEarn = $baseSalary + $m['tunj_jabatan'] + $m['tunj_transport_makan'] + $m['tunj_komunikasi'] + $m['bonus'] + $m['thr'];
-                            $bpjsTkContrib = round($baseSalary * 0.02);
-                            $bpjsKesContrib = round($baseSalary * 0.01);
-                            $totDed = $bpjsTkContrib + $bpjsKesContrib + $m['pph21'];
-                            $netPay = $totEarn - $totDed;
-                            $tunjanganTotal = $m['tunj_jabatan'] + $m['tunj_transport_makan'] + $m['tunj_komunikasi'] + $m['bonus'] + $m['thr'];
-                        ?>
+                        <?php if (empty($months)): ?>
+                        <tr>
+                            <td colspan="6" class="p-10 text-center">
+                                <div class="flex flex-col items-center gap-3 text-on-surface-variant">
+                                    <span class="material-symbols-outlined text-4xl opacity-40">receipt_long</span>
+                                    <p class="text-sm font-medium">Belum ada slip gaji yang disetujui untuk tahun <?= $currentYear ?>.</p>
+                                    <p class="text-xs opacity-70">Slip gaji akan muncul setelah diproses dan disetujui oleh HR.</p>
+                                </div>
+                            </td>
+                        </tr>
+                        <?php else: ?>
+                        <?php foreach ($months as $m): ?>
                         <tr class="hover:bg-surface-container-low/20 transition-colors">
-                            <td class="p-4 font-bold text-xs text-on-surface"><?= $m['month_name'] ?></td>
-                            <td class="p-4 text-xs font-mono font-medium text-on-surface-variant">Rp <?= number_format($baseSalary, 0, ',', '.') ?></td>
-                            <td class="p-4 text-xs font-mono font-medium text-green-700 bg-green-50/40">Rp <?= number_format($tunjanganTotal, 0, ',', '.') ?></td>
-                            <td class="p-4 text-xs font-mono font-medium text-red-600 bg-red-50/20">Rp <?= number_format($totDed, 0, ',', '.') ?></td>
-                            <td class="p-4 text-xs font-mono font-bold text-primary">Rp <?= number_format($netPay, 0, ',', '.') ?></td>
+                            <td class="p-4 font-bold text-xs text-on-surface"><?= htmlspecialchars($m['month_name']) ?></td>
+                            <td class="p-4 text-xs font-mono font-medium text-on-surface-variant">Rp <?= number_format($m['base_salary'], 0, ',', '.') ?></td>
+                            <td class="p-4 text-xs font-mono font-medium text-green-700 bg-green-50/40">Rp <?= number_format($m['tunjangan_total'], 0, ',', '.') ?></td>
+                            <td class="p-4 text-xs font-mono font-medium text-red-600 bg-red-50/20">Rp <?= number_format($m['total_deductions'], 0, ',', '.') ?></td>
+                            <td class="p-4 text-xs font-mono font-bold text-primary">Rp <?= number_format($m['net_pay'], 0, ',', '.') ?></td>
                             <td class="p-4 text-center">
                                 <div class="flex items-center justify-center gap-2">
-                                    <button onclick="previewPayslip('<?= $m['code'] ?>')" class="bg-primary/5 hover:bg-primary/10 text-primary p-2 rounded-lg transition-all hover:scale-105 active:scale-95" title="Pratinjau Slip">
+                                    <button onclick="previewPayslip('<?= htmlspecialchars($m['code']) ?>')" class="bg-primary/5 hover:bg-primary/10 text-primary p-2 rounded-lg transition-all hover:scale-105 active:scale-95" title="Pratinjau Slip">
                                         <span class="material-symbols-outlined text-sm font-bold">visibility</span>
                                     </button>
-                                    <button onclick="printPayslipDirect('<?= $m['code'] ?>')" class="bg-primary/5 hover:bg-primary/10 text-primary p-2 rounded-lg transition-all hover:scale-105 active:scale-95" title="Cetak Slip">
+                                    <button onclick="printPayslipDirect('<?= htmlspecialchars($m['code']) ?>')" class="bg-primary/5 hover:bg-primary/10 text-primary p-2 rounded-lg transition-all hover:scale-105 active:scale-95" title="Cetak Slip">
                                         <span class="material-symbols-outlined text-sm font-bold">print</span>
                                     </button>
                                 </div>
                             </td>
                         </tr>
                         <?php endforeach; ?>
+                        <?php endif; ?>
                     </tbody>
                 </table>
             </div>
@@ -332,38 +558,22 @@ $latestNetPay = $latestTotalEarnings - $latestTotalDeductions;
 
         <!-- Scrollable Modal Content (The Actual Payslip) -->
         <div class="p-8 md:p-12 overflow-y-auto bg-white flex-grow relative" id="payslipPrintArea">
-            <!-- Circular Digital Stamp SVG Overlay -->
-            <div class="absolute bottom-8 right-8 md:right-20 pointer-events-none select-none z-10">
-                <svg class="w-32 h-32 text-blue-800/80 transform rotate-12" viewBox="0 0 100 100">
-                    <circle cx="50" cy="50" r="42" fill="none" stroke="currentColor" stroke-width="2.5" stroke-dasharray="3, 1.5" />
-                    <circle cx="50" cy="50" r="37" fill="none" stroke="currentColor" stroke-width="1.5" />
-                    <path id="stampPath" fill="none" d="M 17 50 A 33 33 0 1 1 83 50" />
-                    <text font-size="6.5" font-weight="900" letter-spacing="1.5" fill="currentColor">
-                        <textPath href="#stampPath" startOffset="50%" text-anchor="middle">
-                            PT SI CARE ENTERPRISE
-                        </textPath>
-                    </text>
-                    <path id="stampPathBottom" fill="none" d="M 83 50 A 33 33 0 0 1 17 50" />
-                    <text font-size="6.5" font-weight="900" letter-spacing="1.2" fill="currentColor">
-                        <textPath href="#stampPathBottom" startOffset="50%" text-anchor="middle">
-                            * HR OPERATIONS *
-                        </textPath>
-                    </text>
-                    <circle cx="50" cy="50" r="23" fill="none" stroke="currentColor" stroke-width="1" />
-                    <text x="50" y="47" font-size="7" font-weight="900" text-anchor="middle" fill="currentColor">PAID</text>
-                    <text x="50" y="57" font-size="6.5" font-weight="800" text-anchor="middle" fill="currentColor">VERIFIED</text>
-                </svg>
-            </div>
 
             <!-- Header Corporate -->
-            <div class="flex flex-col md:flex-row justify-between items-start md:items-center border-b-2 border-neutral-900 pb-6 gap-4">
+            <div class="flex flex-col md:flex-row justify-between items-start md:items-center border-b-2 border-neutral-900 pb-6 gap-4 print-row">
                 <div class="flex items-center gap-3">
-                    <div class="bg-primary text-white p-2.5 rounded-xl flex items-center justify-center shadow-md">
-                        <span class="material-symbols-outlined text-2xl font-bold">local_police</span>
-                    </div>
+                    <?php if ($appLogoType === 'image' && !empty($appLogoImage)): ?>
+                        <div class="bg-white border border-neutral-200 p-1.5 rounded-xl flex items-center justify-center shadow-sm">
+                            <img src="<?= htmlspecialchars($appLogoImage) ?>" class="h-9 w-9 object-contain" alt="Logo" />
+                        </div>
+                    <?php else: ?>
+                        <div class="bg-primary text-white p-2.5 rounded-xl flex items-center justify-center shadow-md">
+                            <span class="material-symbols-outlined text-2xl font-bold"><?= htmlspecialchars($appLogoIcon) ?></span>
+                        </div>
+                    <?php endif; ?>
                     <div>
-                        <h2 class="text-2xl font-black text-neutral-900 tracking-tight leading-none">siCare</h2>
-                        <span class="text-[10px] font-bold text-neutral-500 uppercase tracking-widest mt-1 block">PT SI CARE ENTERPRISE</span>
+                        <h2 class="text-2xl font-black text-neutral-900 tracking-tight leading-none"><?= htmlspecialchars($appName) ?></h2>
+                        <span class="text-[10px] font-bold text-neutral-500 uppercase tracking-widest mt-1 block"><?= htmlspecialchars($companyName) ?></span>
                     </div>
                 </div>
                 <div class="text-left md:text-right">
@@ -373,7 +583,7 @@ $latestNetPay = $latestTotalEarnings - $latestTotalDeductions;
             </div>
 
             <!-- Employee & General Info Metadata Grid -->
-            <div class="grid grid-cols-2 md:grid-cols-4 gap-6 py-6 border-b border-neutral-250 text-xs">
+            <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-6 py-6 border-b border-neutral-250 text-xs print-grid-6">
                 <div>
                     <span class="text-neutral-500 block mb-1">ID KARYAWAN</span>
                     <span class="font-mono font-bold text-neutral-800" id="payEmpId"><?= htmlspecialchars($employeeId) ?></span>
@@ -384,7 +594,15 @@ $latestNetPay = $latestTotalEarnings - $latestTotalDeductions;
                 </div>
                 <div>
                     <span class="text-neutral-500 block mb-1">JABATAN / DIVISI</span>
-                    <span class="font-bold text-neutral-800" id="payEmpDept">Senior UI/UX Designer / Product</span>
+                    <span class="font-bold text-neutral-800" id="payEmpDept"><?= htmlspecialchars($jobAndDept) ?></span>
+                </div>
+                <div>
+                    <span class="text-neutral-500 block mb-1">NPWP</span>
+                    <span class="font-mono font-bold text-neutral-800" id="payNpwp"><?= htmlspecialchars($npwpNumber) ?></span>
+                </div>
+                <div>
+                    <span class="text-neutral-500 block mb-1">HARI KERJA AKTIF</span>
+                    <span class="font-bold text-neutral-800" id="payWorkDays">-</span>
                 </div>
                 <div>
                     <span class="text-neutral-500 block mb-1">PERIODE PEMBAYARAN</span>
@@ -393,7 +611,7 @@ $latestNetPay = $latestTotalEarnings - $latestTotalDeductions;
             </div>
 
             <!-- Financial Details Structure -->
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-8 py-6 items-start">
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-8 py-6 items-start print-grid-2">
                 <!-- EARNINGS (PENDAPATAN) -->
                 <div class="space-y-4">
                     <div class="bg-neutral-100 px-4 py-2 border-l-4 border-green-600">
@@ -424,6 +642,10 @@ $latestNetPay = $latestTotalEarnings - $latestTotalDeductions;
                             <span class="text-neutral-600">Tunjangan Hari Raya (THR)</span>
                             <span class="font-mono font-semibold text-neutral-900" id="payThr">Rp 0</span>
                         </div>
+                        <div class="flex justify-between py-1 border-b border-neutral-100" id="payOvertimeRow">
+                            <span class="text-neutral-600">Lemburan</span>
+                            <span class="font-mono font-semibold text-neutral-900" id="payOvertime">Rp 0</span>
+                        </div>
                     </div>
                 </div>
 
@@ -434,27 +656,48 @@ $latestNetPay = $latestTotalEarnings - $latestTotalDeductions;
                     </div>
                     <div class="space-y-2 text-xs">
                         <div class="flex justify-between py-1 border-b border-neutral-100">
-                            <span class="text-neutral-600">BPJS Ketenagakerjaan (2%)</span>
+                            <span class="text-neutral-600">BPJS Ketenagakerjaan (<?= $bpjsTkPct ?>%)</span>
                             <span class="font-mono font-semibold text-neutral-900" id="payBpjsTk">Rp 330.000</span>
                         </div>
                         <div class="flex justify-between py-1 border-b border-neutral-100">
-                            <span class="text-neutral-600">BPJS Kesehatan (1%)</span>
+                            <span class="text-neutral-600">BPJS Kesehatan (<?= $bpjsKesPct ?>%)</span>
                             <span class="font-mono font-semibold text-neutral-900" id="payBpjsKes">Rp 165.000</span>
                         </div>
                         <div class="flex justify-between py-1 border-b border-neutral-100">
-                            <span class="text-neutral-600">Pajak Penghasilan (PPh 21)</span>
+                            <span class="text-neutral-600">Pajak Penghasilan (PPh 21 - <?= $pph21Pct ?>%)</span>
                             <span class="font-mono font-semibold text-neutral-900" id="payPph21">Rp 425.000</span>
                         </div>
-                        <div class="flex justify-between py-1 border-b border-neutral-100">
-                            <span class="text-neutral-600">Potongan Lainnya / Keterlambatan</span>
-                            <span class="font-mono font-semibold text-neutral-900">Rp 0</span>
+                        <div class="flex justify-between py-1 border-b border-neutral-100" id="payUnpaidDeductionRow">
+                            <span class="text-neutral-600 flex items-center gap-1">
+                                Potongan Cuti Tidak Dibayar 
+                                <span class="bg-red-50 text-red-700 text-[9px] font-bold px-1.5 py-0.5 rounded-full border border-red-100" id="payUnpaidDaysBadge">0 Hari</span>
+                            </span>
+                            <span class="font-mono font-semibold text-neutral-900 text-red-600" id="payUnpaidDeduction">Rp 0</span>
+                        </div>
+                        <div class="flex justify-between py-1 border-b border-neutral-100" id="payAlpaDeductionRow">
+                            <span class="text-neutral-600 flex items-center gap-1">
+                                Potongan Alpa 
+                                <span class="bg-red-50 text-red-700 text-[9px] font-bold px-1.5 py-0.5 rounded-full border border-red-100" id="payAlpaDaysBadge">0 Hari</span>
+                            </span>
+                            <span class="font-mono font-semibold text-neutral-900 text-red-600" id="payAlpaDeduction">Rp 0</span>
+                        </div>
+                        <div class="flex justify-between py-1 border-b border-neutral-100" id="payLateDeductionRow">
+                            <span class="text-neutral-600 flex items-center gap-1">
+                                Potongan Keterlambatan 
+                                <span class="bg-red-50 text-red-700 text-[9px] font-bold px-1.5 py-0.5 rounded-full border border-red-100" id="payLateDaysBadge">0 Kali</span>
+                            </span>
+                            <span class="font-mono font-semibold text-neutral-900 text-red-600" id="payLateDeduction">Rp 0</span>
+                        </div>
+                        <div class="flex justify-between py-1 border-b border-neutral-100" id="payOtherDeductionRow">
+                            <span class="text-neutral-600">Potongan Lainnya</span>
+                            <span class="font-mono font-semibold text-neutral-900 text-red-600" id="payOtherDeduction">Rp 0</span>
                         </div>
                     </div>
                 </div>
             </div>
 
             <!-- TOTAL SUMMARY PANEL -->
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-8 pt-4 pb-6 border-t border-b border-neutral-250">
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-8 pt-4 pb-6 border-t border-b border-neutral-250 print-grid-2">
                 <div class="space-y-2">
                     <div class="flex justify-between text-xs font-bold text-neutral-700">
                         <span>TOTAL PENDAPATAN BRUTO</span>
@@ -474,7 +717,7 @@ $latestNetPay = $latestTotalEarnings - $latestTotalDeductions;
             </div>
 
             <!-- Signature Section -->
-            <div class="pt-8 flex flex-col md:flex-row justify-between items-start md:items-end gap-6 text-xs text-neutral-700">
+            <div class="pt-8 flex flex-col md:flex-row justify-between items-start md:items-end gap-6 text-xs text-neutral-700 print-row-end">
                 <div>
                     <span class="text-neutral-500 block mb-1">REKENING PAYROLL TUJUAN</span>
                     <span class="font-bold text-neutral-800" id="payBankInfo">BCA - 8012345678</span>
@@ -482,7 +725,30 @@ $latestNetPay = $latestTotalEarnings - $latestTotalDeductions;
                 </div>
                 
                 <!-- Signature Space -->
-                <div class="flex flex-col items-center text-center">
+                <div class="flex flex-col items-center text-center relative">
+                    <!-- Circular Digital Stamp SVG Overlay -->
+                    <div class="absolute -left-24 -bottom-2 pointer-events-none select-none z-10">
+                        <svg class="w-28 h-28 text-blue-800/80 transform rotate-12" viewBox="0 0 100 100">
+                            <circle cx="50" cy="50" r="42" fill="none" stroke="currentColor" stroke-width="2.5" stroke-dasharray="3, 1.5" />
+                            <circle cx="50" cy="50" r="37" fill="none" stroke="currentColor" stroke-width="1.5" />
+                            <path id="stampPath" fill="none" d="M 20 50 A 30 30 0 1 1 80 50" />
+                            <text font-size="4.8" font-weight="900" letter-spacing="0.6" fill="currentColor">
+                                <textPath href="#stampPath" startOffset="50%" text-anchor="middle">
+                                    <?= htmlspecialchars($companyNameForStamp) ?>
+                                </textPath>
+                            </text>
+                            <path id="stampPathBottom" fill="none" d="M 80 50 A 30 30 0 0 1 20 50" />
+                            <text font-size="4.8" font-weight="900" letter-spacing="0.6" fill="currentColor">
+                                <textPath href="#stampPathBottom" startOffset="50%" text-anchor="middle">
+                                    * HR OPERATIONS *
+                                </textPath>
+                            </text>
+                            <circle cx="50" cy="50" r="23" fill="none" stroke="currentColor" stroke-width="1" />
+                            <text x="50" y="47" font-size="7" font-weight="900" text-anchor="middle" fill="currentColor">PAID</text>
+                            <text x="50" y="57" font-size="6.5" font-weight="800" text-anchor="middle" fill="currentColor">VERIFIED</text>
+                        </svg>
+                    </div>
+
                     <span class="text-neutral-500 block mb-2 text-[10px] tracking-wider uppercase">TANDA TANGAN DIGITAL PERUSAHAAN</span>
                     
                     <!-- SVG Barcode for Digital Signature -->
@@ -524,8 +790,8 @@ $latestNetPay = $latestTotalEarnings - $latestTotalDeductions;
                             <text x="50" y="19" font-size="4" font-family="monospace" text-anchor="middle" fill="#333" id="payBarcodeNo">PAY-20260525-0033</text>
                         </svg>
                     </div>
-                    <span class="font-extrabold text-neutral-800 uppercase tracking-tight">Amanda Putri</span>
-                    <span class="text-[10px] text-neutral-500 uppercase">HR Operations Director</span>
+                    <span class="font-extrabold text-neutral-800 uppercase tracking-tight"><?= htmlspecialchars($hrDirectorName) ?></span>
+                    <span class="text-[10px] text-neutral-500 uppercase"><?= htmlspecialchars($hrDirectorTitle) ?></span>
                 </div>
             </div>
         </div>
@@ -719,7 +985,7 @@ $latestNetPay = $latestTotalEarnings - $latestTotalDeductions;
                             </div>
                             <div class="flex">
                                 <span class="w-1/3 text-neutral-500">Nama Pemotong:</span>
-                                <span class="w-2/3 font-bold text-neutral-800">PT SI CARE ENTERPRISE</span>
+                                <span class="w-2/3 font-bold text-neutral-800"><?= htmlspecialchars($companyName) ?></span>
                             </div>
                         </div>
                     </div>
@@ -775,7 +1041,7 @@ $latestNetPay = $latestTotalEarnings - $latestTotalDeductions;
                                 <text x="50" y="19" font-size="4" font-family="monospace" text-anchor="middle" fill="#555">TAX-1721A1-2025-0033</text>
                             </svg>
                         </div>
-                        <span class="font-extrabold text-neutral-800 uppercase">PT SI CARE ENTERPRISE</span>
+                        <span class="font-extrabold text-neutral-800 uppercase"><?= htmlspecialchars($companyName) ?></span>
                         <span class="text-[9px] text-neutral-500">Pemberi Kerja Pemotong Pajak</span>
                     </div>
                 </div>
@@ -787,7 +1053,7 @@ $latestNetPay = $latestTotalEarnings - $latestTotalDeductions;
 <!-- ============================================== -->
 <!-- DEDICATED DOM CONTAINERS FOR PRINT AREA -->
 <!-- ============================================== -->
-<div id="printArea" class="hidden"></div>
+<!-- DYNAMIC PRINT AREA CREATED VIA JS -->
 
 <!-- ============================================== -->
 <!-- INTERACTIVE JAVASCRIPT LOGIC -->
@@ -799,65 +1065,57 @@ $latestNetPay = $latestTotalEarnings - $latestTotalDeductions;
     const employeeName = <?= json_encode($namaSesuaiKtp) ?>;
     const bankName = <?= json_encode($bankName) ?>;
     const bankAccountNumber = <?= json_encode($bankAccountNumber) ?>;
+    const bpjsTkPct = <?= $bpjsTkPct ?>;
+    const bpjsKesPct = <?= $bpjsKesPct ?>;
+    const pph21Pct = <?= $pph21Pct ?>;
     
-    // Payslips detail source mapping
-    const payslipsData = {
-        '05-2026': {
-            no: 'SLIP/PAY/20260525-0033',
-            barcode: 'PAY-20260525-0033',
-            period: 'Mei 2026',
-            tunj_jabatan: 2500000,
-            tunj_transport: 1500000,
-            tunj_komunikasi: 500000,
-            bonus: 0,
-            thr: 0,
-            pph21: Math.round(baseSalary * 0.025)
-        },
-        '04-2026': {
-            no: 'SLIP/PAY/20260424-0033',
-            barcode: 'PAY-20260424-0033',
-            period: 'April 2026',
-            tunj_jabatan: 2500000,
-            tunj_transport: 1500000,
-            tunj_komunikasi: 500000,
-            bonus: 0,
-            thr: baseSalary, // THR Eid
-            pph21: Math.round(baseSalary * 0.06)
-        },
-        '03-2026': {
-            no: 'SLIP/PAY/20260325-0033',
-            barcode: 'PAY-20260325-0033',
-            period: 'Maret 2026',
-            tunj_jabatan: 2500000,
-            tunj_transport: 1350000,
-            tunj_komunikasi: 500000,
-            bonus: 500000,
-            thr: 0,
-            pph21: Math.round(baseSalary * 0.026)
-        },
-        '02-2026': {
-            no: 'SLIP/PAY/20260225-0033',
-            barcode: 'PAY-20260225-0033',
-            period: 'Februari 2026',
-            tunj_jabatan: 2500000,
-            tunj_transport: 1450000,
-            tunj_komunikasi: 500000,
-            bonus: 0,
-            thr: 0,
-            pph21: Math.round(baseSalary * 0.024)
-        },
-        '01-2026': {
-            no: 'SLIP/PAY/20260125-0033',
-            barcode: 'PAY-20260125-0033',
-            period: 'Januari 2026',
-            tunj_jabatan: 2500000,
-            tunj_transport: 1500000,
-            tunj_komunikasi: 500000,
-            bonus: 1000000,
-            thr: 0,
-            pph21: Math.round(baseSalary * 0.028)
+    // Payslips detail source mapping - dynamically built from DB
+    const payslipsData = <?php
+        $jsPayslips = [];
+        foreach ($months as $m) {
+            $code = $m['code'];
+            // Generate slip number from month_year code + employee ID
+            $parts = explode('-', $code);
+            $mm = $parts[0] ?? '00';
+            $yyyy = $parts[1] ?? date('Y');
+            $empSuffix = preg_replace('/[^0-9]/', '', $employeeId);
+            $empSuffix = $empSuffix ? substr($empSuffix, -4) : '0001';
+            $slipNo = "SLIP/PAY/{$yyyy}{$mm}25-{$empSuffix}";
+            $barcode = "PAY-{$yyyy}{$mm}25-{$empSuffix}";
+
+            $jsPayslips[$code] = [
+                'no'                     => $slipNo,
+                'barcode'                => $barcode,
+                'period'                 => $m['month_name'],
+                'date'                   => $m['date'],
+                'base_salary'            => $m['base_salary'],
+                'tunj_jabatan'           => $m['tunj_jabatan'],
+                'tunj_transport'         => $m['tunj_transport_makan'],
+                'tunj_komunikasi'        => $m['tunj_komunikasi'],
+                'bonus'                  => $m['bonus'],
+                'thr'                    => $m['thr'],
+                'overtime'               => $m['overtime'],
+                'reimbursement'          => $m['reimbursement'],
+                'other_deduction'        => $m['other_deduction'],
+                'unpaid_leave_days'      => $m['unpaid_leave_days'],
+                'unpaid_leave_deduction' => $m['unpaid_leave_deduction'],
+                'alpa_days'              => $m['alpa_days'],
+                'alpa_deduction'         => $m['alpa_deduction'],
+                'late_days'              => $m['late_days'],
+                'late_deduction'         => $m['late_deduction'],
+                'bpjs_tk'                => $m['bpjs_tk'],
+                'bpjs_kes'               => $m['bpjs_kes'],
+                'pph21'                  => $m['pph21'],
+                'total_earnings'         => $m['gross_earning'],
+                'total_deductions'       => $m['total_deductions'],
+                'net_pay'                => $m['net_pay'],
+                'working_days'           => $m['working_days'],
+                'present_days'           => $m['present_days'],
+            ];
         }
-    };
+        echo json_encode($jsPayslips, JSON_UNESCAPED_UNICODE);
+    ?>;
+
 
     window.formatRupiah = function formatRupiah(number) {
         return 'Rp ' + number.toLocaleString('id-ID');
@@ -868,17 +1126,36 @@ $latestNetPay = $latestTotalEarnings - $latestTotalDeductions;
         const data = payslipsData[code];
         if (!data) return;
 
-        // Calculations
-        const bpjsTk = Math.round(baseSalary * 0.02);
-        const bpjsKes = Math.round(baseSalary * 0.01);
-        const totalEarnings = baseSalary + data.tunj_jabatan + data.tunj_transport + data.tunj_komunikasi + data.bonus + data.thr;
-        const totalDeductions = bpjsTk + bpjsKes + data.pph21;
-        const netPay = totalEarnings - totalDeductions;
+        // Use pre-computed values from DB (no recalculation needed)
+        const slipBaseSalary = data.base_salary || 0;
+        const overtime = data.overtime || 0;
+        const otherDeduction = data.other_deduction || 0;
+        const unpaidDays = data.unpaid_leave_days || 0;
+        const unpaidDec = data.unpaid_leave_deduction || 0;
+        const alpaDays = data.alpa_days || 0;
+        const alpaDec = data.alpa_deduction || 0;
+        const lateDays = data.late_days || 0;
+        const lateDec = data.late_deduction || 0;
+
+        // Use exact DB values for deductions
+        const bpjsTk = data.bpjs_tk || 0;
+        const bpjsKes = data.bpjs_kes || 0;
+        const pph21 = data.pph21 || 0;
+
+        // Use pre-computed totals from DB
+        const totalEarnings = data.total_earnings || (slipBaseSalary + data.tunj_jabatan + data.tunj_transport + data.tunj_komunikasi + data.bonus + data.thr + overtime);
+        const totalDeductions = data.total_deductions || (bpjsTk + bpjsKes + pph21 + otherDeduction + unpaidDec + alpaDec + lateDec);
+        const netPay = data.net_pay || (totalEarnings - totalDeductions);
+        const workingDays = data.working_days || 22;
+        const presentDays = data.present_days || 0;
 
         // Populating DOM elements
         document.getElementById('payslipNo').innerText = data.no;
         document.getElementById('payPeriod').innerText = data.period;
-        document.getElementById('payBase').innerText = formatRupiah(baseSalary);
+        document.getElementById('payNpwp').innerText = '<?= htmlspecialchars($npwpNumber) ?>';
+        document.getElementById('payWorkDays').innerText = `${presentDays} / ${workingDays} Hari Kerja`;
+        document.getElementById('payBase').innerText = formatRupiah(slipBaseSalary);
+
         document.getElementById('payTunjJabatan').innerText = formatRupiah(data.tunj_jabatan);
         document.getElementById('payTunjTransport').innerText = formatRupiah(data.tunj_transport);
         document.getElementById('payTunjKomunikasi').innerText = formatRupiah(data.tunj_komunikasi);
@@ -899,9 +1176,52 @@ $latestNetPay = $latestTotalEarnings - $latestTotalDeductions;
             document.getElementById('payThrRow').style.display = 'none';
         }
 
+        // Overtime Row
+        if (overtime > 0) {
+            document.getElementById('payOvertimeRow').style.display = 'flex';
+            document.getElementById('payOvertime').innerText = formatRupiah(overtime);
+        } else {
+            document.getElementById('payOvertimeRow').style.display = 'none';
+        }
+
         document.getElementById('payBpjsTk').innerText = formatRupiah(bpjsTk);
         document.getElementById('payBpjsKes').innerText = formatRupiah(bpjsKes);
-        document.getElementById('payPph21').innerText = formatRupiah(data.pph21);
+        document.getElementById('payPph21').innerText = formatRupiah(pph21);
+
+        // Unpaid Leave Deduction Row
+        if (unpaidDec > 0) {
+            document.getElementById('payUnpaidDeductionRow').style.display = 'flex';
+            document.getElementById('payUnpaidDaysBadge').innerText = `${unpaidDays} Hari`;
+            document.getElementById('payUnpaidDeduction').innerText = formatRupiah(unpaidDec);
+        } else {
+            document.getElementById('payUnpaidDeductionRow').style.display = 'none';
+        }
+
+        // Alpa Deduction Row
+        if (alpaDec > 0) {
+            document.getElementById('payAlpaDeductionRow').style.display = 'flex';
+            document.getElementById('payAlpaDaysBadge').innerText = `${alpaDays} Hari`;
+            document.getElementById('payAlpaDeduction').innerText = formatRupiah(alpaDec);
+        } else {
+            document.getElementById('payAlpaDeductionRow').style.display = 'none';
+        }
+
+        // Late Deduction Row
+        if (lateDec > 0) {
+            document.getElementById('payLateDeductionRow').style.display = 'flex';
+            document.getElementById('payLateDaysBadge').innerText = `${lateDays} Kali`;
+            document.getElementById('payLateDeduction').innerText = formatRupiah(lateDec);
+        } else {
+            document.getElementById('payLateDeductionRow').style.display = 'none';
+        }
+
+        // Other Deduction Row
+        if (otherDeduction > 0) {
+            document.getElementById('payOtherDeductionRow').style.display = 'flex';
+            document.getElementById('payOtherDeduction').innerText = formatRupiah(otherDeduction);
+        } else {
+            document.getElementById('payOtherDeductionRow').style.display = 'none';
+        }
 
         document.getElementById('payGrossTotal').innerText = formatRupiah(totalEarnings);
         document.getElementById('payDeductionsTotal').innerText = formatRupiah(totalDeductions);
@@ -967,18 +1287,50 @@ $latestNetPay = $latestTotalEarnings - $latestTotalDeductions;
 
     window.printPayslipFromModal = function printPayslipFromModal() {
         const sourceHtml = document.getElementById('payslipPrintArea').innerHTML;
-        const printArea = document.getElementById('printArea');
+        
+        // Remove any existing printArea
+        const oldPrintArea = document.getElementById('printArea');
+        if (oldPrintArea) oldPrintArea.remove();
+        
+        // Create dynamic printArea directly under body
+        const printArea = document.createElement('div');
+        printArea.id = 'printArea';
         printArea.innerHTML = sourceHtml;
+        document.body.appendChild(printArea);
+        
+        // Add printing class to body
+        document.body.classList.add('printing-active');
+        
+        // Trigger system print
         window.print();
-        printArea.innerHTML = '';
+        
+        // Clean up
+        document.body.classList.remove('printing-active');
+        printArea.remove();
     }
 
     window.printTaxFromModal = function printTaxFromModal() {
         const sourceHtml = document.getElementById('taxPrintArea').innerHTML;
-        const printArea = document.getElementById('printArea');
+        
+        // Remove any existing printArea
+        const oldPrintArea = document.getElementById('printArea');
+        if (oldPrintArea) oldPrintArea.remove();
+        
+        // Create dynamic printArea directly under body
+        const printArea = document.createElement('div');
+        printArea.id = 'printArea';
         printArea.innerHTML = sourceHtml;
+        document.body.appendChild(printArea);
+        
+        // Add printing class to body
+        document.body.classList.add('printing-active');
+        
+        // Trigger system print
         window.print();
-        printArea.innerHTML = '';
+        
+        // Clean up
+        document.body.classList.remove('printing-active');
+        printArea.remove();
     }
 
     // Click outside to close modals

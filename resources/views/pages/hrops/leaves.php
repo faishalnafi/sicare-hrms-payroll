@@ -202,7 +202,7 @@ function formatIndonesianDate($dateStr) {
 
         <!-- Leave Requests Table -->
         <div class="overflow-x-auto">
-            <table class="w-full text-left border-collapse">
+            <table class="min-w-[1100px] w-full text-left border-collapse">
                 <thead>
                     <tr class="bg-surface text-on-surface-variant border-b border-outline-variant/15">
                         <th class="py-4 px-6 text-[11px] font-bold uppercase tracking-wider">Karyawan</th>
@@ -234,12 +234,15 @@ function formatIndonesianDate($dateStr) {
                     ?>
                     <tr class="hover:bg-surface-container-low/30 transition-colors" data-name="<?= htmlspecialchars(strtolower($fullname)) ?>" data-status="<?= htmlspecialchars($leave['status']) ?>" data-type="<?= htmlspecialchars($leave['leave_type']) ?>">
                         <td class="py-4 px-6">
-                            <div class="flex items-center gap-3">
-                                <?php if (!empty($leave['profile_picture'])): ?>
-                                    <img src="<?= htmlspecialchars($leave['profile_picture']) ?>" alt="Avatar" class="w-10 h-10 rounded-full object-cover border border-outline-variant/15" />
-                                <?php else: ?>
-                                    <div class="w-10 h-10 rounded-full bg-primary/10 text-primary font-bold text-sm flex items-center justify-center"><?= $initials ?></div>
-                                <?php endif; ?>
+                            <div class="flex items-center gap-3 w-52 min-w-[200px]">
+                                <?php 
+                                    $profPic = $leave['profile_picture'];
+                                    $hash = md5(strtolower(trim($leave['email'])));
+                                    if (empty($profPic)) {
+                                        $profPic = "https://www.gravatar.com/avatar/{$hash}?d=404&s=150";
+                                    }
+                                ?>
+                                <img src="<?= htmlspecialchars($profPic) ?>" onerror="window.handleAvatarError(this, '<?= $hash ?>')" alt="Avatar" class="w-10 h-10 rounded-full object-cover border border-outline-variant/15" />
                                 <div>
                                     <div class="font-extrabold text-sm text-on-surface"><?= htmlspecialchars($fullname) ?></div>
                                     <div class="text-[11px] text-on-surface-variant font-semibold"><?= getEmployeePosition($leave['email']) ?> • <span class="font-mono text-primary font-bold"><?= htmlspecialchars($leave['employee_id'] ?? '') ?></span></div>
@@ -255,10 +258,10 @@ function formatIndonesianDate($dateStr) {
                             <div class="font-bold text-xs text-on-surface"><?= $leave['duration'] ?> Hari</div>
                             <div class="text-[10px] text-on-surface-variant font-mono font-bold mt-0.5"><?= formatIndonesianDate($leave['start_date']) ?> - <?= formatIndonesianDate($leave['end_date']) ?></div>
                         </td>
-                        <td class="py-4 px-6">
-                            <div class="text-xs text-on-surface font-semibold truncate max-w-[200px]" title="<?= htmlspecialchars($leave['reason']) ?>"><?= htmlspecialchars($leave['reason']) ?></div>
+                        <td class="py-4 px-6 min-w-[380px]">
+                            <div class="text-xs text-on-surface font-semibold whitespace-normal break-words leading-relaxed" title="<?= htmlspecialchars($leave['reason']) ?>"><?= htmlspecialchars($leave['reason']) ?></div>
                         </td>
-                        <td class="py-4 px-6">
+                        <td class="py-4 px-6 whitespace-nowrap">
                             <?php if (!empty($leave['attachment_path'])): ?>
                             <?php 
                                 $attachmentPath = (string)$leave['attachment_path'];

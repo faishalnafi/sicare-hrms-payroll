@@ -58,13 +58,14 @@
                         <th class="py-4 px-6 text-[11px] font-bold uppercase tracking-wider">Profil</th>
                         <th class="py-4 px-6 text-[11px] font-bold uppercase tracking-wider">Email & Kontak</th>
                         <th class="py-4 px-6 text-[11px] font-bold uppercase tracking-wider">Posisi & Role</th>
+                        <th class="py-4 px-6 text-[11px] font-bold uppercase tracking-wider">Gaji Pokok</th>
                         <th class="py-4 px-6 text-[11px] font-bold uppercase tracking-wider">Sisa Cuti</th>
                         <th class="py-4 px-6 text-[11px] font-bold uppercase tracking-wider text-right">Aksi</th>
                     </tr>
                 </thead>
                 <tbody id="employeesTableBody" class="divide-y divide-outline-variant/10">
                     <tr class="empty-row hidden">
-                        <td colspan="5" class="px-6 py-12 text-center text-on-surface-variant">
+                        <td colspan="6" class="px-6 py-12 text-center text-on-surface-variant">
                             <span class="material-symbols-outlined text-4xl mb-2 opacity-50">badge</span>
                             <p class="font-medium">Data karyawan tidak ditemukan</p>
                         </td>
@@ -103,7 +104,6 @@
 
         <!-- Form Body -->
         <form id="employeeForm" onsubmit="submitEmployeeForm(event)" class="overflow-y-auto p-6 space-y-6 custom-scrollbar">
-    <input type="hidden" name="csrf_token" value="<?= \App\Middleware\SecurityMiddleware::getCsrfToken() ?>">
             <input type="hidden" id="employeeDbId" name="id">
             
             <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -214,6 +214,15 @@
 </div>
 
 <script>
+    window.onerror = function(message, source, lineno, colno, error) {
+        Swal.fire({
+            title: 'JavaScript Error',
+            html: `<b>Pesan:</b> ${message}<br><b>Baris:</b> ${lineno}<br><b>Kolom:</b> ${colno}<br><b>Berkas:</b> ${source}`,
+            icon: 'error',
+            confirmButtonColor: '#ba1a1a'
+        });
+        return false;
+    };
     let employeesData = [];
     let departmentsData = [];
     let currentEmployeePage = 1;
@@ -332,13 +341,13 @@
                 
                 const fullName = escapeHtml(emp.first_name + (emp.last_name ? ' ' + emp.last_name : ''));
                 const empId = emp.employee_id ? escapeHtml(emp.employee_id) : '<span class="text-[10px] bg-warning/20 text-warning px-1.5 py-0.5 rounded uppercase font-bold">UNASSIGNED</span>';
-                const pp = emp.profile_picture ? escapeHtml(emp.profile_picture) : 'https://www.gravatar.com/avatar/' + window.md5((emp.email || '').trim().toLowerCase()) + '?d=identicon&s=120';
+                const pp = emp.profile_picture ? escapeHtml(emp.profile_picture) : 'https://www.gravatar.com/avatar/' + window.md5((emp.email || '').trim().toLowerCase()) + '?d=404&s=120';
                 const salary = emp.base_salary ? new Intl.NumberFormat('id-ID').format(emp.base_salary) : '0';
 
                 tr.innerHTML = `
                     <td class="px-6 py-4">
                         <div class="flex items-center gap-3">
-                            <img src="${pp}" class="w-10 h-10 rounded-full object-cover border border-outline-variant/30" alt="Avatar" onerror="this.src='https://www.gravatar.com/avatar/' + window.md5('${escapeHtml(emp.email || '')}'.trim().toLowerCase()) + '?d=identicon&s=120'">
+                            <img src="${pp}" class="w-10 h-10 rounded-full object-cover border border-outline-variant/30" alt="Avatar" onerror="window.handleAvatarError(this, '${window.md5((emp.email || '').trim().toLowerCase())}')">
                             <div>
                                 <p class="text-sm font-bold text-on-surface">${fullName}</p>
                                 <p class="text-xs text-on-surface-variant font-mono mt-0.5">${empId}</p>
@@ -356,6 +365,9 @@
                             <span class="text-xs text-on-surface-variant mt-0.5">${escapeHtml(emp.department_name || 'Tanpa Departemen')}</span>
                             <span class="text-[10px] font-bold uppercase mt-1 inline-block bg-primary/10 text-primary px-2 py-0.5 rounded max-w-max">${escapeHtml(emp.role)}</span>
                         </div>
+                    </td>
+                    <td class="px-6 py-4">
+                        <span class="text-sm font-mono font-bold text-on-surface">Rp ${salary}</span>
                     </td>
                     <td class="px-6 py-4">
                         <span class="text-sm font-bold text-on-surface">${emp.annual_leave_quota} <span class="text-xs font-normal text-on-surface-variant">Hari</span></span>
@@ -526,10 +538,11 @@
     }
 
     window.escapeHtml = function(text) {
-        if (!text) return '';
+        if (text === null || text === undefined) return '';
+        const str = String(text);
         const map = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;' };
-        return text.replace(/[&<>"']/g, function(m) { return map[m]; });
-    }
+        return str.replace(/[&<>"']/g, function(m) { return map[m]; });
+    };
 
     // Password Strength & Toggle Show/Hide setup for Employee Form
     (function() {

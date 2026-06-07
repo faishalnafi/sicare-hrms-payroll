@@ -996,6 +996,7 @@ function doClockOut() {
                 }
             })
             .catch(() => {
+                Swal.fire({ title: 'Error Koneksi', text: 'Tidak dapat terhubung ke server. Periksa koneksi internet Anda.', icon: 'error', confirmButtonColor: '#ba1a1a' });
                 btn.innerHTML = originalBtn;
                 btn.disabled = false;
             });

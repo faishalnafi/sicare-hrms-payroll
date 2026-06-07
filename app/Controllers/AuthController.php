@@ -22,9 +22,7 @@ class AuthController {
         $user = $userModel->findByEmail($email);
 
         if ($user && password_verify($password, $user['password_hash'])) {
-            if (session_status() === PHP_SESSION_NONE) {
-                session_start();
-            }
+            session_start();
             $_SESSION['user_id'] = $user['id'];
             $_SESSION['role'] = $user['role'];
             $_SESSION['name'] = $user['first_name'] . ' ' . $user['last_name'];
@@ -137,9 +135,7 @@ class AuthController {
                 }
 
                 if ($user) {
-                    if (session_status() === PHP_SESSION_NONE) {
-                        session_start();
-                    }
+                    session_start();
                     $_SESSION['user_id'] = $user['id'];
                     $_SESSION['role'] = $user['role'];
                     $_SESSION['name'] = $user['first_name'] . ' ' . $user['last_name'];
@@ -158,9 +154,7 @@ class AuthController {
 
     public function saveProfile() {
         header('Content-Type: application/json');
-        if (session_status() === PHP_SESSION_NONE) {
-            session_start();
-        }
+        session_start();
 
         if (!isset($_SESSION['user_id'])) {
             echo json_encode(['success' => false, 'message' => 'Akses ditolak.']);
@@ -223,9 +217,7 @@ class AuthController {
     }
 
     public function logout() {
-        if (session_status() === PHP_SESSION_NONE) {
-            session_start();
-        }
+        session_start();
         session_destroy();
         header('Location: /');
         exit;

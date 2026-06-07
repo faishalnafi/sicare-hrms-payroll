@@ -76,9 +76,56 @@ class SettingsController {
             'work_start_time', 'work_end_time', 'grace_period_min',
             'office_wifi_prefix', 'wfa_allowed', 'wfa_days',
             'weekly_holidays', 'checkout_grace_period_min',
+            'payroll_tunj_jabatan_pct', 'payroll_tunj_jabatan_cap',
+            'payroll_tunj_transport', 'payroll_tunj_komunikasi', 'payroll_late_deduction',
+            'payroll_bpjs_tk_pct', 'payroll_bpjs_kes_pct', 'payroll_pph21_pct',
+            'app_name', 'app_company_name', 'app_logo_icon',
+            'app_logo_type', 'app_logo_image',
         ];
 
         try {
+            // Handle Logo File Upload if present
+            if (isset($_FILES['app_logo_file']) && $_FILES['app_logo_file']['error'] === UPLOAD_ERR_OK) {
+                $file = $_FILES['app_logo_file'];
+                $allowedMimes = ['image/png', 'image/jpeg', 'image/gif', 'image/svg+xml'];
+                
+                // Validate MIME via finfo
+                $finfo = finfo_open(FILEINFO_MIME_TYPE);
+                $mimeType = finfo_file($finfo, $file['tmp_name']);
+                finfo_close($finfo);
+                
+                if (in_array($mimeType, $allowedMimes)) {
+                    $uploadDir = __DIR__ . '/../../public/uploads/logos/';
+                    if (!file_exists($uploadDir)) {
+                        mkdir($uploadDir, 0755, true);
+                    }
+                    
+                    $ext = pathinfo($file['name'], PATHINFO_EXTENSION);
+                    if (empty($ext)) {
+                        $extMap = [
+                            'image/png' => 'png',
+                            'image/jpeg' => 'jpg',
+                            'image/gif' => 'gif',
+                            'image/svg+xml' => 'svg'
+                        ];
+                        $ext = $extMap[$mimeType] ?? 'png';
+                    }
+                    
+                    $filename = 'app_logo_' . time() . '.' . $ext;
+                    $destination = $uploadDir . $filename;
+                    
+                    if (move_uploaded_file($file['tmp_name'], $destination)) {
+                        $this->set('app_logo_image', '/uploads/logos/' . $filename);
+                    } else {
+                        echo json_encode(['success' => false, 'message' => 'Gagal menyimpan file logo ke server.']);
+                        return;
+                    }
+                } else {
+                    echo json_encode(['success' => false, 'message' => 'Format file logo tidak didukung. Gunakan PNG, JPG, GIF, atau SVG.']);
+                    return;
+                }
+            }
+
             foreach ($allowed as $key) {
                 if (isset($_POST[$key])) {
                     $val = trim($_POST[$key]);
@@ -102,6 +149,19 @@ class SettingsController {
                     if (in_array($key, ['office_radius_m', 'home_radius_m', 'grace_period_min', 'checkout_grace_period_min']) && (!is_numeric($val) || (int)$val < 0)) {
                         echo json_encode(['success' => false, 'message' => "Nilai '{$key}' harus berupa angka positif."]);
                         return;
+                    }
+                    if (in_array($key, ['payroll_tunj_jabatan_pct', 'payroll_bpjs_tk_pct', 'payroll_bpjs_kes_pct', 'payroll_pph21_pct'])) {
+                        if (!is_numeric($val) || (float)$val < 0 || (float)$val > 100) {
+                            echo json_encode(['success' => false, 'message' => "Nilai persentase harus antara 0% sampai 100%."]);
+                            return;
+                        }
+                    }
+                    if (in_array($key, ['payroll_tunj_jabatan_cap', 'payroll_tunj_transport', 'payroll_tunj_komunikasi', 'payroll_late_deduction'])) {
+                        $val = str_replace([',', '.'], '', $val);
+                        if (!is_numeric($val) || (float)$val < 0) {
+                            echo json_encode(['success' => false, 'message' => "Nilai nominal harus berupa angka positif."]);
+                            return;
+                        }
                     }
                     $this->set($key, $val);
                 }

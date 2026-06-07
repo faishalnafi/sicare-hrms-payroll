@@ -94,7 +94,6 @@
             <?php endif; ?>
             
             <form id="signupForm" class="space-y-6" action="/auth/register" method="POST" enctype="multipart/form-data">
-    <input type="hidden" name="csrf_token" value="<?= \App\Middleware\SecurityMiddleware::getCsrfToken() ?>">
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <!-- Nama Lengkap -->
                     <div class="space-y-2 md:col-span-2">
@@ -294,13 +293,10 @@
                     const formData = new FormData(this);
                     formData.append('first_name', firstName);
                     formData.append('last_name', lastName);
-                    const params = new URLSearchParams(formData);
                     
                     fetch('/auth/register', {
                         method: 'POST',
-                        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-                        body: params,
-                        credentials: 'same-origin'
+                        body: formData
                     })
                     .then(res => res.json())
                     .then(data => {
@@ -319,7 +315,7 @@
                             Swal.fire('Gagal!', data.message, 'error');
                         }
                     })
-                            .catch(err => Swal.fire('Error!', err.message || 'Koneksi ke server gagal.', 'error'));
+                    .catch(err => Swal.fire('Error!', 'Koneksi ke server gagal.', 'error'));
                 });
             </script>
             

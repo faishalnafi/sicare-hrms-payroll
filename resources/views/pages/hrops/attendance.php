@@ -186,7 +186,7 @@ function initials($fn, $ln) {
 
         <!-- Table -->
         <div class="overflow-x-auto" id="tableWrap">
-            <table class="w-full text-left border-collapse">
+            <table class="min-w-[1000px] w-full text-left border-collapse">
                 <thead>
                     <tr class="bg-surface text-on-surface-variant border-b border-outline-variant/10">
                         <th class="py-4 px-6 text-[10px] font-bold uppercase tracking-wider">Karyawan</th>
@@ -232,19 +232,15 @@ function initials($fn, $ln) {
                         data-name="<?= strtolower($empName) ?>"
                         data-status="<?= htmlspecialchars($row['status']) ?>">
                         <td class="py-4 px-6">
-                            <div class="flex items-center gap-3">
+                            <div class="flex items-center gap-3 w-52 min-w-[200px]">
                                 <?php 
                                     $profPic = $row['profile_picture'];
-                                    if (empty($profPic) && !empty($row['email'])) {
-                                        $hash = md5(strtolower(trim($row['email'])));
-                                        $profPic = "https://unavatar.io/" . urlencode($row['email']) . "?fallback=" . urlencode("https://www.gravatar.com/avatar/{$hash}?d=identicon&s=150");
+                                    $hash = md5(strtolower(trim($row['email'])));
+                                    if (empty($profPic)) {
+                                        $profPic = "https://www.gravatar.com/avatar/{$hash}?d=404&s=150";
                                     }
                                 ?>
-                                <?php if (!empty($profPic)): ?>
-                                    <img src="<?= htmlspecialchars($profPic) ?>" alt="<?= $empName ?>" class="w-10 h-10 rounded-full object-cover shadow-sm flex-shrink-0 bg-white border border-outline-variant/10" />
-                                <?php else: ?>
-                                    <div class="w-10 h-10 rounded-full <?= $avatarClr ?> font-bold text-sm flex items-center justify-center flex-shrink-0"><?= $ini ?></div>
-                                <?php endif; ?>
+                                <img src="<?= htmlspecialchars($profPic) ?>" onerror="window.handleAvatarError(this, '<?= $hash ?>')" alt="<?= $empName ?>" class="w-10 h-10 rounded-full object-cover shadow-sm flex-shrink-0 bg-white border border-outline-variant/10" />
                                 <div>
                                     <div class="font-extrabold text-sm text-on-surface"><?= $empName ?></div>
                                     <div class="text-[11px] text-on-surface-variant font-medium"><?= htmlspecialchars($row['job_title'] ?: 'Karyawan') ?> · <span class="font-mono"><?= $empId ?></span></div>

@@ -241,7 +241,7 @@ function getCategoryLabel($category) {
 
         <!-- Table -->
         <div class="overflow-x-auto">
-            <table class="w-full text-left border-collapse">
+            <table class="min-w-[1000px] w-full text-left border-collapse">
                 <thead>
                     <tr class="bg-surface text-on-surface-variant border-b border-outline-variant/15">
                         <th class="py-4 px-6 text-[11px] font-bold uppercase tracking-wider">Tanggal Diajukan</th>
@@ -275,11 +275,11 @@ function getCategoryLabel($category) {
                         <td class="py-4 px-6 font-mono text-xs font-bold text-on-surface">
                             Rp <?= number_format($claim['amount'], 0, ',', '.') ?>
                         </td>
-                        <td class="py-4 px-6">
-                            <div class="text-xs text-on-surface font-semibold truncate max-w-[200px]" title="<?= htmlspecialchars($claim['description']) ?>"><?= htmlspecialchars($claim['description']) ?></div>
+                        <td class="py-4 px-6 min-w-[380px]">
+                            <div class="text-xs text-on-surface font-semibold whitespace-normal break-words leading-relaxed" title="<?= htmlspecialchars($claim['description']) ?>"><?= htmlspecialchars($claim['description']) ?></div>
                         </td>
-                        <td class="py-4 px-6">
-                            <button onclick="viewReceipt('<?= htmlspecialchars($claim['receipt_path']) ?>', 'Rp <?= number_format($claim['amount'], 0, ',', '.') ?>')" class="text-[10px] text-primary hover:text-primary/80 no-underline hover:no-underline font-extrabold flex items-center gap-1 cursor-pointer">
+                        <td class="py-4 px-6 whitespace-nowrap">
+                            <button onclick="viewReceipt('<?= htmlspecialchars($claim['receipt_path']) ?>', 'Rp <?= number_format($claim['amount'], 0, ',', '.') ?>')" class="text-[10px] text-primary hover:text-primary/80 no-underline hover:no-underline font-extrabold flex items-center gap-1 cursor-pointer whitespace-nowrap">
                                 <span class="material-symbols-outlined text-xs font-bold text-primary hover:text-primary/80">attachment</span>
                                 <span>Lihat Berkas</span>
                             </button>
@@ -348,7 +348,6 @@ function getCategoryLabel($category) {
 
         <!-- Modal Body Form -->
         <form id="claimSubmitForm" onsubmit="submitClaimForm(event)" class="p-6 space-y-4">
-    <input type="hidden" name="csrf_token" value="<?= \App\Middleware\SecurityMiddleware::getCsrfToken() ?>">
             <!-- Category -->
             <div class="space-y-1.5">
                 <label for="claimCategory" class="block text-xs font-bold text-on-surface-variant uppercase">Kategori Reimbursement <span class="text-red-500">*</span></label>

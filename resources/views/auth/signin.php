@@ -1,3 +1,7 @@
+<?php
+$db = \App\Config\Database::getInstance()->getConnection();
+$appName = $db->query("SELECT `value` FROM global_settings WHERE `key` = 'app_name' LIMIT 1")->fetchColumn() ?: 'siCare';
+?>
 <div class="flex-grow flex items-center justify-center px-6 py-2 relative overflow-hidden">
     <!-- Background Decorative Elements -->
     <div class="absolute top-0 left-0 w-full h-full opacity-5 pointer-events-none">
@@ -13,7 +17,7 @@
                 KEAMANAN TINGKAT PERUSAHAAN
             </div>
             <h1 class="font-headline text-6xl font-extrabold text-primary leading-tight tracking-tighter">Akses Masa <br/><span class="text-secondary">Depan Karirmu.</span></h1>
-            <p class="text-on-surface-variant text-lg leading-relaxed max-w-md">siCare menyediakan gerbang yang aman dan terpadu untuk mengakses portal HR, melacak lamaran, dan sumber daya perusahaan Anda.</p>
+            <p class="text-on-surface-variant text-lg leading-relaxed max-w-md"><?= htmlspecialchars($appName) ?> menyediakan gerbang yang aman dan terpadu untuk mengakses portal HR, melacak lamaran, dan sumber daya perusahaan Anda.</p>
             <div class="flex items-center gap-6 mt-4">
                 <div class="flex -space-x-3">
                     <img class="w-10 h-10 rounded-full border-2 border-surface bg-white" alt="Abstract Profile 1" src="https://www.gravatar.com/avatar/12345678901234567890123456789012?d=identicon&f=y"/>
@@ -28,7 +32,7 @@
         <div class="flex justify-center md:justify-end">
             <div class="w-full max-w-[480px] bg-surface-container-lowest p-6 md:p-8 rounded-xl shadow-[0_20px_40px_rgba(0,7,103,0.06)] border border-outline-variant/15">
                 <div class="mb-6 text-center md:text-left">
-                    <span class="font-headline text-2xl font-black text-primary mb-2 block tracking-tight">siCare</span>
+                    <span class="font-headline text-2xl font-black text-primary mb-2 block tracking-tight"><?= htmlspecialchars($appName) ?></span>
                     <h2 class="font-headline text-3xl font-bold text-on-surface mt-2">Masuk</h2>
                 </div>
                 
@@ -75,7 +79,7 @@
                     
                     <!-- Login Form -->
                     <form id="signinForm" class="space-y-4" action="/auth/login" method="POST">
-                        <input type="hidden" name="csrf_token" value="<?= \App\Middleware\SecurityMiddleware::getCsrfToken() ?>">
+                        <input type="hidden" name="csrf_token" value="dummy_token_here">
                         <div class="space-y-2">
                             <label class="text-sm font-semibold text-on-surface-variant ml-1" for="employee_id">Email Karyawan</label>
                             <input class="w-full px-4 py-2.5 bg-surface-container-high border-none rounded-lg focus:ring-0 focus:bg-surface-container-lowest focus:border-b-2 focus:border-primary transition-all text-on-surface" id="email" name="email" placeholder="email@domain.com" type="email" required/>
@@ -105,12 +109,9 @@
                         document.getElementById('signinForm').addEventListener('submit', function(e) {
                             e.preventDefault();
                             const formData = new FormData(this);
-                            const params = new URLSearchParams(formData);
                             fetch('/auth/login', {
                                 method: 'POST',
-                                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-                                body: params,
-                                credentials: 'same-origin'
+                                body: formData
                             })
                             .then(res => res.json())
                             .then(data => {
@@ -129,7 +130,7 @@
                                     Swal.fire('Gagal!', data.message, 'error');
                                 }
                             })
-                            .catch(err => Swal.fire('Error!', err.message || 'Koneksi ke server gagal.', 'error'));
+                            .catch(err => Swal.fire('Error!', 'Koneksi ke server gagal.', 'error'));
                         });
                     </script>
                     

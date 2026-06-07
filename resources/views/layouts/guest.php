@@ -1,9 +1,33 @@
+<?php
+$db = \App\Config\Database::getInstance()->getConnection();
+$appName = $db->query("SELECT `value` FROM global_settings WHERE `key` = 'app_name' LIMIT 1")->fetchColumn() ?: 'siCare';
+$appLogoImage = $db->query("SELECT `value` FROM global_settings WHERE `key` = 'app_logo_image' LIMIT 1")->fetchColumn() ?: '';
+
+// Determine dynamic guest page title
+$page = $page ?? '';
+$guestPageMapping = [
+    'landing' => 'HRIS & ATS System',
+    'signin' => 'Sign In',
+    'signup' => 'Sign Up',
+    'privacy' => 'Privacy Policy',
+    'terms' => 'Terms of Service',
+    'security' => 'Security Info',
+    'support' => 'Support Center'
+];
+$resolvedGuestPage = $guestPageMapping[$page] ?? ucwords(str_replace(['_', '-'], ' ', $page));
+$pageTitle = $appName;
+if (!empty($resolvedGuestPage)) {
+    $pageTitle .= ' | ' . $resolvedGuestPage;
+}
+?>
 <!DOCTYPE html>
 <html class="light" lang="id">
 <head>
     <meta charset="utf-8"/>
     <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
-    <title>siCare - HRIS & ATS System</title>
+    <title><?= htmlspecialchars($pageTitle) ?></title>
+    <!-- Favicon from Uploaded Logo -->
+    <link rel="icon" type="image/x-icon" href="<?= htmlspecialchars($appLogoImage ?: '/favicon.ico') ?>"/>
     
     <!-- Fonts -->
     <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Inter:wght@400;500;600&display=swap" rel="stylesheet"/>

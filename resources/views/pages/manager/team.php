@@ -49,9 +49,12 @@ if ($hasDepartment) {
 }
 
 // Function to generate Gravatar avatar
-function getGravatarTeam($email) {
+function getGravatarTeam($email, $profilePic = null) {
+    if (!empty($profilePic)) {
+        return $profilePic;
+    }
     $hash = md5(strtolower(trim($email)));
-    return "https://www.gravatar.com/avatar/{$hash}?d=identicon&s=150";
+    return "https://www.gravatar.com/avatar/{$hash}?d=404&s=150";
 }
 
 // Helper to format clean WhatsApp link
@@ -169,7 +172,8 @@ function getWhatsAppLinkTeam($phone) {
                     <!-- Top row: Avatar & Profile info -->
                     <div class="flex items-start gap-4">
                         <div class="relative flex-shrink-0">
-                            <img src="<?= getGravatarTeam($tm['email']) ?>" alt="Avatar" class="w-14 h-14 rounded-full border border-outline-variant/20 object-cover shadow-sm" />
+                            <?php $hash = md5(strtolower(trim($tm['email'] ?? ''))); ?>
+                            <img src="<?= htmlspecialchars(getGravatarTeam($tm['email'], $tm['profile_picture'])) ?>" alt="Avatar" class="w-14 h-14 rounded-full border border-outline-variant/20 object-cover shadow-sm" onerror="window.handleAvatarError(this, '<?= $hash ?>')" />
                             <span class="absolute bottom-0 right-0 w-3.5 h-3.5 rounded-full border-2 border-surface-container-lowest bg-green-500 animate-pulse" title="Aktif"></span>
                         </div>
                         <div class="space-y-0.5 min-w-0">
@@ -318,7 +322,8 @@ function getWhatsAppLinkTeam($phone) {
                             <!-- Profile / Avatar / ID -->
                             <td class="py-4 px-6">
                                 <div class="flex items-center gap-3">
-                                    <img src="<?= getGravatarTeam($tm['email']) ?>" alt="Avatar" class="w-9 h-9 rounded-full border object-cover" />
+                                    <?php $hash = md5(strtolower(trim($tm['email'] ?? ''))); ?>
+                                    <img src="<?= htmlspecialchars(getGravatarTeam($tm['email'], $tm['profile_picture'])) ?>" alt="Avatar" class="w-9 h-9 rounded-full border object-cover" onerror="window.handleAvatarError(this, '<?= $hash ?>')" />
                                     <div>
                                         <h4 class="font-extrabold text-on-surface whitespace-nowrap"><?= htmlspecialchars($tm['first_name'] . ' ' . $tm['last_name']) ?></h4>
                                         <span class="inline-block text-[9px] font-extrabold px-1.5 py-0.5 mt-0.5 rounded bg-surface-container-high text-on-surface-variant border border-outline-variant/15 tracking-wider">
@@ -400,7 +405,45 @@ function getWhatsAppLinkTeam($phone) {
         </div>
 
         <!-- Modal Body (Table Container) -->
-        <div class="p-6 overflow-y-auto flex-grow">
+        <div class="p-6 overflow-y-auto flex-grow space-y-4">
+            <!-- Filter Bar for Month & Year -->
+            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-surface-container-low/30 border border-outline-variant/10 rounded-2xl p-4 shadow-[0_4px_20px_rgba(0,6,102,0.002)]">
+                <div class="flex items-center gap-2">
+                    <span class="material-symbols-outlined text-sm text-primary">filter_list</span>
+                    <span class="text-[11px] font-extrabold text-on-surface uppercase tracking-wider">Filter Periode Audit</span>
+                </div>
+                <div class="flex flex-wrap items-center gap-3">
+                    <div class="flex items-center gap-1.5">
+                        <label for="audit-month-select" class="text-[10px] font-bold text-on-surface-variant uppercase">Bulan:</label>
+                        <select id="audit-month-select" onchange="window.reloadMonthlyAttendanceAudit()" class="px-3 py-1.5 border border-outline-variant/30 rounded-xl bg-surface-container-lowest text-xs text-on-surface font-semibold focus:outline-none focus:border-primary transition-all cursor-pointer">
+                            <option value="1">Januari</option>
+                            <option value="2">Februari</option>
+                            <option value="3">Maret</option>
+                            <option value="4">April</option>
+                            <option value="5">Mei</option>
+                            <option value="6">Juni</option>
+                            <option value="7">Juli</option>
+                            <option value="8">Agustus</option>
+                            <option value="9">September</option>
+                            <option value="10">Oktober</option>
+                            <option value="11">November</option>
+                            <option value="12">Desember</option>
+                        </select>
+                    </div>
+                    <div class="flex items-center gap-1.5">
+                        <label for="audit-year-select" class="text-[10px] font-bold text-on-surface-variant uppercase">Tahun:</label>
+                        <select id="audit-year-select" onchange="window.reloadMonthlyAttendanceAudit()" class="px-3 py-1.5 border border-outline-variant/30 rounded-xl bg-surface-container-lowest text-xs text-on-surface font-semibold focus:outline-none focus:border-primary transition-all cursor-pointer">
+                            <?php 
+                            $currentYear = (int)date('Y');
+                            for ($y = $currentYear - 2; $y <= $currentYear + 1; $y++): 
+                            ?>
+                                <option value="<?= $y ?>" <?= $y === $currentYear ? 'selected' : '' ?>><?= $y ?></option>
+                            <?php endfor; ?>
+                        </select>
+                    </div>
+                </div>
+            </div>
+
             <div class="overflow-x-auto border border-outline-variant/10 rounded-2xl">
                 <table class="w-full text-left border-collapse">
                     <thead>
@@ -536,11 +579,30 @@ function getWhatsAppLinkTeam($phone) {
             return;
         }
         document.getElementById('audit-employee-name').innerText = fullName;
+        
+        // Save current userId to a window variable
+        window.currentAuditUserId = userId;
+        
+        // Reset selectors to current month and year
+        const now = new Date();
+        document.getElementById('audit-month-select').value = now.getMonth() + 1;
+        document.getElementById('audit-year-select').value = now.getFullYear();
+
+        window.reloadMonthlyAttendanceAudit();
+    }
+
+    window.reloadMonthlyAttendanceAudit = function() {
+        const userId = window.currentAuditUserId;
+        if (!userId) return;
+
+        const month = document.getElementById('audit-month-select').value;
+        const year = document.getElementById('audit-year-select').value;
+
         const tbody = document.getElementById('audit-modal-tbody');
-        tbody.innerHTML = `<tr><td colspan="9" class="py-8 px-6 text-center text-on-surface-variant font-medium">Sedang memuat riwayat presensi bulanan...</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="9" class="py-8 px-6 text-center text-on-surface-variant font-medium">Sedang memuat riwayat presensi...</td></tr>`;
         document.getElementById('monthlyAuditModal').classList.remove('hidden');
 
-        fetch(`/manager/attendance/member_monthly?user_id=${userId}`)
+        fetch(`/manager/attendance/member_monthly?user_id=${userId}&month=${month}&year=${year}`)
         .then(res => {
             console.log("Fetch response received, status code:", res.status);
             return res.json();
@@ -549,7 +611,7 @@ function getWhatsAppLinkTeam($phone) {
             console.log("Parsed JSON response:", res);
             if (res.success) {
                 if (!res.data || res.data.length === 0) {
-                    tbody.innerHTML = `<tr><td colspan="9" class="py-12 px-6 text-center text-on-surface-variant font-medium">Belum ada riwayat kehadiran tercatat untuk staf ini di bulan berjalan.</td></tr>`;
+                    tbody.innerHTML = `<tr><td colspan="9" class="py-12 px-6 text-center text-on-surface-variant font-medium">Belum ada riwayat kehadiran tercatat untuk staf ini di periode terpilih.</td></tr>`;
                     return;
                 }
 

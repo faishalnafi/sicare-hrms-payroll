@@ -12,17 +12,30 @@ try {
 
 // Fallback defaults
 $cfg = array_merge([
-    'office_lat'         => '-6.2297',
-    'office_lng'         => '106.8164',
-    'office_radius_m'    => '150',
-    'home_radius_m'      => '100',
-    'work_start_time'    => '08:00',
-    'work_end_time'      => '17:00',
-    'grace_period_min'   => '10',
-    'office_wifi_prefix' => '192.168.10.',
-    'wfa_allowed'        => 'true',
-    'wfa_days'           => '',
-    'weekly_holidays'    => 'Sat,Sun',
+    'office_lat'               => '-6.2297',
+    'office_lng'               => '106.8164',
+    'office_radius_m'          => '150',
+    'home_radius_m'            => '100',
+    'work_start_time'          => '08:00',
+    'work_end_time'            => '17:00',
+    'grace_period_min'         => '10',
+    'office_wifi_prefix'       => '192.168.10.',
+    'wfa_allowed'              => 'true',
+    'wfa_days'                 => '',
+    'weekly_holidays'          => 'Sat,Sun',
+    'payroll_tunj_jabatan_pct' => '15',
+    'payroll_tunj_jabatan_cap' => '2500000',
+    'payroll_tunj_transport'   => '1500000',
+    'payroll_tunj_komunikasi'  => '500000',
+    'payroll_late_deduction'   => '50000',
+    'payroll_bpjs_tk_pct'      => '2',
+    'payroll_bpjs_kes_pct'     => '1',
+    'payroll_pph21_pct'        => '2.5',
+    'app_name'                 => 'siCare',
+    'app_company_name'         => 'PT SI CARE ENTERPRISE',
+    'app_logo_icon'            => 'local_police',
+    'app_logo_type'            => 'icon',
+    'app_logo_image'           => '',
 ], $cfg);
 
 $wfaDaysArr = array_filter(array_map('trim', explode(',', $cfg['wfa_days'])));
@@ -90,12 +103,71 @@ $allDays = ['Mon' => 'Senin', 'Tue' => 'Selasa', 'Wed' => 'Rabu', 'Thu' => 'Kami
         </div>
     </div>
 
-    <form id="settingsForm" onsubmit="saveSettings(event)">
-    <input type="hidden" name="csrf_token" value="<?= \App\Middleware\SecurityMiddleware::getCsrfToken() ?>">
+    <form id="settingsForm" enctype="multipart/form-data" onsubmit="saveSettings(event)">
         <div class="grid grid-cols-1 xl:grid-cols-3 gap-6">
 
             <!-- ── Col 1–2: Main Settings ── -->
             <div class="xl:col-span-2 space-y-5">
+
+                <!-- === PROFIL APLIKASI & PERUSAHAAN === -->
+                <div class="settings-card p-6">
+                    <div class="flex items-center gap-2.5 mb-5">
+                        <span class="material-symbols-outlined text-primary text-xl bg-primary/8 p-2 rounded-xl" style="background:rgba(0,6,102,.07)">business</span>
+                        <h2 class="settings-section-title">Profil Aplikasi & Perusahaan</h2>
+                    </div>
+
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                        <div>
+                            <label class="settings-label" for="app_name">Nama Aplikasi</label>
+                            <input type="text" id="app_name" name="app_name"
+                                value="<?= htmlspecialchars($cfg['app_name']) ?>"
+                                class="settings-input" placeholder="siCare" required />
+                            <p class="settings-helper">Nama aplikasi yang tampil di sidebar, tab browser, dan halaman login.</p>
+                        </div>
+                        <div>
+                            <label class="settings-label" for="app_company_name">Nama Perusahaan (PT)</label>
+                            <input type="text" id="app_company_name" name="app_company_name"
+                                value="<?= htmlspecialchars($cfg['app_company_name']) ?>"
+                                class="settings-input" placeholder="PT SI CARE ENTERPRISE" required />
+                            <p class="settings-helper">Nama resmi perusahaan pada kop slip gaji dan tanda tangan digital.</p>
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <div>
+                            <label class="settings-label" for="app_logo_type">Tipe Logo</label>
+                            <select id="app_logo_type" name="app_logo_type" class="settings-input" onchange="toggleLogoFields()">
+                                <option value="icon" <?= $cfg['app_logo_type'] === 'icon' ? 'selected' : '' ?>>Google Icon</option>
+                                <option value="image" <?= $cfg['app_logo_type'] === 'image' ? 'selected' : '' ?>>Unggah Gambar Logo</option>
+                            </select>
+                            <p class="settings-helper">Pilih jenis logo: menggunakan Google Font Icon atau mengunggah berkas gambar logo custom.</p>
+                        </div>
+                        <div id="logo_icon_wrapper" class="<?= $cfg['app_logo_type'] === 'image' ? 'hidden' : '' ?>">
+                            <label class="settings-label" for="app_logo_icon">Logo Aplikasi (Material Icon)</label>
+                            <input type="text" id="app_logo_icon" name="app_logo_icon"
+                                value="<?= htmlspecialchars($cfg['app_logo_icon']) ?>"
+                                class="settings-input" placeholder="local_police" />
+                            <p class="settings-helper">Nama icon Google Material Symbols (misal: local_police, shield, business).</p>
+                        </div>
+                        <div id="logo_image_wrapper" class="md:col-span-2 <?= $cfg['app_logo_type'] === 'icon' ? 'hidden' : '' ?> flex flex-col md:flex-row gap-4 items-start">
+                            <div class="flex-grow w-full">
+                                <label class="settings-label" for="app_logo_file">Unggah Gambar Logo</label>
+                                <input type="file" id="app_logo_file" name="app_logo_file" accept="image/png, image/jpeg, image/gif, image/svg+xml" class="settings-input file:mr-4 file:py-1 file:px-3 file:rounded-md file:border-0 file:text-xs file:font-semibold file:bg-primary/10 file:text-primary hover:file:bg-primary/20" onchange="previewLogoFile(event)" />
+                                <p class="settings-helper">Format berkas: PNG, JPG, GIF, atau SVG. Ukuran maksimal 2MB.</p>
+                            </div>
+                            <div class="flex flex-col items-center justify-center shrink-0 w-28 h-20 bg-neutral-50 rounded-xl border border-dashed border-neutral-300 relative overflow-hidden group">
+                                <p class="text-[9px] font-bold text-neutral-400 absolute top-1">Pratinjau</p>
+                                <div id="logo_preview_container" class="mt-4 flex items-center justify-center w-full h-12 px-2">
+                                    <?php if (!empty($cfg['app_logo_image'])): ?>
+                                        <img id="logo_preview_img" src="<?= htmlspecialchars($cfg['app_logo_image']) ?>" class="max-h-full max-w-full object-contain" />
+                                    <?php else: ?>
+                                        <span id="logo_preview_placeholder" class="text-neutral-400 text-xs italic">Kosong</span>
+                                    <?php endif; ?>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
 
                 <!-- === LOKASI KANTOR === -->
                 <div class="settings-card p-6">
@@ -255,6 +327,109 @@ $allDays = ['Mon' => 'Senin', 'Tue' => 'Selasa', 'Wed' => 'Rabu', 'Thu' => 'Kami
 
                     <!-- Live preview khusus checkout status -->
                     <div id="checkoutPreview" class="mt-4 p-4 rounded-xl bg-orange-50/50 border border-orange-100 text-xs font-semibold text-orange-850">
+                    </div>
+                </div>
+
+                <!-- === PENGATURAN KEBIJAKAN PENGGAJIAN === -->
+                <div class="settings-card p-6">
+                    <div class="flex items-center gap-2.5 mb-5">
+                        <span class="material-symbols-outlined text-emerald-700 text-xl p-2 rounded-xl" style="background:rgba(0,102,50,.07)">payments</span>
+                        <h2 class="settings-section-title" style="color:#004d26">Kebijakan & Komponen Penggajian (Payroll)</h2>
+                    </div>
+
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
+                        <div>
+                            <label class="settings-label" for="payroll_tunj_jabatan_pct">Persentase Tunjangan Jabatan</label>
+                            <div class="flex items-center gap-2">
+                                <input type="number" id="payroll_tunj_jabatan_pct" name="payroll_tunj_jabatan_pct"
+                                    value="<?= htmlspecialchars($cfg['payroll_tunj_jabatan_pct']) ?>"
+                                    min="0" max="100" step="0.1"
+                                    class="settings-input" style="padding:.6rem" />
+                                <span class="text-xs font-semibold text-on-surface-variant whitespace-nowrap">%</span>
+                            </div>
+                            <p class="settings-helper mt-1">Persentase tunjangan jabatan dari Gaji Pokok karyawan.</p>
+                        </div>
+
+                        <div>
+                            <label class="settings-label" for="payroll_tunj_jabatan_cap">Batas Maksimal Tunjangan Jabatan</label>
+                            <div class="flex items-center gap-2">
+                                <span class="text-xs font-semibold text-on-surface-variant whitespace-nowrap">Rp</span>
+                                <input type="text" id="payroll_tunj_jabatan_cap" name="payroll_tunj_jabatan_cap"
+                                    value="<?= number_format((float)$cfg['payroll_tunj_jabatan_cap'], 0, ',', '.') ?>"
+                                    class="settings-input font-mono" style="padding:.6rem"
+                                    oninput="this.value = this.value.replace(/[^0-9]/g, '').replace(/\B(?=(\d{3})+(?!\d))/g, '.');" />
+                            </div>
+                            <p class="settings-helper mt-1">Batas nominal maksimal bulanan tunjangan jabatan.</p>
+                        </div>
+
+                        <div>
+                            <label class="settings-label" for="payroll_tunj_transport">Tunjangan Transport & Makan Flat</label>
+                            <div class="flex items-center gap-2">
+                                <span class="text-xs font-semibold text-on-surface-variant whitespace-nowrap">Rp</span>
+                                <input type="text" id="payroll_tunj_transport" name="payroll_tunj_transport"
+                                    value="<?= number_format((float)$cfg['payroll_tunj_transport'], 0, ',', '.') ?>"
+                                    class="settings-input font-mono" style="padding:.6rem"
+                                    oninput="this.value = this.value.replace(/[^0-9]/g, '').replace(/\B(?=(\d{3})+(?!\d))/g, '.');" />
+                            </div>
+                            <p class="settings-helper mt-1">Nilai tetap tunjangan transport & makan bulanan.</p>
+                        </div>
+
+                        <div>
+                            <label class="settings-label" for="payroll_tunj_komunikasi">Tunjangan Komunikasi Flat</label>
+                            <div class="flex items-center gap-2">
+                                <span class="text-xs font-semibold text-on-surface-variant whitespace-nowrap">Rp</span>
+                                <input type="text" id="payroll_tunj_komunikasi" name="payroll_tunj_komunikasi"
+                                    value="<?= number_format((float)$cfg['payroll_tunj_komunikasi'], 0, ',', '.') ?>"
+                                    class="settings-input font-mono" style="padding:.6rem"
+                                    oninput="this.value = this.value.replace(/[^0-9]/g, '').replace(/\B(?=(\d{3})+(?!\d))/g, '.');" />
+                            </div>
+                            <p class="settings-helper mt-1">Nilai tetap tunjangan komunikasi/pulsa bulanan.</p>
+                        </div>
+
+                        <div>
+                            <label class="settings-label" for="payroll_late_deduction">Denda Keterlambatan Per Hari</label>
+                            <div class="flex items-center gap-2">
+                                <span class="text-xs font-semibold text-on-surface-variant whitespace-nowrap">Rp</span>
+                                <input type="text" id="payroll_late_deduction" name="payroll_late_deduction"
+                                    value="<?= number_format((float)$cfg['payroll_late_deduction'], 0, ',', '.') ?>"
+                                    class="settings-input font-mono" style="padding:.6rem"
+                                    oninput="this.value = this.value.replace(/[^0-9]/g, '').replace(/\B(?=(\d{3})+(?!\d))/g, '.');" />
+                            </div>
+                            <p class="settings-helper mt-1">Denda potongan per hari jika karyawan terlambat masuk kerja.</p>
+                        </div>
+
+                        <div>
+                            <label class="settings-label" for="payroll_bpjs_tk_pct">Potongan BPJS Ketenagakerjaan (%)</label>
+                            <div class="flex items-center gap-2">
+                                <input type="number" step="0.01" min="0" max="100" id="payroll_bpjs_tk_pct" name="payroll_bpjs_tk_pct"
+                                    value="<?= htmlspecialchars($cfg['payroll_bpjs_tk_pct']) ?>"
+                                    class="settings-input" style="padding:.6rem" />
+                                <span class="text-xs font-semibold text-on-surface-variant whitespace-nowrap">%</span>
+                            </div>
+                            <p class="settings-helper mt-1">Persentase potongan BPJS TK Karyawan (default: 2%, set 0 jika tidak ada).</p>
+                        </div>
+
+                        <div>
+                            <label class="settings-label" for="payroll_bpjs_kes_pct">Potongan BPJS Kesehatan (%)</label>
+                            <div class="flex items-center gap-2">
+                                <input type="number" step="0.01" min="0" max="100" id="payroll_bpjs_kes_pct" name="payroll_bpjs_kes_pct"
+                                    value="<?= htmlspecialchars($cfg['payroll_bpjs_kes_pct']) ?>"
+                                    class="settings-input" style="padding:.6rem" />
+                                <span class="text-xs font-semibold text-on-surface-variant whitespace-nowrap">%</span>
+                            </div>
+                            <p class="settings-helper mt-1">Persentase potongan BPJS Kesehatan Karyawan (default: 1%, set 0 jika tidak ada).</p>
+                        </div>
+
+                        <div>
+                            <label class="settings-label" for="payroll_pph21_pct">Pajak Penghasilan PPh 21 (%)</label>
+                            <div class="flex items-center gap-2">
+                                <input type="number" step="0.01" min="0" max="100" id="payroll_pph21_pct" name="payroll_pph21_pct"
+                                    value="<?= htmlspecialchars($cfg['payroll_pph21_pct']) ?>"
+                                    class="settings-input" style="padding:.6rem" />
+                                <span class="text-xs font-semibold text-on-surface-variant whitespace-nowrap">%</span>
+                            </div>
+                            <p class="settings-helper mt-1">Persentase potongan Pajak PPh 21 Karyawan (default: 2.5%, set 0 jika tidak ada).</p>
+                        </div>
                     </div>
                 </div>
 
@@ -589,6 +764,11 @@ function updateSchedulePreview() {
 });
 updateSchedulePreview();
 
+// Init logo fields
+if (document.getElementById('app_logo_type')) {
+    toggleLogoFields();
+}
+
 // ── Save ─────────────────────────────────────────────────────
 function saveSettings(e) {
     e.preventDefault();
@@ -753,6 +933,36 @@ function deleteHoliday(id) {
     });
 }
 
+function toggleLogoFields() {
+    const type = document.getElementById('app_logo_type').value;
+    const iconWrapper = document.getElementById('logo_icon_wrapper');
+    const imageWrapper = document.getElementById('logo_image_wrapper');
+    const iconInput = document.getElementById('app_logo_icon');
+
+    if (type === 'image') {
+        iconWrapper.classList.add('hidden');
+        imageWrapper.classList.remove('hidden');
+        iconInput.removeAttribute('required');
+    } else {
+        iconWrapper.classList.remove('hidden');
+        imageWrapper.classList.add('hidden');
+        iconInput.setAttribute('required', 'required');
+    }
+}
+
+function previewLogoFile(event) {
+    const file = event.target.files[0];
+    if (!file) return;
+
+    const container = document.getElementById('logo_preview_container');
+    container.innerHTML = '';
+
+    const img = document.createElement('img');
+    img.className = 'max-h-full max-w-full object-contain';
+    img.src = URL.createObjectURL(file);
+    container.appendChild(img);
+}
+
 // Expose functions globally to prevent ReferenceErrors due to IIFE encapsulation in SPA router
 window.syncRadius = syncRadius;
 window.syncHomeRadius = syncHomeRadius;
@@ -765,4 +975,6 @@ window.openAddHolidayModal = openAddHolidayModal;
 window.deleteHoliday = deleteHoliday;
 window.updateSchedulePreview = updateSchedulePreview;
 window.saveSettings = saveSettings;
+window.toggleLogoFields = toggleLogoFields;
+window.previewLogoFile = previewLogoFile;
 </script>

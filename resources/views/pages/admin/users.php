@@ -106,7 +106,6 @@
 
         <!-- Form Body -->
         <form id="mutationForm" onsubmit="window.submitMutationForm(event)" class="overflow-y-auto p-6 space-y-6 custom-scrollbar font-body">
-    <input type="hidden" name="csrf_token" value="<?= \App\Middleware\SecurityMiddleware::getCsrfToken() ?>">
             <input type="hidden" id="mutId" name="id">
             
             <!-- User Summary Details Card -->
@@ -369,15 +368,16 @@
                 var empId    = user.employee_id
                     ? escHtml(user.employee_id)
                     : '<span class="text-[9px] bg-amber-50 text-amber-600 px-1.5 py-0.5 rounded font-bold uppercase">BELUM ADA NIK</span>';
+                var md5Hash = window.md5((user.email || '').trim().toLowerCase());
                 var pp = user.profile_picture
                     ? escHtml(user.profile_picture)
-                    : 'https://www.gravatar.com/avatar/' + window.md5((user.email || '').trim().toLowerCase()) + '?d=identicon&s=120';
+                    : 'https://www.gravatar.com/avatar/' + md5Hash + '?d=404&s=120';
                 var badgeClass = getRoleBadgeClass(user.role);
 
                 tr.innerHTML =
                     '<td class="px-6 py-4">' +
                         '<div class="flex items-center gap-3">' +
-                            '<img src="' + pp + '" class="w-10 h-10 rounded-full object-cover border border-outline-variant/30 flex-shrink-0" alt="Avatar" onerror="this.src=\'https://www.gravatar.com/avatar/\' + window.md5(\'' + escHtml(user.email || '') + '\'.trim().toLowerCase()) + \'?d=identicon&s=120\'">' +
+                            '<img src="' + pp + '" class="w-10 h-10 rounded-full object-cover border border-outline-variant/30 flex-shrink-0" alt="Avatar" onerror="window.handleAvatarError(this, \'' + md5Hash + '\')">' +
                             '<div>' +
                                 '<p class="text-sm font-bold text-on-surface">' + fullName + '</p>' +
                                 '<p class="text-xs text-on-surface-variant font-mono mt-0.5">' + empId + '</p>' +
@@ -441,8 +441,12 @@
         if (el('mutFullName'))   el('mutFullName').textContent  = fullName;
         if (el('mutEmail'))      el('mutEmail').textContent     = user.email;
         if (el('mutCurrentRole')) el('mutCurrentRole').textContent = user.role;
-        if (el('mutAvatar'))     el('mutAvatar').src = user.profile_picture ||
-            'https://ui-avatars.com/api/?name=' + encodeURIComponent(user.first_name || 'U') + '&background=000666&color=fff&size=64';
+        if (el('mutAvatar')) {
+            el('mutAvatar').src = user.profile_picture || 'https://www.gravatar.com/avatar/' + window.md5((user.email || '').trim().toLowerCase()) + '?d=404&s=120';
+            el('mutAvatar').onerror = function() {
+                window.handleAvatarError(this, window.md5((user.email || '').trim().toLowerCase()));
+            };
+        }
 
         if (el('mutId'))          el('mutId').value          = user.id          || '';
         if (el('mutStaffId'))     el('mutStaffId').value     = user.employee_id || '';

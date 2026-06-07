@@ -18,9 +18,9 @@ $jobTitle = !empty($dbUser['job_title']) ? $dbUser['job_title'] : '-';
 
 $profilePic = $dbUser['profile_picture'] ?? $_SESSION['profile_picture'] ?? null;
 
+$hash = md5(strtolower(trim($sessEmail)));
 if (empty($profilePic)) {
-    $hash = md5(strtolower(trim($sessEmail)));
-    $profilePic = "https://www.gravatar.com/avatar/{$hash}?d=identicon&s=200";
+    $profilePic = "https://www.gravatar.com/avatar/{$hash}?d=404&s=200";
 }
 
 $employeeId = !empty($dbUser['employee_id']) ? $dbUser['employee_id'] : '-';
@@ -74,7 +74,7 @@ $pendingRequests = $reqQuery->fetchAll();
                 
                 <div class="relative flex flex-col items-center">
                     <div class="relative mb-4">
-                        <img alt="Foto Profil" class="w-32 h-32 rounded-full object-cover border-4 border-surface shadow-md bg-white" src="<?php echo htmlspecialchars($profilePic); ?>"/>
+                        <img alt="Foto Profil" class="w-32 h-32 rounded-full object-cover border-4 border-surface shadow-md bg-white" src="<?php echo htmlspecialchars($profilePic); ?>" onerror="window.handleAvatarError(this, '<?= $hash ?>')"/>
                         <button onclick="Swal.fire({title: 'Ubah Foto Profil', text: 'Unggah foto profil baru divalidasi aman via server. Maks 10MB.', icon: 'info', confirmButtonColor: '#000666'})" class="hidden absolute bottom-1 right-1 bg-primary text-white p-2 rounded-full shadow-lg hover:scale-110 active:scale-95 transition-all">
                             <span class="material-symbols-outlined text-sm">photo_camera</span>
                         </button>
@@ -127,14 +127,37 @@ $pendingRequests = $reqQuery->fetchAll();
             </div>
 
             <!-- Status Pengajuan Perbaikan Data -->
-            <?php if (count($pendingRequests) > 0): ?>
+            <?php 
+            $itemsCount = count($pendingRequests);
+            if ($itemsCount > 0): 
+                $itemsPerPage = 3;
+                $totalPages = ceil($itemsCount / $itemsPerPage);
+            ?>
             <div class="bg-surface-container-lowest rounded-2xl p-5 border border-outline-variant/15 shadow-[0_12px_24px_rgba(0,6,102,0.01)] space-y-4">
-                <div class="flex items-center gap-2 pb-3 border-b border-outline-variant/10">
-                    <span class="material-symbols-outlined text-primary text-xl">fact_check</span>
-                    <h3 class="text-sm font-extrabold text-on-surface">Status Pengajuan (<span class="text-primary"><?php echo count($pendingRequests); ?></span>)</h3>
+                <div class="flex items-center justify-between pb-3 border-b border-outline-variant/10">
+                    <div class="flex items-center gap-2">
+                        <span class="material-symbols-outlined text-primary text-xl">fact_check</span>
+                        <h3 class="text-sm font-extrabold text-on-surface">Status Pengajuan (<span class="text-primary"><?php echo $itemsCount; ?></span>)</h3>
+                    </div>
+                    <?php if ($totalPages > 1): ?>
+                        <div class="flex items-center gap-1 bg-surface-container-low px-2 py-0.5 rounded-full border border-outline-variant/10 select-none">
+                            <button type="button" onclick="prevPendingPage()" class="p-0.5 hover:bg-surface-container-high rounded-full transition-colors text-on-surface-variant disabled:opacity-30 disabled:pointer-events-none" id="prevPendingBtn" disabled>
+                                <span class="material-symbols-outlined text-sm font-bold">chevron_left</span>
+                            </button>
+                            <span class="text-[10px] font-extrabold text-primary min-w-[28px] text-center" id="pendingPageIndicator">1 / <?php echo $totalPages; ?></span>
+                            <button type="button" onclick="nextPendingPage()" class="p-0.5 hover:bg-surface-container-high rounded-full transition-colors text-on-surface-variant disabled:opacity-30 disabled:pointer-events-none" id="nextPendingBtn">
+                                <span class="material-symbols-outlined text-sm font-bold">chevron_right</span>
+                            </button>
+                        </div>
+                    <?php endif; ?>
                 </div>
                 <div class="space-y-3">
-                    <?php foreach($pendingRequests as $req): 
+                    <?php 
+                    $index = 0;
+                    foreach($pendingRequests as $req): 
+                        $page = floor($index / $itemsPerPage) + 1;
+                        $index++;
+                        
                         // Format field label simply
                         $fieldLabel = ucwords(str_replace('_', ' ', $req['field']));
                         
@@ -150,7 +173,7 @@ $pendingRequests = $reqQuery->fetchAll();
                             $badge = '<span class="text-[9px] font-bold text-red-700 bg-red-100 px-2 py-0.5 rounded uppercase flex-shrink-0 whitespace-nowrap">Ditolak</span>';
                         }
                     ?>
-                    <div class="bg-surface-container-low/40 p-3.5 rounded-xl border border-outline-variant/10 relative <?php echo $leftBorder; ?> transition-all hover:shadow-sm">
+                    <div data-page="<?php echo $page; ?>" class="pending-request-item bg-surface-container-low/40 p-3.5 rounded-xl border border-outline-variant/10 relative <?php echo $leftBorder; ?> transition-all hover:shadow-sm <?php echo $page > 1 ? 'hidden' : ''; ?>">
                         <div class="flex justify-between items-start mb-1.5 gap-2">
                             <label class="text-[9px] uppercase font-black tracking-wider text-on-surface-variant/80 block truncate" title="<?php echo htmlspecialchars($fieldLabel); ?>"><?php echo htmlspecialchars($fieldLabel); ?></label>
                             <?php echo $badge; ?>
@@ -295,7 +318,6 @@ $pendingRequests = $reqQuery->fetchAll();
                 
                 <div class="bg-surface-container-lowest rounded-2xl p-6 border border-outline-variant/15 shadow-[0_12px_24px_rgba(0,6,102,0.01)]">
                     <form id="contactForm" onsubmit="saveContactChanges(event)" class="space-y-5">
-    <input type="hidden" name="csrf_token" value="<?= \App\Middleware\SecurityMiddleware::getCsrfToken() ?>">
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
                             <div class="space-y-2">
                                 <label class="text-xs font-bold text-on-surface-variant ml-1">Alamat Email Pribadi</label>
@@ -414,7 +436,6 @@ $pendingRequests = $reqQuery->fetchAll();
 
         <!-- Modal Body Form -->
         <form id="correctionForm" onsubmit="submitCorrectionRequest(event)" class="p-6 space-y-4 overflow-y-auto flex-grow">
-    <input type="hidden" name="csrf_token" value="<?= \App\Middleware\SecurityMiddleware::getCsrfToken() ?>">
             <!-- Kategori Data Select -->
             <div class="space-y-2">
                 <label class="text-xs font-bold text-on-surface-variant uppercase tracking-wider ml-1">Kategori Data <span class="text-red-500">*</span></label>
@@ -479,6 +500,55 @@ $pendingRequests = $reqQuery->fetchAll();
 </div>
 
 <script>
+    // Pagination logic for Status Pengajuan
+    let currentPendingPage = 1;
+    const totalPendingPages = <?php echo isset($totalPages) ? $totalPages : 1; ?>;
+
+    window.prevPendingPage = function prevPendingPage() {
+        if (currentPendingPage > 1) {
+            showPendingPage(currentPendingPage - 1);
+        }
+    }
+
+    window.nextPendingPage = function nextPendingPage() {
+        if (currentPendingPage < totalPendingPages) {
+            showPendingPage(currentPendingPage + 1);
+        }
+    }
+
+    function showPendingPage(page) {
+        currentPendingPage = page;
+        
+        // Update indicator
+        const indicator = document.getElementById('pendingPageIndicator');
+        if (indicator) {
+            indicator.textContent = `${page} / ${totalPendingPages}`;
+        }
+        
+        // Update button states
+        const prevBtn = document.getElementById('prevPendingBtn');
+        const nextBtn = document.getElementById('nextPendingBtn');
+        if (prevBtn) prevBtn.disabled = (page === 1);
+        if (nextBtn) nextBtn.disabled = (page === totalPendingPages);
+        
+        // Show/hide items with fade-in and scale transitions
+        const items = document.querySelectorAll('.pending-request-item');
+        items.forEach(item => {
+            const itemPage = parseInt(item.getAttribute('data-page'));
+            if (itemPage === page) {
+                item.classList.remove('hidden');
+                item.classList.add('opacity-0', 'scale-95');
+                setTimeout(() => {
+                    item.classList.remove('opacity-0', 'scale-95');
+                    item.classList.add('opacity-100', 'scale-100', 'transition-all', 'duration-300');
+                }, 10);
+            } else {
+                item.classList.add('hidden');
+                item.classList.remove('opacity-100', 'scale-100');
+            }
+        });
+    }
+
     // Map Categories to specific Fields with corresponding support document descriptions
     const categoryFields = {
         kependudukan: [

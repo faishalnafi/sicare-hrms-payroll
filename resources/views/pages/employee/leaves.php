@@ -313,7 +313,6 @@ function getLeaveTypeLabel($type) {
 
         <!-- Modal Body Form -->
         <form id="leaveSubmitForm" onsubmit="submitLeaveForm(event)" class="p-6 space-y-4">
-    <input type="hidden" name="csrf_token" value="<?= \App\Middleware\SecurityMiddleware::getCsrfToken() ?>">
             <!-- Leave Type -->
             <div class="space-y-1.5">
                 <label for="leaveTypeSelect" class="block text-xs font-bold text-on-surface-variant uppercase">Tipe Pengajuan <span class="text-red-500">*</span></label>

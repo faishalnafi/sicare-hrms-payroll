@@ -5,6 +5,10 @@ $sessRole  = $_SESSION['role'] ?? 'candidate';
 $profilePic = $_SESSION['profile_picture'] ?? null;
 
 $db = \App\Config\Database::getInstance()->getConnection();
+$appName = $db->query("SELECT `value` FROM global_settings WHERE `key` = 'app_name' LIMIT 1")->fetchColumn() ?: 'siCare';
+$appLogoIcon = $db->query("SELECT `value` FROM global_settings WHERE `key` = 'app_logo_icon' LIMIT 1")->fetchColumn() ?: 'local_police';
+$appLogoType = $db->query("SELECT `value` FROM global_settings WHERE `key` = 'app_logo_type' LIMIT 1")->fetchColumn() ?: 'icon';
+$appLogoImage = $db->query("SELECT `value` FROM global_settings WHERE `key` = 'app_logo_image' LIMIT 1")->fetchColumn() ?: '';
 if (isset($_SESSION['user_id'])) {
     $userQuery = $db->prepare("SELECT profile_picture FROM users WHERE id = :id");
     $userQuery->execute(['id' => $_SESSION['user_id']]);
@@ -16,7 +20,7 @@ if (isset($_SESSION['user_id'])) {
 
 if (empty($profilePic)) {
     $hash = md5(strtolower(trim($sessEmail)));
-    $profilePic = "https://www.gravatar.com/avatar/{$hash}?d=identicon&s=200";
+    $profilePic = "https://www.gravatar.com/avatar/{$hash}?d=404&s=200";
 }
 
 $menus = [];
@@ -67,11 +71,9 @@ switch ($sessRole) {
         $menus[] = ['title' => 'Persetujuan Mutasi', 'icon' => 'published_with_changes', 'link' => '/executive/approvals'];
         break;
     case 'superadmin':
-        $menus[] = ['title' => 'Struktur Departemen', 'icon' => 'account_tree', 'link' => '/admin/departments'];
         $menus[] = ['title' => 'Manajemen Pengguna', 'icon' => 'manage_accounts', 'link' => '/superadmin/users'];
         $menus[] = ['title' => 'Konfigurasi Global', 'icon' => 'settings', 'link' => '/superadmin/settings'];
-        $menus[] = ['title' => 'Menu Privilege Mapping', 'icon' => 'account_tree', 'link' => '/superadmin/menus/list'];
-        $menus[] = ['title' => 'Audit Log & Security', 'icon' => 'security', 'link' => '/superadmin/audit/list'];
+        $menus[] = ['title' => 'Audit Log & Security', 'icon' => 'security', 'link' => '/superadmin/audit'];
         break;
 }
 ?>
@@ -84,8 +86,12 @@ $currentUri = '/' . trim($requestUri, '/');
     <!-- Brand Logo, Desktop Toggle and Mobile Close Button -->
     <div class="brand-logo-container flex items-center justify-between px-3 lg:px-2 lg:group-hover:px-3 xl:px-3 mb-6 flex-shrink-0">
         <a href="/dashboard" data-spa class="brand-logo-link text-2xl font-black text-primary font-headline tracking-tight flex items-center gap-2.5 hover:opacity-90 transition-opacity">
-            <span class="brand-logo-icon material-symbols-outlined text-primary text-3xl font-bold flex-shrink-0">local_police</span>
-            <span class="brand-text bg-gradient-to-r from-primary to-blue-800 bg-clip-text text-transparent whitespace-nowrap">siCare</span>
+            <?php if ($appLogoType === 'image' && !empty($appLogoImage)): ?>
+                <img src="<?= htmlspecialchars($appLogoImage) ?>" class="brand-logo-icon h-9 w-auto object-contain flex-shrink-0" alt="Logo" />
+            <?php else: ?>
+                <span class="brand-logo-icon material-symbols-outlined text-primary text-3xl font-bold flex-shrink-0"><?= htmlspecialchars($appLogoIcon) ?></span>
+            <?php endif; ?>
+            <span class="brand-text bg-gradient-to-r from-primary to-blue-800 bg-clip-text text-transparent whitespace-nowrap"><?= htmlspecialchars($appName) ?></span>
         </a>
         <!-- Desktop Sidebar Toggle (Gemini Style) -->
         <button id="desktopSidebarToggle" class="hidden lg:flex p-1.5 text-on-surface-variant hover:bg-surface-container-high rounded-lg transition-all items-center justify-center cursor-pointer select-none">
@@ -128,7 +134,8 @@ $currentUri = '/' . trim($requestUri, '/');
         <a href="/<?= $profileFolder ?>/profile" data-spa class="block" data-tooltip="Profil: <?= htmlspecialchars($sessName) ?>">
             <div class="profile-widget-container flex items-center gap-3 p-2 rounded-xl hover:bg-surface-container-low transition-all duration-200 group/profile cursor-pointer">
                 <div class="relative flex-shrink-0">
-                    <img src="<?= htmlspecialchars($profilePic) ?>" alt="Avatar" class="w-10 h-10 rounded-full object-cover border border-outline-variant/20 shadow-sm" />
+                    <?php $sessEmailHash = md5(strtolower(trim($sessEmail))); ?>
+                    <img src="<?= htmlspecialchars($profilePic) ?>" onerror="window.handleAvatarError(this, '<?= $sessEmailHash ?>')" alt="Avatar" class="w-10 h-10 rounded-full object-cover border border-outline-variant/20 shadow-sm" />
                     <span class="absolute bottom-0 right-0 w-3 h-3 bg-green-500 border-2 border-surface-container-lowest rounded-full"></span>
                 </div>
                 <div class="profile-details flex-grow min-w-0 whitespace-nowrap">

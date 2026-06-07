@@ -117,7 +117,7 @@ function formatIndoDate($dateStr) {
 
 function getGravatarIcon($email) {
     $hash = md5(strtolower(trim($email)));
-    return "https://www.gravatar.com/avatar/{$hash}?d=identicon&s=80";
+    return "https://www.gravatar.com/avatar/{$hash}?d=404&s=80";
 }
 ?>
 
@@ -211,7 +211,7 @@ function getGravatarIcon($email) {
                     </h3>
                 </div>
                 <div class="overflow-x-auto">
-                    <table class="w-full text-left border-collapse">
+                    <table class="min-w-[1100px] w-full text-left border-collapse">
                         <thead>
                             <tr class="bg-surface-container-low/30 border-b border-outline-variant/10 text-[10px] font-extrabold text-on-surface-variant uppercase tracking-wider">
                                 <th class="py-4 px-6">Karyawan</th>
@@ -237,8 +237,12 @@ function getGravatarIcon($email) {
                                 <tr>
                                     <!-- Karyawan -->
                                     <td class="py-4 px-6">
-                                        <div class="flex items-center gap-3">
-                                            <img src="<?= htmlspecialchars(getGravatarIcon($req['email'])) ?>" alt="Avatar" class="w-8 h-8 rounded-full border object-cover" />
+                                        <div class="flex items-center gap-3 w-52 min-w-[200px]">
+                                            <?php 
+                                            $hash = md5(strtolower(trim($req['email'] ?? '')));
+                                            $avatarUrl = !empty($req['profile_picture']) ? $req['profile_picture'] : getGravatarIcon($req['email']);
+                                            ?>
+                                            <img src="<?= htmlspecialchars($avatarUrl) ?>" alt="Avatar" class="w-8 h-8 rounded-full border object-cover" onerror="window.handleAvatarError(this, '<?= $hash ?>')" />
                                             <div>
                                                 <h4 class="font-extrabold text-on-surface"><?= htmlspecialchars($req['first_name'] . ' ' . $req['last_name']) ?></h4>
                                                 <p class="text-[10px] text-on-surface-variant font-medium"><?= htmlspecialchars($req['employee_id'] ?: ($req['job_title'] ?: ucwords(str_replace('_', ' ', $req['role'] ?? 'Karyawan')))) ?></p>
@@ -261,13 +265,15 @@ function getGravatarIcon($email) {
                                         <?= $req['duration'] ?> Hari
                                     </td>
                                     <!-- Alasan -->
-                                    <td class="py-4 px-6 max-w-xs truncate" title="<?= htmlspecialchars($req['reason']) ?>">
-                                        <?= htmlspecialchars($req['reason']) ?>
+                                    <td class="py-4 px-6 min-w-[380px]">
+                                        <p class="text-on-surface-variant leading-relaxed break-words font-medium" title="<?= htmlspecialchars($req['reason']) ?>">
+                                            <?= htmlspecialchars($req['reason']) ?>
+                                        </p>
                                     </td>
                                     <!-- Dokumen -->
-                                    <td class="py-4 px-6">
+                                    <td class="py-4 px-6 whitespace-nowrap">
                                         <?php if (!empty($req['attachment_path'])): ?>
-                                            <button onclick="previewFile('/hrops/leaves/view_attachment?file=<?= $req['attachment_path'] ?>', 'Bukti Pengajuan Cuti')" class="text-primary hover:underline font-bold flex items-center gap-1 cursor-pointer">
+                                            <button onclick="previewFile('/hrops/leaves/view_attachment?file=<?= $req['attachment_path'] ?>', 'Bukti Pengajuan Cuti')" class="text-primary hover:underline font-bold flex items-center gap-1 cursor-pointer whitespace-nowrap">
                                                 <span class="material-symbols-outlined text-sm">attach_file</span> Lihat Berkas
                                             </button>
                                         <?php else: ?>
@@ -315,7 +321,7 @@ function getGravatarIcon($email) {
                     </h3>
                 </div>
                 <div class="overflow-x-auto">
-                    <table class="w-full text-left border-collapse">
+                    <table class="min-w-[1200px] w-full text-left border-collapse">
                         <thead>
                             <tr class="bg-surface-container-low/30 border-b border-outline-variant/10 text-[10px] font-extrabold text-on-surface-variant uppercase tracking-wider">
                                 <th class="py-4 px-6">Karyawan</th>
@@ -341,11 +347,15 @@ function getGravatarIcon($email) {
                                 <tr>
                                     <!-- Karyawan -->
                                     <td class="py-4 px-6">
-                                        <div class="flex items-center gap-3">
-                                            <img src="<?= htmlspecialchars(getGravatarIcon($req['email'])) ?>" alt="Avatar" class="w-8 h-8 rounded-full border object-cover" />
-                                            <div>
-                                                <h4 class="font-extrabold text-on-surface"><?= htmlspecialchars($req['first_name'] . ' ' . $req['last_name']) ?></h4>
-                                                <p class="text-[10px] text-on-surface-variant font-medium"><?= htmlspecialchars($req['employee_id'] ?: ($req['job_title'] ?: ucwords(str_replace('_', ' ', $req['role'] ?? 'Karyawan')))) ?></p>
+                                        <div class="flex items-center gap-3 w-52 min-w-[200px]">
+                                            <?php 
+                                            $hash = md5(strtolower(trim($req['email'] ?? '')));
+                                            $avatarUrl = !empty($req['profile_picture']) ? $req['profile_picture'] : getGravatarIcon($req['email']);
+                                            ?>
+                                            <img src="<?= htmlspecialchars($avatarUrl) ?>" alt="Avatar" class="w-8 h-8 rounded-full border object-cover flex-shrink-0" onerror="window.handleAvatarError(this, '<?= $hash ?>')" />
+                                            <div class="min-w-0">
+                                                <h4 class="font-extrabold text-on-surface line-clamp-2 whitespace-normal break-words leading-tight" title="<?= htmlspecialchars($req['first_name'] . ' ' . $req['last_name']) ?>"><?= htmlspecialchars($req['first_name'] . ' ' . $req['last_name']) ?></h4>
+                                                <p class="text-[10px] text-on-surface-variant font-medium font-mono mt-0.5"><?= htmlspecialchars($req['employee_id'] ?: '-') ?></p>
                                             </div>
                                         </div>
                                     </td>
@@ -356,20 +366,23 @@ function getGravatarIcon($email) {
                                         </span>
                                     </td>
                                     <!-- Tanggal -->
-                                    <td class="py-4 px-6">
-                                        <?= formatIndoDate($req['created_at']) ?>
+                                    <td class="py-4 px-6 whitespace-nowrap">
+                                        <div class="font-bold text-on-surface"><?= formatIndoDate($req['created_at']) ?></div>
+                                        <div class="text-[10px] text-on-surface-variant font-mono mt-0.5"><?= date('H:i:s', strtotime($req['created_at'])) ?> WIB</div>
                                     </td>
                                     <!-- Nominal -->
-                                    <td class="py-4 px-6 font-extrabold text-primary">
+                                    <td class="py-4 px-6 font-extrabold text-primary whitespace-nowrap">
                                         Rp <?= number_format($req['amount'], 0, ',', '.') ?>
                                     </td>
                                     <!-- Keterangan -->
-                                    <td class="py-4 px-6 max-w-xs truncate" title="<?= htmlspecialchars($req['description']) ?>">
-                                        <?= htmlspecialchars($req['description']) ?>
+                                    <td class="py-4 px-6 min-w-[380px]">
+                                        <p class="text-on-surface-variant leading-relaxed break-words font-medium" title="<?= htmlspecialchars($req['description']) ?>">
+                                            <?= htmlspecialchars($req['description']) ?>
+                                        </p>
                                     </td>
                                     <!-- Nota -->
-                                    <td class="py-4 px-6">
-                                        <button onclick="previewFile('/hrops/reimbursements/view_receipt?file=<?= $req['receipt_path'] ?>', 'Kuitansi Reimbursement')" class="text-primary hover:underline font-bold flex items-center gap-1 cursor-pointer">
+                                    <td class="py-4 px-6 whitespace-nowrap">
+                                        <button onclick="previewFile('/hrops/reimbursements/view_receipt?file=<?= $req['receipt_path'] ?>', 'Kuitansi Reimbursement')" class="text-primary hover:underline font-bold flex items-center gap-1 cursor-pointer whitespace-nowrap">
                                             <span class="material-symbols-outlined text-sm">attach_file</span> Lihat Berkas
                                         </button>
                                     </td>
@@ -449,7 +462,7 @@ function getGravatarIcon($email) {
 
                 <!-- Table -->
                 <div class="overflow-x-auto border border-outline-variant/10 rounded-xl">
-                    <table class="w-full text-left border-collapse" id="attendance-table">
+                    <table class="min-w-[1200px] w-full text-left border-collapse" id="attendance-table">
                         <thead>
                             <tr class="bg-surface-container-low/30 border-b border-outline-variant/10 text-[10px] font-extrabold text-on-surface-variant uppercase tracking-wider">
                                 <th class="py-4 px-6">Karyawan</th>
@@ -492,7 +505,6 @@ function getGravatarIcon($email) {
         </div>
         <!-- Form Body -->
         <form id="attendanceForm" onsubmit="submitAttendanceCorrection(event)" class="p-6 space-y-4">
-    <input type="hidden" name="csrf_token" value="<?= \App\Middleware\SecurityMiddleware::getCsrfToken() ?>">
             <input type="hidden" id="form-att-id" name="attendance_id" />
             <input type="hidden" id="form-att-date" name="date" />
 
@@ -886,13 +898,13 @@ function getGravatarIcon($email) {
 
                     const reasonText = r.correction_reason || '-';
                     const hash = md5((r.email || '').trim().toLowerCase());
-                    const avatar = `https://www.gravatar.com/avatar/${hash}?d=identicon&s=80`;
+                    const avatar = r.profile_picture ? r.profile_picture : `https://www.gravatar.com/avatar/${hash}?d=404&s=80`;
 
                     html += `
                     <tr class="hover:bg-surface-container-low/20 transition-colors">
                         <td class="py-4 px-6">
                             <div class="flex items-center gap-3">
-                                <img src="${avatar}" alt="Avatar" class="w-8 h-8 rounded-full border object-cover" />
+                                <img src="${avatar}" alt="Avatar" class="w-8 h-8 rounded-full border object-cover" onerror="window.handleAvatarError(this, '${hash}')" />
                                 <div>
                                     <h4 class="font-extrabold text-on-surface whitespace-nowrap">${escapeHtml(r.first_name)} ${escapeHtml(r.last_name)}</h4>
                                     <p class="text-[10px] text-on-surface-variant font-medium">${escapeHtml(r.employee_id || r.position || 'Karyawan')}</p>
@@ -907,7 +919,7 @@ function getGravatarIcon($email) {
                         <td class="py-4 px-6 text-center whitespace-nowrap">${modeMasukHtml}</td>
                         <td class="py-4 px-6 text-center whitespace-nowrap">${modePulangHtml}</td>
                         <td class="py-4 px-6 text-center whitespace-nowrap">${metodeHtml}</td>
-                        <td class="py-4 px-6 max-w-xs truncate" title="${escapeHtml(reasonText)}">${escapeHtml(reasonText)}</td>
+                        <td class="py-4 px-6 min-w-[300px] whitespace-normal break-words font-medium text-on-surface-variant leading-relaxed" title="${escapeHtml(reasonText)}">${escapeHtml(reasonText)}</td>
                         <td class="py-4 px-6 text-center">
                             <button onclick="openEditAttendanceModalByIndex(${index})" class="p-1.5 text-primary bg-primary/5 hover:bg-primary/10 rounded-lg border border-primary/20 transition-colors cursor-pointer" title="Koreksi Presensi">
                                 <span class="material-symbols-outlined text-sm font-bold">border_color</span>
