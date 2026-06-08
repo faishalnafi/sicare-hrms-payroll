@@ -81,14 +81,14 @@
                 </div>
             </div>
             <?php elseif (isset($info) && !empty($info)): ?>
-            <!-- Pesan Informasi -->
-            <div class="mb-6 bg-[#eff6ff] border border-[#93c5fd] rounded-xl p-4 flex items-start gap-3 shadow-sm transition-all">
-                <div class="bg-blue-100 p-1.5 rounded-full shrink-0 flex items-center justify-center">
-                    <span class="material-symbols-outlined text-blue-600 text-sm">info</span>
+            <!-- Pesan Peringatan (Warning) -->
+            <div class="mb-6 bg-[#fffbeb] border border-[#fcd34d] rounded-xl p-4 flex items-start gap-3 shadow-sm transition-all font-body">
+                <div class="bg-amber-100 p-1.5 rounded-full shrink-0 flex items-center justify-center">
+                    <span class="material-symbols-outlined text-amber-600 text-sm">warning</span>
                 </div>
                 <div>
-                    <h4 class="text-sm font-bold text-blue-800 font-headline">Informasi</h4>
-                    <p class="mt-1 text-sm text-blue-700 font-medium"><?= htmlspecialchars($info) ?></p>
+                    <h4 class="text-sm font-bold text-amber-800 font-headline">Pemberitahuan</h4>
+                    <p class="mt-1 text-sm text-amber-700 font-medium"><?= htmlspecialchars($info) ?></p>
                 </div>
             </div>
             <?php endif; ?>

@@ -23,8 +23,24 @@ if (empty($profilePic)) {
     $profilePic = "https://www.gravatar.com/avatar/{$hash}?d=404&s=200";
 }
 
+$isReflectionIncomplete = false;
+if ($sessRole === 'employee') {
+    $currentPeriod = date('Y') . '-Q' . ceil(date('n') / 3);
+    $userId = $_SESSION['user_id'] ?? '';
+    if (!empty($userId)) {
+        $stmtRefCheck = $db->prepare("SELECT COUNT(*) FROM self_reflections WHERE user_id = :user_id AND period = :period AND status IN ('submitted', 'completed')");
+        $stmtRefCheck->execute(['user_id' => $userId, 'period' => $currentPeriod]);
+        $isReflectionIncomplete = ($stmtRefCheck->fetchColumn() == 0);
+    }
+}
+
+
+$roleFolder = $sessRole;
+if ($sessRole === 'hiring_manager') $roleFolder = 'manager';
+if ($sessRole === 'hr_ops') $roleFolder = 'hrops';
+
 $menus = [];
-$menus[] = ['title' => 'Beranda', 'icon' => 'dashboard', 'link' => '/dashboard'];
+$menus[] = ['title' => 'Beranda', 'icon' => 'dashboard', 'link' => '/' . $roleFolder . '/dashboard'];
 
 switch ($sessRole) {
     case 'candidate':
@@ -53,12 +69,14 @@ switch ($sessRole) {
         $menus[] = ['title' => 'Review Kandidat', 'icon' => 'preview', 'link' => '/manager/candidates'];
         $menus[] = ['title' => 'Lembar Wawancara', 'icon' => 'fact_check', 'link' => '/manager/interviews'];
         $menus[] = ['title' => 'Persetujuan Tim', 'icon' => 'verified', 'link' => '/manager/approvals'];
+        $menus[] = ['title' => 'Refleksi Tim', 'icon' => 'psychology', 'link' => '/manager/reflection'];
         break;
     case 'hr_ops':
         $menus[] = ['title' => 'Verifikasi Onboarding', 'icon' => 'rule', 'link' => '/hrops/onboarding'];
         $menus[] = ['title' => 'Master Data Karyawan', 'icon' => 'group', 'link' => '/hrops/employees'];
         $menus[] = ['title' => 'Verifikasi Data', 'icon' => 'verified_user', 'link' => '/hrops/verifications'];
         $menus[] = ['title' => 'Pemrosesan Penggajian', 'icon' => 'account_balance_wallet', 'link' => '/hrops/payroll'];
+        $menus[] = ['title' => 'Refleksi Karyawan', 'icon' => 'psychology', 'link' => '/hrops/reflection'];
         break;
     case 'admin':
         $menus[] = ['title' => 'Struktur Departemen', 'icon' => 'account_tree', 'link' => '/admin/departments'];
@@ -69,11 +87,13 @@ switch ($sessRole) {
         $menus[] = ['title' => 'Dashboard Analitik', 'icon' => 'analytics', 'link' => '/executive/analytics'];
         $menus[] = ['title' => 'Persetujuan Anggaran', 'icon' => 'request_quote', 'link' => '/executive/budgets'];
         $menus[] = ['title' => 'Persetujuan Mutasi', 'icon' => 'published_with_changes', 'link' => '/executive/approvals'];
+        $menus[] = ['title' => 'Analitik Refleksi', 'icon' => 'psychology', 'link' => '/executive/reflection'];
         break;
     case 'superadmin':
         $menus[] = ['title' => 'Manajemen Pengguna', 'icon' => 'manage_accounts', 'link' => '/superadmin/users'];
         $menus[] = ['title' => 'Konfigurasi Global', 'icon' => 'settings', 'link' => '/superadmin/settings'];
         $menus[] = ['title' => 'Audit Log & Security', 'icon' => 'security', 'link' => '/superadmin/audit'];
+        $menus[] = ['title' => 'Refleksi Karyawan', 'icon' => 'psychology', 'link' => '/superadmin/reflection'];
         break;
 }
 ?>
@@ -85,7 +105,7 @@ $currentUri = '/' . trim($requestUri, '/');
     <!-- Brand Logo, Desktop Toggle and Mobile Close Button -->
     <!-- Brand Logo, Desktop Toggle and Mobile Close Button -->
     <div class="brand-logo-container flex items-center justify-between px-3 lg:px-2 lg:group-hover:px-3 xl:px-3 mb-6 flex-shrink-0">
-        <a href="/dashboard" data-spa class="brand-logo-link text-2xl font-black text-primary font-headline tracking-tight flex items-center gap-2.5 hover:opacity-90 transition-opacity">
+        <a href="/<?= $roleFolder ?>/dashboard" data-spa class="brand-logo-link text-2xl font-black text-primary font-headline tracking-tight flex items-center gap-2.5 hover:opacity-90 transition-opacity">
             <?php if ($appLogoType === 'image' && !empty($appLogoImage)): ?>
                 <img src="<?= htmlspecialchars($appLogoImage) ?>" class="brand-logo-icon h-9 w-auto object-contain flex-shrink-0" alt="Logo" />
             <?php else: ?>
@@ -109,11 +129,23 @@ $currentUri = '/' . trim($requestUri, '/');
             $cleanUri = rtrim($currentUri, '/');
             $cleanLink = rtrim($menu['link'], '/');
             $isActive = ($cleanUri === $cleanLink || str_ends_with($cleanUri, $cleanLink));
-            $activeClass = $isActive 
-                ? 'bg-primary/10 text-primary font-bold shadow-[0_4px_12px_rgba(0,6,102,0.02)]' 
-                : 'text-on-surface-variant hover:bg-surface-container-low hover:text-primary transition-all duration-200';
+            
+            // Check if menu is locked
+            $isDisabled = ($isReflectionIncomplete && $menu['link'] !== '/employee/reflection');
+            
+            if ($isDisabled) {
+                $activeClass = 'text-gray-400 bg-gray-100/50 cursor-not-allowed opacity-50 select-none';
+                $linkHref = 'javascript:void(0);';
+                $onclickAttr = 'onclick="Swal.fire({title: \'Refleksi Wajib Diisi\', text: \'Anda wajib menyelesaikan pengisian Refleksi Kinerja & Rencana Karir (IDP) terlebih dahulu sebelum dapat mengakses menu lainnya.\', icon: \'warning\', confirmButtonColor: \'#000666\'});"';
+            } else {
+                $activeClass = $isActive 
+                    ? 'bg-primary/10 text-primary font-bold shadow-[0_4px_12px_rgba(0,6,102,0.02)]' 
+                    : 'text-on-surface-variant hover:bg-surface-container-low hover:text-primary transition-all duration-200';
+                $linkHref = htmlspecialchars($menu['link']);
+                $onclickAttr = '';
+            }
         ?>
-        <a href="<?php echo htmlspecialchars($menu['link']); ?>" data-spa class="block" data-tooltip="<?php echo htmlspecialchars($menu['title']); ?>">
+        <a href="<?php echo $linkHref; ?>" <?= $onclickAttr ?> <?php echo !$isDisabled ? 'data-spa' : ''; ?> class="block" data-tooltip="<?php echo htmlspecialchars($menu['title']); ?>">
             <div class="rounded-xl p-3 flex items-center justify-start lg:justify-center lg:group-hover:justify-start xl:justify-start gap-3 group cursor-pointer transition-all duration-200 <?php echo $activeClass; ?>">
                 <span class="material-symbols-outlined flex-shrink-0 transition-colors <?php echo $isActive ? 'text-primary' : 'text-on-surface-variant group-hover:text-primary'; ?>"><?php echo htmlspecialchars($menu['icon']); ?></span>
                 <span class="text-sm font-medium flex-grow whitespace-nowrap transition-colors <?php echo $isActive ? 'text-primary' : 'text-on-surface-variant group-hover:text-primary'; ?>"><?php echo htmlspecialchars($menu['title']); ?></span>
@@ -125,6 +157,7 @@ $currentUri = '/' . trim($requestUri, '/');
 
     <!-- Footer: Profile and Sign Out -->
     <div class="border-t border-outline-variant/15 pt-4 mt-4 flex-shrink-0 space-y-3">
+
         <!-- Profile Widget -->
         <?php
         $profileFolder = $sessRole;
@@ -159,3 +192,5 @@ $currentUri = '/' . trim($requestUri, '/');
         </button>
     </div>
 </aside>
+
+

@@ -433,6 +433,76 @@ $allDays = ['Mon' => 'Senin', 'Tue' => 'Selasa', 'Wed' => 'Rabu', 'Thu' => 'Kami
                     </div>
                 </div>
 
+                <!-- === PENGATURAN KLAIM REIMBURSEMENT (DEFAULT) === -->
+                <div class="settings-card p-6">
+                    <div class="flex items-center gap-2.5 mb-5">
+                        <span class="material-symbols-outlined text-indigo-700 text-xl p-2 rounded-xl" style="background:rgba(79,70,229,.07)">receipt_long</span>
+                        <h2 class="settings-section-title" style="color:#1e1b4b">Default Plafon & Kebijakan Reimbursement</h2>
+                    </div>
+
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
+                        <div>
+                            <label class="settings-label" for="reimbursement_limit_medis">Plafon Medis (Default)</label>
+                            <div class="flex items-center gap-2">
+                                <span class="text-xs font-semibold text-on-surface-variant whitespace-nowrap">Rp</span>
+                                <input type="text" id="reimbursement_limit_medis" name="reimbursement_limit_medis"
+                                    value="<?= number_format((float)($cfg['reimbursement_limit_medis'] ?? 5000000), 0, ',', '.') ?>"
+                                    class="settings-input font-mono" style="padding:.6rem"
+                                    oninput="this.value = this.value.replace(/[^0-9]/g, '').replace(/\B(?=(\d{3})+(?!\d))/g, '.');" />
+                            </div>
+                            <p class="settings-helper mt-1">Batas nominal maksimal bulanan klaim kategori Kesehatan & Medis.</p>
+                        </div>
+
+                        <div>
+                            <label class="settings-label" for="reimbursement_limit_transport">Plafon Transportasi (Default)</label>
+                            <div class="flex items-center gap-2">
+                                <span class="text-xs font-semibold text-on-surface-variant whitespace-nowrap">Rp</span>
+                                <input type="text" id="reimbursement_limit_transport" name="reimbursement_limit_transport"
+                                    value="<?= number_format((float)($cfg['reimbursement_limit_transport'] ?? 3000000), 0, ',', '.') ?>"
+                                    class="settings-input font-mono" style="padding:.6rem"
+                                    oninput="this.value = this.value.replace(/[^0-9]/g, '').replace(/\B(?=(\d{3})+(?!\d))/g, '.');" />
+                            </div>
+                            <p class="settings-helper mt-1">Batas nominal maksimal bulanan klaim kategori Transportasi & Tol.</p>
+                        </div>
+
+                        <div>
+                            <label class="settings-label" for="reimbursement_limit_operasional">Plafon Operasional (Default)</label>
+                            <div class="flex items-center gap-2">
+                                <span class="text-xs font-semibold text-on-surface-variant whitespace-nowrap">Rp</span>
+                                <input type="text" id="reimbursement_limit_operasional" name="reimbursement_limit_operasional"
+                                    value="<?= number_format((float)($cfg['reimbursement_limit_operasional'] ?? 4000000), 0, ',', '.') ?>"
+                                    class="settings-input font-mono" style="padding:.6rem"
+                                    oninput="this.value = this.value.replace(/[^0-9]/g, '').replace(/\B(?=(\d{3})+(?!\d))/g, '.');" />
+                            </div>
+                            <p class="settings-helper mt-1">Batas nominal maksimal bulanan klaim kategori Alat Kerja & Operasional.</p>
+                        </div>
+
+                        <div>
+                            <label class="settings-label" for="reimbursement_limit_makan">Plafon Makan & Bisnis (Default)</label>
+                            <div class="flex items-center gap-2">
+                                <span class="text-xs font-semibold text-on-surface-variant whitespace-nowrap">Rp</span>
+                                <input type="text" id="reimbursement_limit_makan" name="reimbursement_limit_makan"
+                                    value="<?= number_format((float)($cfg['reimbursement_limit_makan'] ?? 2500000), 0, ',', '.') ?>"
+                                    class="settings-input font-mono" style="padding:.6rem"
+                                    oninput="this.value = this.value.replace(/[^0-9]/g, '').replace(/\B(?=(\d{3})+(?!\d))/g, '.');" />
+                            </div>
+                            <p class="settings-helper mt-1">Batas nominal maksimal bulanan klaim kategori Makan & Bisnis.</p>
+                        </div>
+
+                        <div>
+                            <label class="settings-label" for="reimbursement_limit_department_default">Plafon Departemen (Default)</label>
+                            <div class="flex items-center gap-2">
+                                <span class="text-xs font-semibold text-on-surface-variant whitespace-nowrap">Rp</span>
+                                <input type="text" id="reimbursement_limit_department_default" name="reimbursement_limit_department_default"
+                                    value="<?= number_format((float)($cfg['reimbursement_limit_department_default'] ?? 15000000), 0, ',', '.') ?>"
+                                    class="settings-input font-mono" style="padding:.6rem"
+                                    oninput="this.value = this.value.replace(/[^0-9]/g, '').replace(/\B(?=(\d{3})+(?!\d))/g, '.');" />
+                            </div>
+                            <p class="settings-helper mt-1">Default plafon bulanan total per departemen jika tidak di-override pada pengaturan departemen.</p>
+                        </div>
+                    </div>
+                </div>
+
             </div>
 
             <!-- ── Col 3: WFA/WFC Settings ── -->

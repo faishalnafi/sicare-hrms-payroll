@@ -13,10 +13,17 @@
                 Satu pintu menuju seluruh ekosistem HR perusahaan. Akses pendaftaran karir, portal karyawan mandiri (ESS), hingga administrasi operasional dalam satu dasbor terintegrasi yang aman.
             </p>
             <div class="flex flex-wrap gap-4">
-                <a href="/signin" class="px-6 py-3 bg-[#000666] text-white rounded-lg font-bold font-headline hover:bg-[#0c145e] hover:shadow-lg transition-all flex items-center gap-2">
-                    <span class="material-symbols-outlined text-xl">login</span>
-                    Masuk / Daftar
-                </a>
+                <?php if (isset($_SESSION['user_id'])): ?>
+                    <a href="/dashboard" class="px-6 py-3 bg-[#000666] text-white rounded-lg font-bold font-headline hover:bg-[#0c145e] hover:shadow-lg transition-all flex items-center gap-2">
+                        <span class="material-symbols-outlined text-xl">dashboard</span>
+                        Ke Dashboard
+                    </a>
+                <?php else: ?>
+                    <a href="/signin" class="px-6 py-3 bg-[#000666] text-white rounded-lg font-bold font-headline hover:bg-[#0c145e] hover:shadow-lg transition-all flex items-center gap-2">
+                        <span class="material-symbols-outlined text-xl">login</span>
+                        Masuk / Daftar
+                    </a>
+                <?php endif; ?>
                 <a href="#" class="px-6 py-3 bg-white text-[#000666] rounded-lg font-bold font-headline shadow-sm hover:shadow-md transition-all flex items-center gap-2">
                     <span class="material-symbols-outlined text-xl">menu_book</span>
                     Panduan Pengguna
@@ -170,14 +177,21 @@
             </div>
             
             <div class="relative z-10 flex flex-col sm:flex-row gap-4 w-full md:w-auto shrink-0">
-                <a href="/signin" class="px-6 py-3 bg-white text-[#0b1257] rounded-lg font-bold hover:bg-gray-100 transition-all flex items-center justify-center gap-2 shadow-lg text-sm">
-                    <span class="material-symbols-outlined text-[1.1rem]">login</span>
-                    Masuk Pelamar
-                </a>
-                <a href="/signup" class="px-6 py-3 bg-[#242c75] border border-indigo-400/30 text-white rounded-lg font-bold hover:bg-[#31398c] transition-all flex items-center justify-center gap-2 text-sm shadow-sm">
-                    <span class="material-symbols-outlined text-[1.1rem]">person_add</span>
-                    Buat Akun Karir
-                </a>
+                <?php if (isset($_SESSION['user_id'])): ?>
+                    <a href="/dashboard" class="px-6 py-3 bg-white text-[#0b1257] rounded-lg font-bold hover:bg-gray-100 transition-all flex items-center justify-center gap-2 shadow-lg text-sm">
+                        <span class="material-symbols-outlined text-[1.1rem]">dashboard</span>
+                        Ke Dashboard
+                    </a>
+                <?php else: ?>
+                    <a href="/signin" class="px-6 py-3 bg-white text-[#0b1257] rounded-lg font-bold hover:bg-gray-100 transition-all flex items-center justify-center gap-2 shadow-lg text-sm">
+                        <span class="material-symbols-outlined text-[1.1rem]">login</span>
+                        Masuk Pelamar
+                    </a>
+                    <a href="/signup" class="px-6 py-3 bg-[#242c75] border border-indigo-400/30 text-white rounded-lg font-bold hover:bg-[#31398c] transition-all flex items-center justify-center gap-2 text-sm shadow-sm">
+                        <span class="material-symbols-outlined text-[1.1rem]">person_add</span>
+                        Buat Akun Karir
+                    </a>
+                <?php endif; ?>
             </div>
         </div>
     </div>

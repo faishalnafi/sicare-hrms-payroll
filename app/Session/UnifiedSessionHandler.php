@@ -10,12 +10,15 @@ class UnifiedSessionHandler implements SessionHandlerInterface {
     private $db = null;
     private $redis = null;
     private $driver;
-    private $normalLifetime = 21600; // 6 hours
-    private $rememberLifetime = 86400; // 24 hours sliding idle timeout
+    private $sessionLifetime = 86400; // 24 hours default
 
     public function __construct() {
         // Driver can be 'database', 'redis', or 'hybrid'
         $this->driver = $_ENV['SESSION_DRIVER'] ?? 'hybrid';
+        $lifetime = $_ENV['SESSION_LIFETIME'] ?? getenv('SESSION_LIFETIME');
+        if ($lifetime && is_numeric($lifetime)) {
+            $this->sessionLifetime = (int)$lifetime;
+        }
     }
 
     /**
@@ -64,24 +67,6 @@ class UnifiedSessionHandler implements SessionHandlerInterface {
     }
 
     public function open(string $path, string $name): bool {
-        // Ensure the sessions table exists in the database
-        try {
-            $db = $this->getDbConnection();
-            $db->exec("
-                CREATE TABLE IF NOT EXISTS sessions (
-                    id VARCHAR(255) PRIMARY KEY,
-                    user_id CHAR(36) NULL,
-                    ip_address VARCHAR(45) NULL,
-                    user_agent TEXT NULL,
-                    payload LONGTEXT NOT NULL,
-                    last_activity INT NOT NULL,
-                    KEY sessions_user_id_index (user_id),
-                    KEY sessions_last_activity_index (last_activity)
-                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
-            ");
-        } catch (Exception $e) {
-            // Ignore error or log it
-        }
         return true;
     }
 
@@ -94,7 +79,7 @@ class UnifiedSessionHandler implements SessionHandlerInterface {
         $data = '';
         $loaded = false;
 
-        // 1. Try reading from Redis
+        // 1. Try reading from Redis (first line of defense)
         if (($this->driver === 'redis' || $this->driver === 'hybrid') && $redis) {
             try {
                 $payload = $redis->get("sessions:{$id}");
@@ -107,7 +92,7 @@ class UnifiedSessionHandler implements SessionHandlerInterface {
             }
         }
 
-        // 2. Try reading from Database
+        // 2. Try reading from Database (second line of defense)
         if (!$loaded && ($this->driver === 'database' || $this->driver === 'hybrid')) {
             try {
                 $db = $this->getDbConnection();
@@ -119,11 +104,20 @@ class UnifiedSessionHandler implements SessionHandlerInterface {
                     $payload = $row['payload'];
                     $lastActivity = (int)$row['last_activity'];
                     
-                    // Enforce session expiration limits dynamically
-                    $lifetime = $this->isRememberMe($payload) ? $this->rememberLifetime : $this->normalLifetime;
-                    if (time() - $lastActivity > $lifetime) {
-                        $this->destroy($id);
-                        return '';
+                    $remember = $this->isRememberMe($payload);
+                    if ($remember) {
+                        // Enforce a strict/fixed 7-day expiry from the initial login time
+                        $loginTime = $this->extractLoginTime($payload) ?? $lastActivity;
+                        if (time() - $loginTime > 7 * 86400) {
+                            $this->destroy($id);
+                            return '';
+                        }
+                    } else {
+                        // Enforce sliding window (24 hours default) from last activity
+                        if (time() - $lastActivity > $this->sessionLifetime) {
+                            $this->destroy($id);
+                            return '';
+                        }
                     }
 
                     $data = $payload;
@@ -132,7 +126,13 @@ class UnifiedSessionHandler implements SessionHandlerInterface {
                     // Backfill/sync to Redis if driver is hybrid
                     if ($this->driver === 'hybrid' && $redis) {
                         try {
-                            $redis->setex("sessions:{$id}", $lifetime, $data);
+                            if ($remember) {
+                                $loginTime = $this->extractLoginTime($data) ?? $lastActivity;
+                                $remaining = max(1, ($loginTime + 7 * 86400) - time());
+                            } else {
+                                $remaining = $this->sessionLifetime;
+                            }
+                            $redis->setex("sessions:{$id}", $remaining, $data);
                         } catch (Exception $e) {
                             // Ignore
                         }
@@ -143,15 +143,23 @@ class UnifiedSessionHandler implements SessionHandlerInterface {
             }
         }
 
-        // 3. Dynamic persistent cookie extension: if remember_me is set, renew cookie lifetime
-        if ($loaded && $this->isRememberMe($data) && !headers_sent()) {
+        // 3. Extend/slide cookie lifetime dynamically based on session type
+        if ($loaded && !headers_sent()) {
+            $remember = $this->isRememberMe($data);
+            if ($remember) {
+                $loginTime = $this->extractLoginTime($data) ?? time();
+                $remaining = max(1, ($loginTime + 7 * 86400) - time());
+            } else {
+                $remaining = $this->sessionLifetime;
+            }
+            
             $params = session_get_cookie_params();
             setcookie(
                 session_name(),
                 $id,
-                time() + 30 * 86400, // 30 days persistent cookie
+                time() + $remaining,
                 $params['path'],
-                $params['domain'],
+                $params['domain'] ?? '',
                 $params['secure'] ?? false,
                 $params['httponly'] ?? true
             );
@@ -162,8 +170,14 @@ class UnifiedSessionHandler implements SessionHandlerInterface {
 
     public function write(string $id, string $data): bool {
         $redis = $this->getRedisConnection();
+        
         $remember = $this->isRememberMe($data);
-        $lifetime = $remember ? $this->rememberLifetime : $this->normalLifetime;
+        if ($remember) {
+            $loginTime = $this->extractLoginTime($data) ?? time();
+            $lifetime = max(1, ($loginTime + 7 * 86400) - time());
+        } else {
+            $lifetime = $this->sessionLifetime;
+        }
         
         $userId = $this->extractUserId($data);
         $ip = $_SERVER['REMOTE_ADDR'] ?? '127.0.0.1';
@@ -240,8 +254,9 @@ class UnifiedSessionHandler implements SessionHandlerInterface {
     public function gc(int $max_lifetime): int|false {
         try {
             $db = $this->getDbConnection();
-            $normalExpiry = time() - $this->normalLifetime;
-            $rememberExpiry = time() - $this->rememberLifetime;
+            
+            $normalExpiry = time() - $this->sessionLifetime;
+            $rememberExpiry = time() - (7 * 86400);
 
             $stmt = $db->prepare("
                 DELETE FROM sessions 
@@ -267,6 +282,16 @@ class UnifiedSessionHandler implements SessionHandlerInterface {
     }
 
     /**
+     * Helper to extract login_time from serialized session payload.
+     */
+    private function extractLoginTime(string $payload): ?int {
+        if (preg_match('/login_time\|i:(\d+)/', $payload, $matches)) {
+            return (int)$matches[1];
+        }
+        return null;
+    }
+
+    /**
      * Helper to extract user_id from serialized session payload.
      */
     private function extractUserId(string $payload): ?string {
@@ -283,51 +308,6 @@ class UnifiedSessionHandler implements SessionHandlerInterface {
      * Static helper for early configuration check in index.php
      */
     public static function checkRememberMeStatus(string $id): bool {
-        $driver = $_ENV['SESSION_DRIVER'] ?? 'hybrid';
-        
-        // 1. Check Redis first
-        if ($driver === 'redis' || $driver === 'hybrid') {
-            if (extension_loaded('redis')) {
-                try {
-                    $host = $_ENV['REDIS_HOST'] ?? '127.0.0.1';
-                    $port = (int)($_ENV['REDIS_PORT'] ?? 6379);
-                    $pass = $_ENV['REDIS_PASSWORD'] ?? null;
-                    $dbIndex = (int)($_ENV['REDIS_DB'] ?? 0);
-                    
-                    $redis = new \Redis();
-                    if ($redis->connect($host, $port, 0.5)) {
-                        if (!empty($pass)) {
-                            $redis->auth($pass);
-                        }
-                        if ($dbIndex > 0) {
-                            $redis->select($dbIndex);
-                        }
-                        $payload = $redis->get("sessions:{$id}");
-                        if ($payload !== false && str_contains($payload, 'remember_me|b:1')) {
-                            return true;
-                        }
-                    }
-                } catch (Exception $e) {
-                    // Ignore
-                }
-            }
-        }
-
-        // 2. Check Database
-        if ($driver === 'database' || $driver === 'hybrid') {
-            try {
-                $db = \App\Config\Database::getInstance()->getConnection();
-                $stmt = $db->prepare("SELECT payload FROM sessions WHERE id = ? LIMIT 1");
-                $stmt->execute([$id]);
-                $row = $stmt->fetch(PDO::FETCH_ASSOC);
-                if ($row && str_contains($row['payload'], 'remember_me|b:1')) {
-                    return true;
-                }
-            } catch (Exception $e) {
-                // Ignore
-            }
-        }
-
         return false;
     }
 }

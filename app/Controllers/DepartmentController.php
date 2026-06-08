@@ -40,6 +40,28 @@ class DepartmentController {
         $name = trim($_POST['name'] ?? '');
         $parent_id = !empty($_POST['parent_id']) ? $_POST['parent_id'] : null;
 
+        $parseLimit = function($val, $fieldName) {
+            if ($val !== '') {
+                $val = str_replace([',', '.'], '', $val);
+                if (!is_numeric($val) || floatval($val) < 0) {
+                    throw new \Exception("Nilai {$fieldName} harus berupa angka positif atau kosong.");
+                }
+                return floatval($val);
+            }
+            return null;
+        };
+
+        try {
+            $reimbursement_limit = $parseLimit(isset($_POST['reimbursement_limit']) ? trim($_POST['reimbursement_limit']) : '', 'plafon total departemen');
+            $limit_medis = $parseLimit(isset($_POST['limit_medis']) ? trim($_POST['limit_medis']) : '', 'plafon medis');
+            $limit_transport = $parseLimit(isset($_POST['limit_transport']) ? trim($_POST['limit_transport']) : '', 'plafon transportasi');
+            $limit_operasional = $parseLimit(isset($_POST['limit_operasional']) ? trim($_POST['limit_operasional']) : '', 'plafon operasional');
+            $limit_makan = $parseLimit(isset($_POST['limit_makan']) ? trim($_POST['limit_makan']) : '', 'plafon makan & bisnis');
+        } catch (\Exception $ex) {
+            echo json_encode(['success' => false, 'message' => $ex->getMessage()]);
+            return;
+        }
+
         if (empty($name)) {
             echo json_encode(['success' => false, 'message' => 'Nama departemen wajib diisi.']);
             return;
@@ -88,10 +110,10 @@ class DepartmentController {
                 );
 
                 $stmt = $db->prepare("
-                    INSERT INTO departments (id, name, parent_id, level, created_at, updated_at) 
-                    VALUES (?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+                    INSERT INTO departments (id, name, parent_id, level, reimbursement_limit, limit_medis, limit_transport, limit_operasional, limit_makan, created_at, updated_at) 
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
                 ");
-                $stmt->execute([$uuid, $name, $parent_id, $level]);
+                $stmt->execute([$uuid, $name, $parent_id, $level, $reimbursement_limit, $limit_medis, $limit_transport, $limit_operasional, $limit_makan]);
                 $message = 'Departemen baru berhasil ditambahkan.';
             } else {
                 // UPDATE EXISTING
@@ -107,10 +129,10 @@ class DepartmentController {
 
                 $stmt = $db->prepare("
                     UPDATE departments 
-                    SET name = ?, parent_id = ?, level = ?, updated_at = CURRENT_TIMESTAMP 
+                    SET name = ?, parent_id = ?, level = ?, reimbursement_limit = ?, limit_medis = ?, limit_transport = ?, limit_operasional = ?, limit_makan = ?, updated_at = CURRENT_TIMESTAMP 
                     WHERE id = ?
                 ");
-                $stmt->execute([$name, $parent_id, $level, $id]);
+                $stmt->execute([$name, $parent_id, $level, $reimbursement_limit, $limit_medis, $limit_transport, $limit_operasional, $limit_makan, $id]);
 
                 // Recursively update levels of all descendants
                 $this->updateDescendantsLevels($db, $id, $level);

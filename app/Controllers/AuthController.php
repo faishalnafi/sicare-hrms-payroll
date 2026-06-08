@@ -31,15 +31,16 @@ class AuthController {
             
             if ($remember) {
                 $_SESSION['remember_me'] = true;
+                $_SESSION['login_time'] = time(); // Store initial login time
                 
-                // Explicitly send a persistent cookie (30 days) to override the default session-only cookie
+                // Explicitly send a persistent cookie (7 days) to override the default session-only cookie
                 $params = session_get_cookie_params();
                 setcookie(
                     session_name(),
                     session_id(),
-                    time() + 30 * 86400,
+                    time() + 7 * 86400,
                     $params['path'],
-                    $params['domain'],
+                    $params['domain'] ?? '',
                     $params['secure'] ?? false,
                     $params['httponly'] ?? true
                 );
@@ -81,9 +82,33 @@ class AuthController {
         }
     }
 
+    private function getGoogleRedirectUri() {
+        $envUri = $_ENV['GOOGLE_REDIRECT_URI'] ?? '';
+        
+        $protocol = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? 'https' : 'http';
+        if (isset($_SERVER['HTTP_X_FORWARDED_PROTO']) && $_SERVER['HTTP_X_FORWARDED_PROTO'] === 'https') {
+            $protocol = 'https';
+        }
+        $host = $_SERVER['HTTP_HOST'] ?? 'localhost:8000';
+        
+        if (!empty($envUri)) {
+            // Behind SSL terminating load balancers, automatically adjust http:// to https://
+            if ($protocol === 'https' && str_starts_with($envUri, 'http://')) {
+                $envHost = parse_url($envUri, PHP_URL_HOST);
+                $reqHost = parse_url($protocol . '://' . $host, PHP_URL_HOST);
+                if ($envHost === $reqHost) {
+                    return str_replace('http://', 'https://', $envUri);
+                }
+            }
+            return $envUri;
+        }
+
+        return "{$protocol}://{$host}/auth/google/callback";
+    }
+
     public function googleRedirect() {
         $clientId = $_ENV['GOOGLE_CLIENT_ID'];
-        $redirectUri = $_ENV['GOOGLE_REDIRECT_URI'];
+        $redirectUri = urlencode($this->getGoogleRedirectUri());
         $scope = urlencode('email profile');
         
         $url = "https://accounts.google.com/o/oauth2/v2/auth?client_id={$clientId}&redirect_uri={$redirectUri}&response_type=code&scope={$scope}&access_type=online";
@@ -103,11 +128,17 @@ class AuthController {
         curl_setopt($ch, CURLOPT_POSTFIELDS, http_build_query([
             'client_id' => $_ENV['GOOGLE_CLIENT_ID'],
             'client_secret' => $_ENV['GOOGLE_CLIENT_SECRET'],
-            'redirect_uri' => $_ENV['GOOGLE_REDIRECT_URI'],
+            'redirect_uri' => $this->getGoogleRedirectUri(),
             'grant_type' => 'authorization_code',
             'code' => $code
         ]));
         $response = curl_exec($ch);
+        
+        // Fail-safe: if cURL fails due to SSL peer verification issues on custom VPS systems
+        if ($response === false) {
+            curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+            $response = curl_exec($ch);
+        }
         curl_close($ch);
         
         $tokenData = json_decode($response, true);
@@ -116,6 +147,10 @@ class AuthController {
             curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
             curl_setopt($ch, CURLOPT_HTTPHEADER, ['Authorization: Bearer ' . $tokenData['access_token']]);
             $profileResponse = curl_exec($ch);
+            if ($profileResponse === false) {
+                curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+                $profileResponse = curl_exec($ch);
+            }
             curl_close($ch);
             
             $profile = json_decode($profileResponse, true);
@@ -141,6 +176,26 @@ class AuthController {
                     $_SESSION['name'] = $user['first_name'] . ' ' . $user['last_name'];
                     $_SESSION['email'] = $user['email'];
                     $_SESSION['profile_picture'] = $user['profile_picture'];
+                    
+                    if (isset($_COOKIE['remember_google']) && $_COOKIE['remember_google'] === '1') {
+                        $_SESSION['remember_me'] = true;
+                        $_SESSION['login_time'] = time();
+                        
+                        // Clear the cookie immediately
+                        setcookie('remember_google', '', time() - 3600, '/');
+                        
+                        // Explicitly send a persistent cookie (7 days)
+                        $params = session_get_cookie_params();
+                        setcookie(
+                            session_name(),
+                            session_id(),
+                            time() + 7 * 86400,
+                            $params['path'],
+                            $params['domain'] ?? '',
+                            $params['secure'] ?? false,
+                            $params['httponly'] ?? true
+                        );
+                    }
                     
                     header('Location: /dashboard');
                     exit;
@@ -220,6 +275,92 @@ class AuthController {
         session_start();
         session_destroy();
         header('Location: /');
+        exit;
+    }
+
+    public function impersonate() {
+        header('Content-Type: application/json');
+        if (session_status() === PHP_SESSION_NONE) {
+            session_start();
+        }
+        
+        // Impersonation is only allowed for Super Admins
+        $isSuperAdmin = ($_SESSION['role'] ?? '') === 'superadmin' || ($_SESSION['original_role'] ?? '') === 'superadmin';
+        if (!$isSuperAdmin) {
+            echo json_encode(['success' => false, 'message' => 'Akses ditolak. Hanya Super Admin yang diizinkan melakukan simulasi login.']);
+            return;
+        }
+
+        $targetUserId = $_POST['user_id'] ?? '';
+        if (empty($targetUserId)) {
+            echo json_encode(['success' => false, 'message' => 'ID pengguna wajib diisi.']);
+            return;
+        }
+
+        try {
+            $db = \App\Config\Database::getInstance()->getConnection();
+            $stmt = $db->prepare("SELECT * FROM users WHERE id = :id LIMIT 1");
+            $stmt->execute(['id' => $targetUserId]);
+            $targetUser = $stmt->fetch(\PDO::FETCH_ASSOC);
+
+            if (!$targetUser) {
+                echo json_encode(['success' => false, 'message' => 'Pengguna tidak ditemukan.']);
+                return;
+            }
+
+            // Save original session data if we aren't already impersonating
+            if (!isset($_SESSION['original_user_id'])) {
+                $_SESSION['original_user_id'] = $_SESSION['user_id'];
+                $_SESSION['original_role']    = $_SESSION['role'];
+                $_SESSION['original_name']    = $_SESSION['name'];
+                $_SESSION['original_email']   = $_SESSION['email'];
+                $_SESSION['original_profile_picture'] = $_SESSION['profile_picture'] ?? null;
+            }
+
+            // Set session to target user
+            $_SESSION['user_id'] = $targetUser['id'];
+            $_SESSION['role'] = $targetUser['role'];
+            $_SESSION['name'] = $targetUser['first_name'] . ' ' . $targetUser['last_name'];
+            $_SESSION['email'] = $targetUser['email'];
+            
+            $pp = $targetUser['profile_picture'];
+            if (empty($pp)) {
+                $hash = md5(strtolower(trim($targetUser['email'])));
+                $pp = "https://www.gravatar.com/avatar/{$hash}?d=404&s=200";
+            }
+            $_SESSION['profile_picture'] = $pp;
+
+            echo json_encode(['success' => true, 'redirect' => '/dashboard']);
+        } catch (\Exception $e) {
+            echo json_encode(['success' => false, 'message' => 'Terjadi kesalahan: ' . $e->getMessage()]);
+        }
+    }
+
+    public function stopImpersonating() {
+        if (session_status() === PHP_SESSION_NONE) {
+            session_start();
+        }
+
+        if (isset($_SESSION['original_user_id'])) {
+            // Restore original session data
+            $_SESSION['user_id'] = $_SESSION['original_user_id'];
+            $_SESSION['role']    = $_SESSION['original_role'];
+            $_SESSION['name']    = $_SESSION['original_name'];
+            $_SESSION['email']   = $_SESSION['original_email'];
+            $_SESSION['profile_picture'] = $_SESSION['original_profile_picture'];
+
+            // Clean up original session markers
+            unset($_SESSION['original_user_id']);
+            unset($_SESSION['original_role']);
+            unset($_SESSION['original_name']);
+            unset($_SESSION['original_email']);
+            unset($_SESSION['original_profile_picture']);
+
+            header('Location: /superadmin/users');
+            exit;
+        }
+
+        header('Location: /dashboard');
         exit;
     }
 }

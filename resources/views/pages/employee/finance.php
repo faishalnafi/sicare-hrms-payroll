@@ -1,4 +1,24 @@
 <?php
+// Check quarterly self-reflection compliance before letting them access finance page
+$db = \App\Config\Database::getInstance()->getConnection();
+$userId = $_SESSION['user_id'] ?? '';
+$currentPeriod = date('Y') . '-Q' . ceil(date('n') / 3);
+
+$stmt = $db->prepare("SELECT COUNT(*) FROM self_reflections WHERE user_id = :user_id AND period = :period AND status IN ('submitted', 'completed')");
+$stmt->execute(['user_id' => $userId, 'period' => $currentPeriod]);
+$hasQuarterly = $stmt->fetchColumn() > 0;
+
+if (!$hasQuarterly) {
+    echo "<div class='p-6 text-red-650 font-bold bg-red-50 border border-red-200 rounded-2xl shadow-sm flex items-center gap-3'>
+            <span class='material-symbols-outlined text-red-600'>lock</span>
+            <div>
+                <h4 class='text-sm text-red-900'>Akses Ditolak: Refleksi Kinerja Belum Diisi</h4>
+                <p class='text-xs text-red-800 mt-0.5 font-medium'>Anda wajib menyelesaikan pengisian Refleksi Kinerja & Rencana Karir (IDP) untuk kuartal ini terlebih dahulu sebelum dapat mengakses menu finansial mandiri atau melihat draf slip gaji Anda.</p>
+            </div>
+          </div>";
+    return;
+}
+
 $sessName  = $_SESSION['name'] ?? 'Alex Rivera';
 $sessEmail = $_SESSION['email'] ?? 'alex.rivera@example.com';
 $sessRole  = $_SESSION['role'] ?? 'employee';
@@ -47,8 +67,11 @@ $jobAndDept = !empty($deptName) ? "{$jobTitle} / {$deptName}" : $jobTitle;
 $employeeId = $dbUser['employee_id'] ?? 'EMP-2026-0033';
 $ktpNik = $dbUser['ktp_nik'] ?? '3275012309990001';
 $namaSesuaiKtp = $dbUser['nama_sesuai_ktp'] ?? $sessName;
-$bankName = $dbUser['bank_name'] ?? 'Bank Central Asia (BCA)';
-$bankAccountNumber = $dbUser['bank_account_number'] ?? '8012345678';
+$rawBankName = $dbUser['bank_name'] ?? '';
+$rawBankAccount = $dbUser['bank_account_number'] ?? '';
+$isBankEmpty = empty($rawBankName) || $rawBankName === '-' || empty($rawBankAccount) || $rawBankAccount === '-';
+$bankName = !$isBankEmpty ? $rawBankName : '';
+$bankAccountNumber = !$isBankEmpty ? $rawBankAccount : '';
 $npwpNumber = $dbUser['npwp_number'] ?? '12.345.678.9-012.000';
 $bpjsTk = $dbUser['bpjs_tk'] ?? '12098765432';
 $bpjsKes = $dbUser['bpjs_kes'] ?? '0001234567890';
@@ -381,16 +404,26 @@ $latestBaseSalary = $latest ? $latest['base_salary'] : $baseSalary;
                 <span class="material-symbols-outlined text-blue-700 text-2xl bg-blue-500/5 p-2 rounded-xl">account_balance</span>
             </div>
             <div class="mt-4">
-                <h3 class="text-xl font-extrabold text-on-surface font-headline leading-tight">
-                    <?= htmlspecialchars($bankName) ?>
-                </h3>
-                <p class="text-xs font-mono font-bold text-primary bg-primary/5 px-2 py-0.5 rounded inline-block mt-1">
-                    <?= htmlspecialchars($bankAccountNumber) ?>
-                </p>
+                <?php if (!$isBankEmpty): ?>
+                    <h3 class="text-xl font-extrabold text-on-surface font-headline leading-tight">
+                        <?= htmlspecialchars($bankName) ?>
+                    </h3>
+                    <p class="text-xs font-mono font-bold text-primary bg-primary/5 px-2 py-0.5 rounded inline-block mt-1">
+                        <?= htmlspecialchars($bankAccountNumber) ?>
+                    </p>
+                <?php else: ?>
+                    <h3 class="text-2xl font-black text-on-surface-variant/60 font-headline tracking-tight">
+                        —
+                    </h3>
+                    <p class="text-[11px] font-semibold text-on-surface-variant/60 flex items-center gap-1 mt-1">
+                        <span class="material-symbols-outlined text-xs">schedule</span>
+                        Rekening belum terkonfigurasi
+                    </p>
+                <?php endif; ?>
             </div>
             <div class="mt-4 pt-4 border-t border-outline-variant/10 text-xs text-on-surface-variant flex justify-between font-medium">
                 <span>Atas Nama</span>
-                <span class="font-bold text-on-surface uppercase"><?= htmlspecialchars($namaSesuaiKtp) ?></span>
+                <span class="font-bold text-on-surface uppercase"><?= !$isBankEmpty ? htmlspecialchars($namaSesuaiKtp) : '-' ?></span>
             </div>
         </div>
 

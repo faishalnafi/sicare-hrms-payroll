@@ -17,13 +17,65 @@ $stmt = $db->prepare("
 $stmt->execute(['user_id' => $userId]);
 $claims = $stmt->fetchAll();
 
-// Calculate Plafons Dynamically
+// Fetch user's department and its reimbursement limits
+try {
+    $stmtDept = $db->prepare("
+        SELECT d.id, d.name, d.reimbursement_limit, d.limit_medis, d.limit_transport, d.limit_operasional, d.limit_makan
+        FROM users u
+        LEFT JOIN departments d ON u.department_id = d.id
+        WHERE u.id = :user_id
+    ");
+    $stmtDept->execute(['user_id' => $userId]);
+    $deptInfo = $stmtDept->fetch(PDO::FETCH_ASSOC);
+} catch (Exception $e) {
+    $deptInfo = null;
+}
+
+// Fetch limits dynamically from global_settings
+try {
+    $settingsQuery = $db->query("SELECT `key`, `value` FROM global_settings WHERE `key` LIKE 'reimbursement_limit_%'");
+    $settings = $settingsQuery->fetchAll(PDO::FETCH_KEY_PAIR);
+} catch (Exception $e) {
+    $settings = [];
+}
+
 $initialPlafons = [
-    'medis' => 5000000.00,
-    'transport' => 3000000.00,
-    'operasional' => 4000000.00,
-    'makan' => 2500000.00
+    'medis' => ($deptInfo && $deptInfo['limit_medis'] !== null) ? floatval($deptInfo['limit_medis']) : (isset($settings['reimbursement_limit_medis']) ? floatval($settings['reimbursement_limit_medis']) : 5000000.00),
+    'transport' => ($deptInfo && $deptInfo['limit_transport'] !== null) ? floatval($deptInfo['limit_transport']) : (isset($settings['reimbursement_limit_transport']) ? floatval($settings['reimbursement_limit_transport']) : 3000000.00),
+    'operasional' => ($deptInfo && $deptInfo['limit_operasional'] !== null) ? floatval($deptInfo['limit_operasional']) : (isset($settings['reimbursement_limit_operasional']) ? floatval($settings['reimbursement_limit_operasional']) : 4000000.00),
+    'makan' => ($deptInfo && $deptInfo['limit_makan'] !== null) ? floatval($deptInfo['limit_makan']) : (isset($settings['reimbursement_limit_makan']) ? floatval($settings['reimbursement_limit_makan']) : 2500000.00)
 ];
+
+$deptLimit = null;
+$deptSpent = 0.0;
+$isDeptLimitReached = false;
+
+if ($deptInfo) {
+    if ($deptInfo['reimbursement_limit'] !== null) {
+        $deptLimit = floatval($deptInfo['reimbursement_limit']);
+    } else {
+        // Fallback to default department limit from global settings
+        if (isset($settings['reimbursement_limit_department_default'])) {
+            $deptLimit = floatval($settings['reimbursement_limit_department_default']);
+        }
+    }
+
+    if ($deptLimit !== null) {
+        // Fetch current month's department usage (approved + pending)
+        $stmtDeptUsage = $db->prepare("
+            SELECT SUM(c.amount) 
+            FROM employee_reimbursement_claims c
+            JOIN users u ON c.user_id = u.id
+            WHERE u.department_id = :dept_id 
+              AND c.status IN ('approved', 'pending')
+              AND MONTH(c.created_at) = MONTH(CURRENT_DATE())
+              AND YEAR(c.created_at) = YEAR(CURRENT_DATE())
+        ");
+        $stmtDeptUsage->execute(['dept_id' => $deptInfo['id']]);
+        $deptSpent = floatval($stmtDeptUsage->fetchColumn());
+        $isDeptLimitReached = ($deptSpent >= $deptLimit) || ($deptLimit <= 0.0);
+    }
+}
 
 // Fetch approved spent amount per category (Current Month Only)
 $stmt = $db->prepare("
@@ -144,7 +196,26 @@ function getCategoryLabel($category) {
             </div>
         </div>
 
-        <!-- Card SLA Waktu -->
+        <!-- Card SLA Waktu / Plafon Departemen -->
+        <?php if ($deptInfo && $deptLimit !== null): 
+            $deptAvailable = max(0.0, $deptLimit - $deptSpent);
+            $deptPercent = ($deptLimit > 0) ? round(($deptAvailable / $deptLimit) * 100, 1) : 0;
+            $deptColor = $isDeptLimitReached ? 'text-red-700' : 'text-purple-750';
+            $deptBadgeColor = $isDeptLimitReached ? 'text-red-650 bg-red-50 border-red-200' : 'text-purple-650 bg-purple-50 border-purple-200';
+        ?>
+        <div class="bg-surface-container-lowest rounded-2xl p-5 border border-outline-variant/15 shadow-sm hover:shadow-md transition-shadow flex flex-col justify-between min-h-[140px]">
+            <div class="flex items-center justify-between">
+                <span class="text-[10px] font-bold text-on-surface-variant uppercase tracking-wider">Plafon <?= htmlspecialchars($deptInfo['name']) ?></span>
+                <span class="material-symbols-outlined text-lg p-2 rounded-lg <?= $deptBadgeColor ?>">domain</span>
+            </div>
+            <div class="mt-4">
+                <h3 class="text-2xl font-black <?= $deptColor ?>">Rp <?= number_format($deptAvailable, 0, ',', '.') ?></h3>
+                <p class="text-[10px] text-on-surface-variant font-semibold mt-1 flex items-center gap-1">
+                    <span class="material-symbols-outlined text-xs">info</span> <?= $deptPercent ?>% Tersedia dari Rp <?= number_format($deptLimit, 0, ',', '.') ?>
+                </p>
+            </div>
+        </div>
+        <?php else: ?>
         <div class="bg-surface-container-lowest rounded-2xl p-5 border border-outline-variant/15 shadow-sm hover:shadow-md transition-shadow flex flex-col justify-between min-h-[140px]">
             <div class="flex items-center justify-between">
                 <span class="text-[10px] font-bold text-on-surface-variant uppercase tracking-wider">SLA Proses</span>
@@ -157,6 +228,7 @@ function getCategoryLabel($category) {
                 </p>
             </div>
         </div>
+        <?php endif; ?>
     </div>
 
     <!-- Bento Grid Category Limits -->
@@ -358,10 +430,23 @@ function getCategoryLabel($category) {
                     foreach ($categoriesList as $cat):
                         $limitVal = $initialPlafons[$cat];
                         $usedVal = ($spentByCategory[$cat] ?? 0) + ($pendingByCategory[$cat] ?? 0);
-                        $isLimitReached = $usedVal >= $limitVal;
-                        $disabledAttr = $isLimitReached ? 'disabled' : '';
-                        $labelPrefix = $isLimitReached ? '❌ ' : '';
-                        $labelSuffix = $isLimitReached ? ' - Limit Tercapai' : '';
+                        $isLimitReached = ($usedVal >= $limitVal) || ($limitVal <= 0.0);
+                        
+                        $shouldDisable = $isLimitReached || $isDeptLimitReached;
+                        $disabledAttr = $shouldDisable ? 'disabled' : '';
+                        
+                        $labelPrefix = '';
+                        $labelSuffix = '';
+                        if ($limitVal <= 0.0) {
+                            $labelPrefix = '❌ ';
+                            $labelSuffix = ' - Kategori Dinonaktifkan (Rp 0)';
+                        } elseif ($isLimitReached) {
+                            $labelPrefix = '❌ ';
+                            $labelSuffix = ' - Limit Kategori Tercapai';
+                        } elseif ($isDeptLimitReached) {
+                            $labelPrefix = '❌ ';
+                            $labelSuffix = ' - Limit Departemen Tercapai';
+                        }
                     ?>
                     <option value="<?= $cat ?>" <?= $disabledAttr ?>>
                         <?= $labelPrefix . getCategoryLabel($cat) ?> (Limit: Rp <?= number_format($limitVal, 0, ',', '.') ?>)<?= $labelSuffix ?>

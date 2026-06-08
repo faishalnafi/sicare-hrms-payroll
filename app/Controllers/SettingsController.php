@@ -81,6 +81,9 @@ class SettingsController {
             'payroll_bpjs_tk_pct', 'payroll_bpjs_kes_pct', 'payroll_pph21_pct',
             'app_name', 'app_company_name', 'app_logo_icon',
             'app_logo_type', 'app_logo_image',
+            'reimbursement_limit_medis', 'reimbursement_limit_transport',
+            'reimbursement_limit_operasional', 'reimbursement_limit_makan',
+            'reimbursement_limit_department_default',
         ];
 
         try {
@@ -156,7 +159,11 @@ class SettingsController {
                             return;
                         }
                     }
-                    if (in_array($key, ['payroll_tunj_jabatan_cap', 'payroll_tunj_transport', 'payroll_tunj_komunikasi', 'payroll_late_deduction'])) {
+                    if (in_array($key, [
+                        'payroll_tunj_jabatan_cap', 'payroll_tunj_transport', 'payroll_tunj_komunikasi', 'payroll_late_deduction',
+                        'reimbursement_limit_medis', 'reimbursement_limit_transport', 'reimbursement_limit_operasional', 'reimbursement_limit_makan',
+                        'reimbursement_limit_department_default'
+                    ])) {
                         $val = str_replace([',', '.'], '', $val);
                         if (!is_numeric($val) || (float)$val < 0) {
                             echo json_encode(['success' => false, 'message' => "Nilai nominal harus berupa angka positif."]);

@@ -53,15 +53,58 @@ class ReimbursementController {
             return;
         }
 
-        // Define initial monthly plafonds (Configurable)
-        $initialPlafons = [
-            'medis' => 5000000.00,
-            'transport' => 3000000.00,
-            'operasional' => 4000000.00,
-            'makan' => 2500000.00
-        ];
+        // Fetch user's department details first (including total and category-specific overrides)
+        try {
+            $stmtDept = $this->db->prepare("
+                SELECT d.id, d.name, d.reimbursement_limit, d.limit_medis, d.limit_transport, d.limit_operasional, d.limit_makan
+                FROM users u
+                LEFT JOIN departments d ON u.department_id = d.id
+                WHERE u.id = :user_id
+            ");
+            $stmtDept->execute(['user_id' => $userId]);
+            $deptInfo = $stmtDept->fetch(PDO::FETCH_ASSOC);
+        } catch (Exception $e) {
+            $deptInfo = null;
+        }
 
-        // Fetch current month's usage (approved + pending) to validate limit
+        // Fetch limits dynamically from global_settings
+        try {
+            $settingsQuery = $this->db->query("SELECT `key`, `value` FROM global_settings WHERE `key` LIKE 'reimbursement_limit_%'");
+            $settings = $settingsQuery->fetchAll(PDO::FETCH_KEY_PAIR);
+        } catch (Exception $e) {
+            $settings = [];
+        }
+
+        // Determine category limit: check department override first, then global settings, then hardcoded fallbacks
+        $maxLimit = null;
+        if ($deptInfo) {
+            $deptCatKey = 'limit_' . $category; // e.g. limit_medis, limit_transport, limit_operasional, limit_makan
+            if (isset($deptInfo[$deptCatKey]) && $deptInfo[$deptCatKey] !== null) {
+                $maxLimit = floatval($deptInfo[$deptCatKey]);
+            }
+        }
+
+        if ($maxLimit === null) {
+            $maxLimit = isset($settings['reimbursement_limit_' . $category]) ? floatval($settings['reimbursement_limit_' . $category]) : null;
+        }
+
+        if ($maxLimit === null) {
+            // fallback defaults
+            $fallbacks = [
+                'medis' => 5000000.00,
+                'transport' => 3000000.00,
+                'operasional' => 4000000.00,
+                'makan' => 2500000.00
+            ];
+            $maxLimit = $fallbacks[$category] ?? 0.0;
+        }
+
+        if ($maxLimit <= 0.0) {
+            echo json_encode(['success' => false, 'message' => 'Plafon reimbursement untuk kategori ini dinonaktifkan atau bernilai Rp 0.']);
+            return;
+        }
+
+        // Fetch current month's usage (approved + pending) to validate category limit
         $stmtUsage = $this->db->prepare("
             SELECT SUM(amount) FROM employee_reimbursement_claims
             WHERE user_id = :user_id 
@@ -75,12 +118,47 @@ class ReimbursementController {
             'category' => $category
         ]);
         $currentUsage = floatval($stmtUsage->fetchColumn());
-        $maxLimit = $initialPlafons[$category] ?? 0;
 
         if (($currentUsage + $amount) > $maxLimit) {
             $sisa = $maxLimit - $currentUsage;
             echo json_encode(['success' => false, 'message' => 'Sisa plafon Anda bulan ini tidak mencukupi untuk nominal tersebut. Sisa: Rp ' . number_format(max(0, $sisa), 0, ',', '.')]);
             return;
+        }
+
+        if ($deptInfo) {
+            $deptLimit = null;
+            if ($deptInfo['reimbursement_limit'] !== null) {
+                $deptLimit = floatval($deptInfo['reimbursement_limit']);
+            } else {
+                // Fallback to default department limit from global settings
+                if (isset($settings['reimbursement_limit_department_default'])) {
+                    $deptLimit = floatval($settings['reimbursement_limit_department_default']);
+                }
+            }
+
+            if ($deptLimit !== null) {
+                // Fetch current month's department usage (approved + pending)
+                $stmtDeptUsage = $this->db->prepare("
+                    SELECT SUM(c.amount) 
+                    FROM employee_reimbursement_claims c
+                    JOIN users u ON c.user_id = u.id
+                    WHERE u.department_id = :dept_id 
+                      AND c.status IN ('approved', 'pending')
+                      AND MONTH(c.created_at) = MONTH(CURRENT_DATE())
+                      AND YEAR(c.created_at) = YEAR(CURRENT_DATE())
+                ");
+                $stmtDeptUsage->execute(['dept_id' => $deptInfo['id']]);
+                $currentDeptUsage = floatval($stmtDeptUsage->fetchColumn());
+
+                if (($currentDeptUsage + $amount) > $deptLimit || $deptLimit <= 0.0) {
+                    $sisaDept = $deptLimit - $currentDeptUsage;
+                    echo json_encode([
+                        'success' => false, 
+                        'message' => 'Sisa plafon total departemen Anda bulan ini tidak mencukupi. Sisa plafon departemen: Rp ' . number_format(max(0, $sisaDept), 0, ',', '.')
+                    ]);
+                    return;
+                }
+            }
         }
 
         // File upload validation

@@ -84,6 +84,8 @@ if (!empty($resolvedPage)) {
     <title><?= htmlspecialchars($pageTitle) ?></title>
     <!-- Favicon from Uploaded Logo -->
     <link rel="icon" type="image/x-icon" href="<?= htmlspecialchars($appLogoImage ?: '/favicon.ico') ?>"/>
+
+    
     <!-- Fonts & Icons -->
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Manrope:wght@700;800&display=swap" rel="stylesheet"/>
     <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
@@ -96,14 +98,14 @@ if (!empty($resolvedPage)) {
           theme: {
             extend: {
               colors: {
-                "primary": "#000666",
-                "on-surface": "#191c1d",
-                "on-surface-variant": "#454652",
-                "surface": "#f8f9fa",
-                "surface-container-lowest": "#ffffff",
-                "surface-container-low": "#f3f4f5",
-                "surface-container-high": "#e7e8e9",
-                "outline-variant": "#c6c5d4"
+                "primary": "var(--color-primary, #000666)",
+                "on-surface": "var(--color-on-surface, #191c1d)",
+                "on-surface-variant": "var(--color-on-surface-variant, #454652)",
+                "surface": "var(--color-surface, #f8f9fa)",
+                "surface-container-lowest": "var(--color-surface-container-lowest, #ffffff)",
+                "surface-container-low": "var(--color-surface-container-low, #f3f4f5)",
+                "surface-container-high": "var(--color-surface-container-high, #e7e8e9)",
+                "outline-variant": "var(--color-outline-variant, #c6c5d4)"
               },
               fontFamily: {
                 "headline": ["Manrope"],
@@ -242,6 +244,19 @@ if (!empty($resolvedPage)) {
         };
     </script>
     <style>
+        :root {
+            --color-primary: #000666;
+            --color-on-surface: #191c1d;
+            --color-on-surface-variant: #454652;
+            --color-surface: #f8f9fa;
+            --color-surface-container-lowest: #ffffff;
+            --color-surface-container-low: #f3f4f5;
+            --color-surface-container-high: #e7e8e9;
+            --color-outline-variant: #c6c5d4;
+        }
+
+
+
         .material-symbols-outlined { font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24; vertical-align: middle; }
         body { font-family: 'Inter', sans-serif; }
         h1, h2, h3 { font-family: 'Manrope', sans-serif; }
@@ -492,6 +507,17 @@ if (!empty($resolvedPage)) {
         
         <!-- Right Content Container (Pushed by collapsed sidebar) -->
         <div id="contentContainer" class="content-container flex-grow flex flex-col min-w-0 lg:pl-28 xl:pl-80 transition-all duration-300">
+            <?php if (isset($_SESSION['original_user_id'])): ?>
+                <div class="bg-amber-500 text-white px-6 py-3 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 shadow-sm z-30 text-sm font-semibold sticky top-0 border-b border-amber-600/30 backdrop-blur-md bg-amber-500/95">
+                    <div class="flex items-center gap-2.5">
+                        <span class="material-symbols-outlined text-xl animate-pulse">supervised_user_circle</span>
+                        <span>Anda sedang melakukan simulasi login sebagai <strong><?= htmlspecialchars($_SESSION['name']) ?></strong> (<?= htmlspecialchars($_SESSION['email']) ?>).</span>
+                    </div>
+                    <a href="/auth/stop-impersonating" class="bg-white/20 hover:bg-white/30 text-white px-4 py-1.5 rounded-full text-xs font-bold transition-all flex items-center gap-1.5 shadow-sm border border-white/10 hover:scale-105 active:scale-95">
+                        <span class="material-symbols-outlined text-xs">logout</span> Kembali ke Super Admin
+                    </a>
+                </div>
+            <?php endif; ?>
             <main class="flex-grow p-4 pt-16 sm:p-6 sm:pt-20 lg:p-8 max-w-[1600px] w-full mx-auto space-y-6">
                 <!-- Identity Chip -->
                 <div class="flex items-center gap-2">

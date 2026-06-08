@@ -33,6 +33,11 @@ try {
             name VARCHAR(255) NOT NULL,
             parent_id CHAR(36) NULL,
             level INT DEFAULT 1,
+            reimbursement_limit DECIMAL(15,2) DEFAULT NULL,
+            limit_medis DECIMAL(15,2) DEFAULT NULL,
+            limit_transport DECIMAL(15,2) DEFAULT NULL,
+            limit_operasional DECIMAL(15,2) DEFAULT NULL,
+            limit_makan DECIMAL(15,2) DEFAULT NULL,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
             KEY idx_parent_id (parent_id)
@@ -929,6 +934,18 @@ try {
         echo "work_mode column may already exist or not supported: " . $ex->getMessage() . "\n";
     }
 
+    // 13.1 Add reimbursement_limit and specific category limits columns to departments (if not exists)
+    try {
+        $db->exec("ALTER TABLE departments ADD COLUMN IF NOT EXISTS reimbursement_limit DECIMAL(15,2) DEFAULT NULL AFTER level");
+        $db->exec("ALTER TABLE departments ADD COLUMN IF NOT EXISTS limit_medis DECIMAL(15,2) DEFAULT NULL AFTER reimbursement_limit");
+        $db->exec("ALTER TABLE departments ADD COLUMN IF NOT EXISTS limit_transport DECIMAL(15,2) DEFAULT NULL AFTER limit_medis");
+        $db->exec("ALTER TABLE departments ADD COLUMN IF NOT EXISTS limit_operasional DECIMAL(15,2) DEFAULT NULL AFTER limit_transport");
+        $db->exec("ALTER TABLE departments ADD COLUMN IF NOT EXISTS limit_makan DECIMAL(15,2) DEFAULT NULL AFTER limit_operasional");
+        echo "Columns reimbursement_limit, limit_medis, limit_transport, limit_operasional, limit_makan added/verified in departments.\n";
+    } catch (Exception $ex) {
+        echo "reimbursement_limit or category limits columns addition: " . $ex->getMessage() . "\n";
+    }
+
     // 13.5 Create company_holidays table
     $db->exec("
         CREATE TABLE IF NOT EXISTS company_holidays (
@@ -971,6 +988,13 @@ try {
         ['payroll_tunj_jabatan_cap', '2500000',       'Batas Maksimal Tunjangan Jabatan', 'payroll'],
         ['payroll_tunj_transport',   '1500000',       'Tunjangan Transport Flat (IDR)',   'payroll'],
         ['payroll_tunj_komunikasi',  '500000',        'Tunjangan Komunikasi Flat (IDR)',  'payroll'],
+        // --- Reimbursement Category Defaults ---
+        ['reimbursement_limit_medis',       '5000000',  'Plafon Medis Bulanan (Default)',       'reimbursement'],
+        ['reimbursement_limit_transport',   '3000000',  'Plafon Transport Bulanan (Default)',   'reimbursement'],
+        ['reimbursement_limit_operasional', '4000000',  'Plafon Operasional Bulanan (Default)', 'reimbursement'],
+        ['reimbursement_limit_makan',       '2500000',  'Plafon Makan Bulanan (Default)',       'reimbursement'],
+        // --- Department Default ---
+        ['reimbursement_limit_department_default', '15000000', 'Plafon Departemen Bulanan (Default)', 'reimbursement'],
         // --- General App/Company Info ---
         ['app_name',                 'siCare',                 'Nama Aplikasi',                    'general'],
         ['app_company_name',         'PT SI CARE ENTERPRISE',  'Nama Perusahaan (PT)',             'general'],
@@ -1076,6 +1100,287 @@ try {
         echo "Column 'other_deduction' added to employee_payroll table.\n";
     } catch (Exception $e) {
         // Column may already exist
+    }
+
+    // 18. Create self_reflections table
+    $createReflectionTableQuery = "
+        CREATE TABLE IF NOT EXISTS self_reflections (
+            id CHAR(36) PRIMARY KEY,
+            user_id CHAR(36) NOT NULL,
+            period VARCHAR(20) NOT NULL,
+            achievements TEXT NULL,
+            challenges TEXT NULL,
+            core_values_rating INT DEFAULT 5,
+            future_goals TEXT NULL,
+            support_needed TEXT NULL,
+            mood_rating VARCHAR(50) NULL,
+            workload_rating INT DEFAULT 3,
+            reflection_notes TEXT NULL,
+            career_aspirations TEXT NULL,
+            skills_to_develop TEXT NULL,
+            action_plan TEXT NULL,
+            status VARCHAR(20) DEFAULT 'draft',
+            manager_feedback TEXT NULL,
+            manager_feedback_by CHAR(36) NULL,
+            manager_feedback_at TIMESTAMP NULL,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+            UNIQUE KEY uq_user_period (user_id, period),
+            FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+    ";
+    try {
+        $db->exec($createReflectionTableQuery);
+        echo "Table self_reflections created successfully.\n";
+    } catch (Exception $ex) {
+        // Fallback without FK constraint
+        $createReflectionTableNoFK = "
+            CREATE TABLE IF NOT EXISTS self_reflections (
+                id CHAR(36) PRIMARY KEY,
+                user_id CHAR(36) NOT NULL,
+                period VARCHAR(20) NOT NULL,
+                achievements TEXT NULL,
+                challenges TEXT NULL,
+                core_values_rating INT DEFAULT 5,
+                future_goals TEXT NULL,
+                support_needed TEXT NULL,
+                mood_rating VARCHAR(50) NULL,
+                workload_rating INT DEFAULT 3,
+                reflection_notes TEXT NULL,
+                career_aspirations TEXT NULL,
+                skills_to_develop TEXT NULL,
+                action_plan TEXT NULL,
+                status VARCHAR(20) DEFAULT 'draft',
+                manager_feedback TEXT NULL,
+                manager_feedback_by CHAR(36) NULL,
+                manager_feedback_at TIMESTAMP NULL,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+                UNIQUE KEY uq_user_period (user_id, period)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+        ";
+        $db->exec($createReflectionTableNoFK);
+        echo "Table self_reflections created without FK constraint successfully.\n";
+    }
+
+    // Seed dummy self_reflections if empty
+    $countReflections = $db->query("SELECT COUNT(*) FROM self_reflections")->fetchColumn();
+    if ($countReflections == 0) {
+        // Helper to generate UUID locally
+        $localGenUuid = function() {
+            return sprintf('%04x%04x-%04x-%04x-%04x-%04x%04x%04x',
+                mt_rand(0, 0xffff), mt_rand(0, 0xffff), mt_rand(0, 0xffff),
+                mt_rand(0, 0x0fff) | 0x4000, mt_rand(0, 0x3fff) | 0x8000,
+                mt_rand(0, 0xffff), mt_rand(0, 0xffff), mt_rand(0, 0xffff)
+            );
+        };
+
+        $dummyReflections = [
+            [
+                'id' => $localGenUuid(),
+                'user_id' => $alexId,
+                'period' => '2026-Q2',
+                'achievements' => 'Membangun dashboard modular siCare dengan teknologi SPA berbasis AJAX, serta mengoptimalkan aset Google Fonts & Google Material Symbols untuk performa maksimal.',
+                'challenges' => 'Integrasi GPS pada absensi harian sempat mengalami kendala akurasi di beberapa perangkat mobile karyawan.',
+                'core_values_rating' => 5,
+                'future_goals' => 'Mengimplementasikan modul payroll otomatis terintegrasi PPh21 untuk memangkas waktu kerja tim HR Operations.',
+                'support_needed' => 'Membutuhkan dokumentasi API GPS terbaru dari tim infrastruktur serta testing sandbox tambahan.',
+                'mood_rating' => 'excellent',
+                'workload_rating' => 3,
+                'reflection_notes' => 'Sangat menikmati iklim kolaborasi yang terbuka di tim frontend.',
+                'career_aspirations' => 'Menjadi Tech Lead Frontend di siCare.',
+                'skills_to_develop' => 'Advanced SPA Performance & Web Security.',
+                'action_plan' => 'Membaca referensi OWASP serta mengikuti sertifikasi keamanan aplikasi.',
+                'status' => 'submitted',
+                'manager_feedback' => null,
+                'manager_feedback_by' => null,
+                'manager_feedback_at' => null
+            ],
+            [
+                'id' => $localGenUuid(),
+                'user_id' => $budiId,
+                'period' => '2026-Q2',
+                'achievements' => 'Mengoptimalkan skema relasi database (UUID & Staff ID) dan merancang Unified Session Handler berbasis Redis/DB untuk performa login multitenant.',
+                'challenges' => 'Menyelaraskan library phpspreadsheet untuk import/upsert data karyawan agar tidak terjadi konflik data.',
+                'core_values_rating' => 4,
+                'future_goals' => 'Mengembangkan API v1/ secure menggunakan X-API-Key untuk integrasi mesin sidik jari cabang.',
+                'support_needed' => 'Pelatihan lanjutan mengenai Redis caching cluster.',
+                'mood_rating' => 'good',
+                'workload_rating' => 4,
+                'reflection_notes' => 'Beban kerja sempat tinggi karena sprint penyesuaian regulasi perpajakan.',
+                'career_aspirations' => 'Principal Software Architect.',
+                'skills_to_develop' => 'Database Performance Tuning & Scaling.',
+                'action_plan' => 'Melakukan benchmark SQL query berkala pada tabel audit_logs dan employee_attendance.',
+                'status' => 'completed',
+                'manager_feedback' => 'Budi melakukan pekerjaan luar biasa di backend. Perancangan skema database sangat rapi dan aman. Tetap pertahankan!',
+                'manager_feedback_by' => $managerId,
+                'manager_feedback_at' => date('Y-m-d H:i:s')
+            ],
+            [
+                'id' => $localGenUuid(),
+                'user_id' => $amandaId,
+                'period' => '2026-Q2',
+                'achievements' => 'Merancang interface visual glassmorphism modern untuk siCare sesuai panduan UI/UX korporat.',
+                'challenges' => 'Mencegah horizontal scroll overflow di resolusi mobile 320px pada halaman master data tabel.',
+                'core_values_rating' => 5,
+                'future_goals' => 'Membuat library desain UI internal yang konsisten untuk mempercepat pengerjaan modul-modul mendatang.',
+                'support_needed' => 'Lisensi Figma Pro untuk kolaborasi tim desain.',
+                'mood_rating' => 'tired',
+                'workload_rating' => 4,
+                'reflection_notes' => 'Merasa sedikit kelelahan karena revisi tampilan portal onboarding yang berulang-ulang.',
+                'career_aspirations' => 'Senior UI/UX Designer / Product Designer.',
+                'skills_to_develop' => 'Interactive Micro-Animations & Design Systems.',
+                'action_plan' => 'Mempelajari prinsip CSS transitions dan web animations.',
+                'status' => 'draft',
+                'manager_feedback' => null,
+                'manager_feedback_by' => null,
+                'manager_feedback_at' => null
+            ],
+            [
+                'id' => $localGenUuid(),
+                'user_id' => $rianId,
+                'period' => '2026-Q2',
+                'achievements' => 'Mengatur server Nginx reverse proxy dan mengonfigurasi batas ukuran upload file 10MB serta validasi server-side finfo.',
+                'challenges' => 'Server sempat overload karena load test impor data karyawan massal.',
+                'core_values_rating' => 4,
+                'future_goals' => 'Mengatur setup auto-backup database sicare_db harian ke secure remote storage.',
+                'support_needed' => 'Penambahan resource server staging untuk load testing.',
+                'mood_rating' => 'stressed',
+                'workload_rating' => 5,
+                'reflection_notes' => 'Sangat stres minggu ini karena ada perbaikan server mendadak di luar jam kerja.',
+                'career_aspirations' => 'Lead DevOps / Site Reliability Engineer.',
+                'skills_to_develop' => 'Load Balancing, Docker & Kubernetes.',
+                'action_plan' => 'Mempelajari containerization pada docker-compose.yml perusahaan.',
+                'status' => 'submitted',
+                'manager_feedback' => null,
+                'manager_feedback_by' => null,
+                'manager_feedback_at' => null
+            ]
+        ];
+
+        $stmtRef = $db->prepare("
+            INSERT INTO self_reflections (
+                id, user_id, period, achievements, challenges, core_values_rating, future_goals, support_needed,
+                mood_rating, workload_rating, reflection_notes, career_aspirations, skills_to_develop, action_plan,
+                status, manager_feedback, manager_feedback_by, manager_feedback_at
+            ) VALUES (
+                :id, :user_id, :period, :achievements, :challenges, :core_values_rating, :future_goals, :support_needed,
+                :mood_rating, :workload_rating, :reflection_notes, :career_aspirations, :skills_to_develop, :action_plan,
+                :status, :manager_feedback, :manager_feedback_by, :manager_feedback_at
+            )
+        ");
+
+        foreach ($dummyReflections as $r) {
+            $stmtRef->execute($r);
+        }
+        echo "Seed dummy self_reflections complete.\n";
+    } else {
+        echo "Skipping self_reflections seeding because data already exists.\n";
+    }
+
+    // Helper to generate UUID locally
+    $localGenUuid = function() {
+        return sprintf('%04x%04x-%04x-%04x-%04x-%04x%04x%04x',
+            mt_rand(0, 0xffff), mt_rand(0, 0xffff), mt_rand(0, 0xffff),
+            mt_rand(0, 0x0fff) | 0x4000, mt_rand(0, 0x3fff) | 0x8000,
+            mt_rand(0, 0xffff), mt_rand(0, 0xffff), mt_rand(0, 0xffff)
+        );
+    };
+
+    // 19. Create mood_pulses table
+    $createMoodPulsesTableQuery = "
+        CREATE TABLE IF NOT EXISTS mood_pulses (
+            id CHAR(36) PRIMARY KEY,
+            user_id CHAR(36) NOT NULL,
+            period VARCHAR(20) NOT NULL,
+            mood_rating VARCHAR(50) NOT NULL,
+            workload_rating INT NOT NULL,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            UNIQUE KEY uq_user_mood_period (user_id, period),
+            FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+    ";
+    try {
+        $db->exec($createMoodPulsesTableQuery);
+        echo "Table mood_pulses created successfully.\n";
+    } catch (Exception $ex) {
+        $createMoodPulsesTableNoFK = "
+            CREATE TABLE IF NOT EXISTS mood_pulses (
+                id CHAR(36) PRIMARY KEY,
+                user_id CHAR(36) NOT NULL,
+                period VARCHAR(20) NOT NULL,
+                mood_rating VARCHAR(50) NOT NULL,
+                workload_rating INT NOT NULL,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                UNIQUE KEY uq_user_mood_period (user_id, period)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+        ";
+        $db->exec($createMoodPulsesTableNoFK);
+        echo "Table mood_pulses created without FK constraint successfully.\n";
+    }
+
+    // Seed dummy mood_pulses if empty
+    $countMoodPulses = $db->query("SELECT COUNT(*) FROM mood_pulses")->fetchColumn();
+    if ($countMoodPulses == 0) {
+        $dummyMoodPulses = [
+            ['id' => $localGenUuid(), 'user_id' => $alexId, 'period' => '2026-B11', 'mood_rating' => 'excellent', 'workload_rating' => 3],
+            ['id' => $localGenUuid(), 'user_id' => $budiId, 'period' => '2026-B11', 'mood_rating' => 'good', 'workload_rating' => 4],
+            ['id' => $localGenUuid(), 'user_id' => $amandaId, 'period' => '2026-B11', 'mood_rating' => 'neutral', 'workload_rating' => 3],
+            ['id' => $localGenUuid(), 'user_id' => $rianId, 'period' => '2026-B11', 'mood_rating' => 'stressed', 'workload_rating' => 5],
+            ['id' => $localGenUuid(), 'user_id' => $alexId, 'period' => '2026-B12', 'mood_rating' => 'good', 'workload_rating' => 3],
+            ['id' => $localGenUuid(), 'user_id' => $budiId, 'period' => '2026-B12', 'mood_rating' => 'good', 'workload_rating' => 3]
+            // We leave amanda and rian unseeded for 2026-B12 to trigger dashboard warnings!
+        ];
+        $stmtMood = $db->prepare("INSERT INTO mood_pulses (id, user_id, period, mood_rating, workload_rating) VALUES (:id, :user_id, :period, :mood_rating, :workload_rating)");
+        foreach ($dummyMoodPulses as $dm) {
+            $stmtMood->execute($dm);
+        }
+        echo "Seed dummy mood_pulses complete.\n";
+    }
+
+    // 20. Create personal_journals table
+    $createPersonalJournalsTableQuery = "
+        CREATE TABLE IF NOT EXISTS personal_journals (
+            id CHAR(36) PRIMARY KEY,
+            user_id CHAR(36) NOT NULL,
+            title VARCHAR(150) NULL,
+            notes TEXT NOT NULL,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+            FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+    ";
+    try {
+        $db->exec($createPersonalJournalsTableQuery);
+        echo "Table personal_journals created successfully.\n";
+    } catch (Exception $ex) {
+        $createPersonalJournalsTableNoFK = "
+            CREATE TABLE IF NOT EXISTS personal_journals (
+                id CHAR(36) PRIMARY KEY,
+                user_id CHAR(36) NOT NULL,
+                title VARCHAR(150) NULL,
+                notes TEXT NOT NULL,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+        ";
+        $db->exec($createPersonalJournalsTableNoFK);
+        echo "Table personal_journals created without FK constraint successfully.\n";
+    }
+
+    // Seed dummy personal_journals if empty
+    $countJournals = $db->query("SELECT COUNT(*) FROM personal_journals")->fetchColumn();
+    if ($countJournals == 0) {
+        $dummyJournals = [
+            ['id' => $localGenUuid(), 'user_id' => $alexId, 'title' => 'Pembelajaran Git Flow', 'notes' => 'Hari ini belajar merapikan branch menggunakan git flow di repository siCare. Sangat menyenangkan.'],
+            ['id' => $localGenUuid(), 'user_id' => $budiId, 'title' => 'Optimasi Query SQL', 'notes' => 'Melakukan testing index pada kolom user_id dan period di tabel self_reflections. Kecepatan query meningkat 40%.'],
+            ['id' => $localGenUuid(), 'user_id' => $rianId, 'title' => 'Troubleshooting Server', 'notes' => 'Server Nginx sempat down 10 menit karena kehabisan memory. Sudah diselesaikan dengan membatasi worker connections. Perlu memantau log berkala.']
+        ];
+        $stmtJournal = $db->prepare("INSERT INTO personal_journals (id, user_id, title, notes) VALUES (:id, :user_id, :title, :notes)");
+        foreach ($dummyJournals as $dj) {
+            $stmtJournal->execute($dj);
+        }
+        echo "Seed dummy personal_journals complete.\n";
     }
 
 } catch (Exception $e) {

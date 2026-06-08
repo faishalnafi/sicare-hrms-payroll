@@ -22,18 +22,16 @@ ini_set('session.use_only_cookies', 1);
 ini_set('session.cookie_httponly', 1);
 ini_set('session.cookie_samesite', 'Lax');
 
-// Set GC max lifetime to 24 hours (86400) to support server-side sliding expiry of Remember Me
-ini_set('session.gc_maxlifetime', 86400);
-
-// If user has a session cookie, check if they checked "Ingat perangkat ini"
-$cookieName = session_name();
-if (isset($_COOKIE[$cookieName])) {
-    $sid = $_COOKIE[$cookieName];
-    if (\App\Session\UnifiedSessionHandler::checkRememberMeStatus($sid)) {
-        // Set cookie lifetime to 30 days so the browser doesn't delete it on close
-        ini_set('session.cookie_lifetime', 30 * 86400);
-    }
+// Set session lifetime dynamically from environment (default: 24 hours / 86400 seconds)
+$sessionLifetime = 86400;
+if (isset($_ENV['SESSION_LIFETIME']) && is_numeric($_ENV['SESSION_LIFETIME'])) {
+    $sessionLifetime = (int)$_ENV['SESSION_LIFETIME'];
+} elseif (getenv('SESSION_LIFETIME') !== false && is_numeric(getenv('SESSION_LIFETIME'))) {
+    $sessionLifetime = (int)getenv('SESSION_LIFETIME');
 }
+
+ini_set('session.gc_maxlifetime', $sessionLifetime);
+ini_set('session.cookie_lifetime', $sessionLifetime);
 
 // Register the custom unified session handler (Database + Redis)
 $sessionHandler = new \App\Session\UnifiedSessionHandler();
@@ -86,13 +84,19 @@ if ($method === 'POST' && $path === 'auth/login') {
 } elseif ($method === 'GET' && $path === 'auth/logout') {
     (new \App\Controllers\AuthController())->logout();
     exit;
+} elseif ($method === 'POST' && $path === 'auth/impersonate') {
+    (new \App\Controllers\AuthController())->impersonate();
+    exit;
+} elseif ($method === 'GET' && $path === 'auth/stop-impersonating') {
+    (new \App\Controllers\AuthController())->stopImpersonating();
+    exit;
 } elseif ($method === 'GET' && $path === 'auth/google') {
     (new \App\Controllers\AuthController())->googleRedirect();
     exit;
 } elseif ($method === 'GET' && str_starts_with($path, 'auth/google/callback')) {
     (new \App\Controllers\AuthController())->googleCallback();
     exit;
-} elseif ($method === 'GET' && $path === 'dashboard') {
+} elseif ($method === 'GET' && ($path === 'dashboard' || preg_match('/^(candidate|employee|recruiter|manager|hiring_manager|hrops|hr_ops|admin|executive|superadmin)\/dashboard$/i', $path))) {
     (new \App\Controllers\DashboardController())->index();
     exit;
 } elseif ($method === 'POST' && $path === 'employee/profile/correction') {
@@ -154,6 +158,21 @@ if ($method === 'POST' && $path === 'auth/login') {
     exit;
 } elseif ($method === 'POST' && $path === 'hrops/attendance/correct') {
     (new \App\Controllers\AttendanceController())->correct();
+    exit;
+} elseif ($method === 'POST' && $path === 'employee/reflection/save') {
+    (new \App\Controllers\ReflectionController())->save();
+    exit;
+} elseif ($method === 'POST' && $path === 'employee/reflection/save-mood') {
+    (new \App\Controllers\ReflectionController())->saveMoodPulse();
+    exit;
+} elseif ($method === 'POST' && $path === 'employee/reflection/save-journal') {
+    (new \App\Controllers\ReflectionController())->saveJournal();
+    exit;
+} elseif ($method === 'POST' && $path === 'manager/reflection/feedback') {
+    (new \App\Controllers\ReflectionController())->submitFeedback();
+    exit;
+} elseif ($method === 'GET' && $path === 'reflection/analytics') {
+    (new \App\Controllers\ReflectionController())->getAnalytics();
     exit;
 } elseif ($method === 'POST' && $path === 'admin/settings/save') {
     (new \App\Controllers\SettingsController())->save();
@@ -224,6 +243,9 @@ if ($method === 'POST' && $path === 'auth/login') {
 }
 
 // Guest Routes
+if (session_status() === PHP_SESSION_NONE) {
+    session_start();
+}
 $page = '';
 if (isset($_GET['page'])) {
     $page = $_GET['page'];

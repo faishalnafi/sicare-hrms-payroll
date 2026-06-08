@@ -119,7 +119,7 @@ class EmployeeMasterController {
             }
             
             // Fetch departments for dropdown usage
-            $stmtDep = $db->query("SELECT id, name, level, parent_id FROM departments ORDER BY level ASC, name ASC");
+            $stmtDep = $db->query("SELECT id, name, level, parent_id, reimbursement_limit, limit_medis, limit_transport, limit_operasional, limit_makan FROM departments ORDER BY level ASC, name ASC");
             $departments = $stmtDep->fetchAll(PDO::FETCH_ASSOC);
             
             echo json_encode(['success' => true, 'data' => $users, 'departments' => $departments]);
