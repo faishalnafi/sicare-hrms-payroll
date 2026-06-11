@@ -32,6 +32,14 @@ if (!empty($resolvedGuestPage)) {
     <!-- Favicon from Uploaded Logo -->
     <link rel="icon" type="image/x-icon" href="<?= htmlspecialchars($appLogoImage ?: '/favicon.ico') ?>"/>
     
+    <!-- PWA Meta Tags & Manifest -->
+    <meta name="theme-color" content="#000666"/>
+    <meta name="apple-mobile-web-app-capable" content="yes"/>
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
+    <meta name="apple-mobile-web-app-title" content="<?= htmlspecialchars($appName) ?>"/>
+    <link rel="apple-touch-icon" href="<?= htmlspecialchars($appLogoImage ?: '/images/icons/icon-192x192.png') ?>"/>
+    <link rel="manifest" href="/manifest.php"/>
+    
 
     
     <!-- Fonts -->
@@ -160,5 +168,18 @@ if (!empty($resolvedGuestPage)) {
     </main>
 
     <?php require __DIR__ . '/../parts/guest_footer.php'; ?>
+
+    <!-- PWA Service Worker Registration -->
+    <script>
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', function() {
+                navigator.serviceWorker.register('/sw.js').then(function(reg) {
+                    console.log('ServiceWorker registration successful with scope: ', reg.scope);
+                }, function(err) {
+                    console.error('ServiceWorker registration failed: ', err);
+                });
+            });
+        }
+    </script>
 </body>
 </html>

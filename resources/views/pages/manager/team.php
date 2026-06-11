@@ -457,6 +457,7 @@ function getWhatsAppLinkTeam($phone) {
                             <th class="py-3.5 px-6 text-center">Mode Masuk</th>
                             <th class="py-3.5 px-6 text-center">Mode Pulang</th>
                             <th class="py-3.5 px-6 text-center">Metode</th>
+                            <th class="py-3.5 px-6 text-center">IP &amp; Lokasi</th>
                         </tr>
                     </thead>
                     <tbody class="divide-y divide-outline-variant/10 text-xs font-semibold text-on-surface" id="audit-modal-tbody">
@@ -579,6 +580,7 @@ function getWhatsAppLinkTeam($phone) {
             return;
         }
         document.getElementById('audit-employee-name').innerText = fullName;
+        window.currentAuditEmployeeName = fullName;
         
         // Save current userId to a window variable
         window.currentAuditUserId = userId;
@@ -598,8 +600,10 @@ function getWhatsAppLinkTeam($phone) {
         const month = document.getElementById('audit-month-select').value;
         const year = document.getElementById('audit-year-select').value;
 
+        window.mapConfigs = [];
+
         const tbody = document.getElementById('audit-modal-tbody');
-        tbody.innerHTML = `<tr><td colspan="9" class="py-8 px-6 text-center text-on-surface-variant font-medium">Sedang memuat riwayat presensi...</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="10" class="py-8 px-6 text-center text-on-surface-variant font-medium">Sedang memuat riwayat presensi...</td></tr>`;
         document.getElementById('monthlyAuditModal').classList.remove('hidden');
 
         fetch(`/manager/attendance/member_monthly?user_id=${userId}&month=${month}&year=${year}`)
@@ -610,8 +614,9 @@ function getWhatsAppLinkTeam($phone) {
         .then(res => {
             console.log("Parsed JSON response:", res);
             if (res.success) {
+                const cfg = res.settings || {};
                 if (!res.data || res.data.length === 0) {
-                    tbody.innerHTML = `<tr><td colspan="9" class="py-12 px-6 text-center text-on-surface-variant font-medium">Belum ada riwayat kehadiran tercatat untuk staf ini di periode terpilih.</td></tr>`;
+                    tbody.innerHTML = `<tr><td colspan="10" class="py-12 px-6 text-center text-on-surface-variant font-medium">Belum ada riwayat kehadiran tercatat untuk staf ini di periode terpilih.</td></tr>`;
                     return;
                 }
 
@@ -709,16 +714,67 @@ function getWhatsAppLinkTeam($phone) {
                         `;
                     }
 
-                    // Metode
+                    // Metode Location
                     let metodeHtml = '<span class="text-on-surface-variant/30 text-xs">—</span>';
                     if (r.location_method) {
                         let icon = 'location_on';
-                        if (r.location_method === 'WIFI') icon = 'wifi';
+                        if (r.location_method === 'WIFI') {
+                            icon = 'wifi';
+                        }
                         metodeHtml = `
                             <span class="inline-flex items-center gap-1 text-[10px] font-extrabold text-amber-600">
                                 <span class="material-symbols-outlined text-xs text-amber-500">${icon}</span>
-                                ${r.location_method}
+                                ${escapeHtml(r.location_method)}
                             </span>
+                        `;
+                    }
+
+                    // IP & Lokasi
+                    let lokasiHtml = '<span class="text-on-surface-variant/30 text-xs">—</span>';
+                    if (r.location_method) {
+                        let details = '';
+                        if (r.ip_address) {
+                            details += `<div class="text-[9px] text-on-surface-variant/60 font-mono">IP: ${escapeHtml(r.ip_address)}</div>`;
+                        }
+                        if (r.clock_in_latitude) {
+                            details += `<div class="text-[9px] text-on-surface-variant/50 font-mono mt-0.5" title="Koordinat Masuk">In: ${parseFloat(r.clock_in_latitude).toFixed(4)}, ${parseFloat(r.clock_in_longitude).toFixed(4)}</div>`;
+                        }
+                        if (r.clock_out_latitude) {
+                            details += `<div class="text-[9px] text-on-surface-variant/50 font-mono mt-0.5" title="Koordinat Pulang">Out: ${parseFloat(r.clock_out_latitude).toFixed(4)}, ${parseFloat(r.clock_out_longitude).toFixed(4)}</div>`;
+                        }
+                        if (r.clock_in_latitude || r.clock_out_latitude) {
+                            const empName = window.currentAuditEmployeeName || 'Staf';
+                            const mapConfigObj = {
+                                employee_name: empName,
+                                in_lat: r.clock_in_latitude,
+                                in_lng: r.clock_in_longitude,
+                                out_lat: r.clock_out_latitude,
+                                out_lng: r.clock_out_longitude,
+                                office_lat: cfg.office_lat,
+                                office_lng: cfg.office_lng,
+                                office_radius: cfg.office_radius_m,
+                                home_lat: r.home_latitude,
+                                home_lng: r.home_longitude,
+                                home_radius: cfg.home_radius_m,
+                                clock_in: clockInStr,
+                                clock_out: clockOutStr,
+                                work_mode: r.work_mode,
+                                work_mode_out: r.work_mode_out
+                            };
+                            window.mapConfigs = window.mapConfigs || [];
+                            const mapIndex = window.mapConfigs.push(mapConfigObj) - 1;
+                            details += `
+                                <button type="button" class="mt-1.5 inline-flex items-center gap-1 px-2 py-0.5 bg-primary/10 text-primary border border-primary/20 rounded-md text-[9px] font-bold hover:bg-primary/20 transition-all cursor-pointer" 
+                                        onclick="showLeafletMap(${mapIndex})">
+                                    <span class="material-symbols-outlined text-[10px] font-bold">map</span>
+                                    <span>Peta</span>
+                                </button>
+                            `;
+                        }
+                        lokasiHtml = `
+                            <div class="flex flex-col items-center">
+                                ${details}
+                            </div>
                         `;
                     }
 
@@ -733,16 +789,18 @@ function getWhatsAppLinkTeam($phone) {
                             <td class="py-3 px-6 text-center whitespace-nowrap">${modeMasukHtml}</td>
                             <td class="py-3 px-6 text-center whitespace-nowrap">${modePulangHtml}</td>
                             <td class="py-3 px-6 text-center whitespace-nowrap">${metodeHtml}</td>
+                            <td class="py-3 px-6 text-center whitespace-nowrap">${lokasiHtml}</td>
                         </tr>
                     `;
                 });
                 tbody.innerHTML = html;
             } else {
-                tbody.innerHTML = `<tr><td colspan="9" class="py-8 px-6 text-center text-red-600 font-bold">${res.message}</td></tr>`;
+                tbody.innerHTML = `<tr><td colspan="10" class="py-8 px-6 text-center text-red-600 font-bold">${res.message}</td></tr>`;
             }
         })
         .catch(err => {
-            tbody.innerHTML = `<tr><td colspan="9" class="py-8 px-6 text-center text-red-600 font-bold">Terjadi kendala saat memuat data.</td></tr>`;
+            console.error(err);
+            tbody.innerHTML = `<tr><td colspan="10" class="py-8 px-6 text-center text-red-600 font-bold">Terjadi kendala saat memuat data.</td></tr>`;
         });
     }
 
@@ -786,6 +844,7 @@ function getWhatsAppLinkTeam($phone) {
         switch (status) {
             case 'pulang lambat': return 'bg-amber-50 text-amber-700 border-amber-200';
             case 'pulang cepat':  return 'bg-red-50 text-red-700 border-red-200';
+            case 'tepat waktu':
             case 'wajar':
             case 'normal':        return 'bg-emerald-50 text-emerald-700 border-emerald-200';
             case 'tidak presensi pulang': return 'bg-rose-50 text-rose-700 border-rose-200';
@@ -796,6 +855,7 @@ function getWhatsAppLinkTeam($phone) {
         switch (status) {
             case 'pulang lambat': return 'bg-amber-500';
             case 'pulang cepat':  return 'bg-red-500';
+            case 'tepat waktu':
             case 'wajar':
             case 'normal':        return 'bg-emerald-500';
             case 'tidak presensi pulang': return 'bg-rose-500';
@@ -806,8 +866,9 @@ function getWhatsAppLinkTeam($phone) {
         switch (status) {
             case 'pulang lambat': return 'Pulang Lambat';
             case 'pulang cepat':  return 'Pulang Cepat';
+            case 'tepat waktu':
             case 'wajar':
-            case 'normal':        return 'Wajar';
+            case 'normal':        return 'Tepat Waktu';
             case 'tidak presensi pulang': return 'Tidak Presensi Pulang';
             default:              return '—';
         }
@@ -832,5 +893,16 @@ function getWhatsAppLinkTeam($phone) {
         const yearNum = dateObj.getFullYear() || year;
         
         return `${dayName}, ${dayNum} ${monthName} ${yearNum}`;
+    }
+
+    function escapeHtml(text) {
+        if (!text) return '';
+        return text
+            .toString()
+            .replace(/&/g, "&amp;")
+            .replace(/</g, "&lt;")
+            .replace(/>/g, "&gt;")
+            .replace(/"/g, "&quot;")
+            .replace(/'/g, "&#039;");
     }
 </script>

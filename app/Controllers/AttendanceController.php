@@ -16,13 +16,13 @@ class AttendanceController {
     private $db;
     private $cfg;  // associative array of global_settings
 
-    // Fallback defaults if global_settings table doesn't exist yet
     private const DEFAULTS = [
         'office_lat'         => -6.2297,
         'office_lng'         => 106.8164,
         'office_radius_m'    => 150,
         'home_radius_m'      => 100,
         'work_start_time'    => '08:00',
+        'work_min_start_time'=> '06:00',
         'work_end_time'      => '17:00',
         'grace_period_min'   => 10,
         'office_wifi_prefix' => '192.168.10.',
@@ -162,6 +162,13 @@ class AttendanceController {
             return;
         }
 
+        // CSRF Token Validation
+        $token = $_POST['csrf_token'] ?? $_SERVER['HTTP_X_CSRF_TOKEN'] ?? null;
+        if (!$token || $token !== ($_SESSION['csrf_token'] ?? '')) {
+            echo json_encode(['success' => false, 'message' => 'Error: Token CSRF tidak valid atau kedaluwarsa.']);
+            return;
+        }
+
         $userId  = $_SESSION['user_id'];
         $today   = date('Y-m-d');
         $nowTime = date('H:i:s');
@@ -210,7 +217,7 @@ class AttendanceController {
         // Overlap Priority: WFH takes precedence over WFO
         if ($distHomeM !== null && $distHomeM <= $this->homeRadiusM()) {
             $workMode = 'WFH';
-        } elseif ($distM <= $this->radiusM()) {
+        } elseif ($distM <= $this->radiusM() || $method === 'WIFI') {
             $workMode = 'WFO';
         } else {
             // Outside both office and home radius — check WFA eligibility
@@ -246,10 +253,22 @@ class AttendanceController {
         }
 
         // ── Determine attendance status with grace period ─────────────────
+        $minStartStr = $this->cfg['work_min_start_time'] ?? '06:00';
+        [$minH, $minM] = array_map('intval', explode(':', $minStartStr));
+        $minMin = $minH * 60 + $minM;
+        $nowMin = (int)date('H') * 60 + (int)date('i');
+        
+        if ($nowMin < $minMin) {
+            echo json_encode([
+                'success' => false,
+                'message' => "Clock-In ditolak. Minimal jam masuk adalah pukul {$minStartStr}."
+            ]);
+            return;
+        }
+
         [$startH, $startM] = array_map('intval', explode(':', $this->workStart()));
         $startMin    = $startH * 60 + $startM;
         $deadlineMin = $startMin + $this->graceMins();
-        $nowMin      = (int)date('H') * 60 + (int)date('i');
         
         if ($nowMin < $startMin) {
             $status = 'awal';
@@ -286,7 +305,9 @@ class AttendanceController {
             
             $locationMsg = '';
             if ($workMode === 'WFA') {
-                $locationMsg = " Mode WFA/WFC/WFH aktif (jarak " . $this->formatDistance($distM) . " dari kantor).";
+                $hasHomeSet = ($homeLat !== null && $homeLng !== null);
+                $modeText = $hasHomeSet ? 'WFA/WFC' : 'WFA/WFC/WFH';
+                $locationMsg = " Mode {$modeText} aktif (jarak " . $this->formatDistance($distM) . " dari kantor).";
             } elseif ($workMode === 'WFH') {
                 $locationMsg = " Mode WFH aktif (jarak " . $this->formatDistance($distHomeM ?? 0) . " dari rumah).";
             } else {
@@ -316,6 +337,13 @@ class AttendanceController {
 
         if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'employee') {
             echo json_encode(['success' => false, 'message' => 'Akses ditolak.']);
+            return;
+        }
+
+        // CSRF Token Validation
+        $token = $_POST['csrf_token'] ?? $_SERVER['HTTP_X_CSRF_TOKEN'] ?? null;
+        if (!$token || $token !== ($_SESSION['csrf_token'] ?? '')) {
+            echo json_encode(['success' => false, 'message' => 'Error: Token CSRF tidak valid atau kedaluwarsa.']);
             return;
         }
 
@@ -359,11 +387,13 @@ class AttendanceController {
             $distHomeM = $this->haversine($homeLat, $homeLng, $lat, $lng);
         }
 
+        $method = str_starts_with($ipAddr, $this->wifiPrefix()) ? 'WIFI' : 'GPS';
+
         // Determine clock-out mode with exact same precedence/rules
         $workModeOut = 'WFA';
         if ($distHomeM !== null && $distHomeM <= $this->homeRadiusM()) {
             $workModeOut = 'WFH';
-        } elseif ($distM <= $this->radiusM()) {
+        } elseif ($distM <= $this->radiusM() || $method === 'WIFI') {
             $workModeOut = 'WFO';
         }
 
@@ -610,13 +640,16 @@ class AttendanceController {
     // =========================================================================
     // EMPLOYEE: Get today's status and monthly history (called from view)
     // =========================================================================
-    public function getEmployeeData(string $userId): array {
+    public function getEmployeeData(string $userId, ?string $month = null, ?string $year = null): array {
+        $selMonth = $month ?: date('m');
+        $selYear  = $year ?: date('Y');
+
         // Backfill missing attendance records first
-        $this->backfillAlpa($userId);
+        $this->backfillAlpa($userId, "{$selYear}-{$selMonth}");
 
         $today      = date('Y-m-d');
-        $monthStart = date('Y-m-01');
-        $monthEnd   = date('Y-m-t');
+        $monthStart = "{$selYear}-{$selMonth}-01";
+        $monthEnd   = date('Y-m-t', strtotime($monthStart));
 
         $stmt = $this->db->prepare("SELECT * FROM employee_attendance WHERE user_id = :uid AND attendance_date = :date LIMIT 1");
         $stmt->execute(['uid' => $userId, 'date' => $today]);
@@ -712,9 +745,11 @@ class AttendanceController {
 
         $stmt = $this->db->prepare("
             SELECT a.id, a.user_id, a.attendance_date, a.clock_in, a.clock_out, a.status, a.work_mode, a.work_mode_out,
-                   a.clock_in_latitude, a.clock_in_longitude, a.location_method, a.ip_address, a.correction_reason,
+                   a.clock_in_latitude, a.clock_in_longitude, a.clock_out_latitude, a.clock_out_longitude,
+                   a.location_method, a.ip_address, a.correction_reason,
                    a.clock_out_status,
                    u.first_name, u.last_name, u.email, u.employee_id, u.profile_picture,
+                   u.home_latitude, u.home_longitude,
                    COALESCE(u.job_title, u.role) AS position
             FROM employee_attendance a
             JOIN users u ON a.user_id = u.id
@@ -730,6 +765,7 @@ class AttendanceController {
 
         echo json_encode(['success' => true, 'rows' => $all,
             'stats' => ['total' => count($all), 'hadir' => $hadir, 'terlambat' => $terlambat, 'absent' => $absent],
+            'settings' => $this->cfg,
         ]);
     }
 
@@ -824,11 +860,17 @@ class AttendanceController {
     public function getSettings(): array { return $this->cfg; }
 
     private function formatDistance($meters): string {
-        if ($meters === null) return '';
+        if ($meters === null || $meters === '') return '';
+        $meters = (float)$meters;
         if ($meters < 1000) {
             return round($meters) . 'm';
         }
-        return number_format($meters / 1000, 1, '.', '') . ' km';
+        $km = $meters / 1000;
+        $formatted = number_format($km, 2, '.', '');
+        if (strpos($formatted, '.') !== false) {
+            $formatted = rtrim(rtrim($formatted, '0'), '.');
+        }
+        return $formatted . ' km';
     }
 
     private function haversine($lat1, $lng1, $lat2, $lng2): int {
@@ -866,7 +908,7 @@ class AttendanceController {
         if ($nowMin < $endMin) {
             return 'pulang cepat';
         } elseif ($nowMin <= $lateLimitMin) {
-            return 'wajar';
+            return 'tepat waktu';
         } else {
             return 'pulang lambat';
         }
@@ -922,14 +964,16 @@ class AttendanceController {
         $monthEnd   = date('Y-m-t', strtotime($monthStart));
 
         $stmt = $this->db->prepare("
-            SELECT * FROM employee_attendance 
-            WHERE user_id = :uid AND attendance_date BETWEEN :s AND :e 
-            ORDER BY attendance_date DESC
+            SELECT a.*, u.home_latitude, u.home_longitude 
+            FROM employee_attendance a
+            JOIN users u ON a.user_id = u.id
+            WHERE a.user_id = :uid AND a.attendance_date BETWEEN :s AND :e 
+            ORDER BY a.attendance_date DESC
         ");
         $stmt->execute(['uid' => $userId, 's' => $monthStart, 'e' => $monthEnd]);
         $records = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
-        echo json_encode(['success' => true, 'data' => $records]);
+        echo json_encode(['success' => true, 'data' => $records, 'settings' => $this->cfg]);
     }
 
     private function generateUuid(): string {

@@ -3,6 +3,13 @@
 $db = \App\Config\Database::getInstance()->getConnection();
 $today = (isset($_GET['date']) && preg_match('/^\d{4}-\d{2}-\d{2}$/', $_GET['date'])) ? $_GET['date'] : date('Y-m-d');
 
+// Load global settings
+$stmtSettings = $db->query("SELECT `key`, `value` FROM global_settings");
+$cfg = [];
+while ($gsRow = $stmtSettings->fetch()) {
+    $cfg[$gsRow['key']] = $gsRow['value'];
+}
+
 // ── Stats for today ──
 $stmtHadir = $db->prepare("
     SELECT
@@ -31,9 +38,10 @@ $hadirHariIni  = $hadirCount; // includes terlambat
 $stmtRows = $db->prepare("
     SELECT
         a.id, a.user_id, a.attendance_date, a.clock_in, a.clock_out, a.status,
-        a.clock_in_latitude, a.clock_in_longitude,
-        a.location_method, a.ip_address, a.correction_reason, a.work_mode,
+        a.clock_in_latitude, a.clock_in_longitude, a.clock_out_latitude, a.clock_out_longitude,
+        a.location_method, a.ip_address, a.correction_reason, a.work_mode, a.work_mode_out,
         u.first_name, u.last_name, u.employee_id, u.profile_picture, u.email,
+        u.home_latitude, u.home_longitude,
         COALESCE(u.job_title, '') AS job_title
     FROM employee_attendance a
     JOIN users u ON a.user_id = u.id
@@ -193,13 +201,14 @@ function initials($fn, $ln) {
                         <th class="py-4 px-6 text-[10px] font-bold uppercase tracking-wider">Masuk (Clock-In)</th>
                         <th class="py-4 px-6 text-[10px] font-bold uppercase tracking-wider">Keluar (Clock-Out)</th>
                         <th class="py-4 px-6 text-[10px] font-bold uppercase tracking-wider">Status</th>
-                        <th class="py-4 px-6 text-[10px] font-bold uppercase tracking-wider">Lokasi &amp; Metode</th>
+                        <th class="py-4 px-6 text-[10px] font-bold uppercase tracking-wider">Metode</th>
+                        <th class="py-4 px-6 text-[10px] font-bold uppercase tracking-wider">IP &amp; Lokasi</th>
                         <th class="py-4 px-6 text-right text-[10px] font-bold uppercase tracking-wider">Aksi</th>
                     </tr>
                 </thead>
                 <tbody id="attendanceTableBody" class="divide-y divide-outline-variant/8">
                     <?php if (empty($mergedRows)): ?>
-                    <tr><td colspan="6" class="py-16 text-center">
+                    <tr><td colspan="7" class="py-16 text-center">
                         <span class="material-symbols-outlined text-4xl text-outline-variant block mb-3">co_present</span>
                         <p class="text-on-surface-variant font-semibold text-sm">Belum ada data presensi untuk hari ini.</p>
                     </td></tr>
@@ -266,7 +275,8 @@ function initials($fn, $ln) {
                                             'pulang lambat' => 'Pulang Lambat',
                                             'pulang cepat' => 'Pulang Cepat',
                                             'tidak presensi pulang' => 'Tidak Presensi Pulang',
-                                            default => 'Wajar',
+                                            'tepat waktu', 'wajar', 'normal' => 'Tepat Waktu',
+                                            default => 'Tepat Waktu',
                                         };
                                     ?>
                                     <span class="inline-flex items-center justify-center w-max px-2 py-0.5 rounded-full text-[9px] font-bold border <?= $coBadgeColor ?>">
@@ -281,7 +291,8 @@ function initials($fn, $ln) {
                                 <?= hrStatusLabel($row['status']) ?>
                                 <?php if ($row['status'] === 'terlambat' && $row['clock_in']): ?>
                                 <?php
-                                    $lateM = max(0, (int)(((strtotime($row['clock_in']) - strtotime(date('Y-m-d') . ' 08:00:00'))) / 60));
+                                    $workStartVal = $cfg['work_start_time'] ?? '08:00';
+                                    $lateM = max(0, (int)(((strtotime($row['clock_in']) - strtotime($row['attendance_date'] . ' ' . $workStartVal . ':00'))) / 60));
                                 ?>
                                     (<?= $lateM ?>m)
                                 <?php endif; ?>
@@ -345,18 +356,49 @@ function initials($fn, $ln) {
                                 </span>
                                 <?= htmlspecialchars($row['location_method']) ?>
                             </div>
-                            <?php if ($row['ip_address']): ?>
-                            <div class="text-[10px] text-on-surface-variant/60 font-mono mt-0.5">IP: <?= htmlspecialchars($row['ip_address']) ?></div>
-                            <?php endif; ?>
-                            <?php if ($row['clock_in_latitude']): ?>
-                            <div class="text-[10px] text-on-surface-variant/50 font-mono mt-0.5"><?= round($row['clock_in_latitude'],4) ?>, <?= round($row['clock_in_longitude'],4) ?></div>
-                            <?php endif; ?>
-                            <?php elseif ($row['correction_reason']): ?>
-                            <div class="text-xs text-purple-600 font-semibold flex items-center gap-1">
-                                <span class="material-symbols-outlined text-sm">edit_note</span> Koreksi HR
-                            </div>
                             <?php else: ?>
                             <span class="text-on-surface-variant/30 text-xs">—</span>
+                            <?php endif; ?>
+                        </td>
+                        <td class="py-4 px-6">
+                            <?php if ($row['location_method']): ?>
+                                <?php if ($row['ip_address']): ?>
+                                <div class="text-[10px] text-on-surface-variant/60 font-mono">IP: <?= htmlspecialchars($row['ip_address']) ?></div>
+                                <?php endif; ?>
+                                <?php if ($row['clock_in_latitude']): ?>
+                                <div class="text-[10px] text-on-surface-variant/50 font-mono mt-0.5" title="Koordinat Masuk">In: <?= round($row['clock_in_latitude'],4) ?>, <?= round($row['clock_in_longitude'],4) ?></div>
+                                <?php endif; ?>
+                                <?php if (!empty($row['clock_out_latitude'])): ?>
+                                <div class="text-[10px] text-on-surface-variant/50 font-mono mt-0.5" title="Koordinat Pulang">Out: <?= round($row['clock_out_latitude'],4) ?>, <?= round($row['clock_out_longitude'],4) ?></div>
+                                <?php endif; ?>
+                                <?php if ($row['clock_in_latitude'] || $row['clock_out_latitude']): ?>
+                                <button type="button" class="mt-1.5 inline-flex items-center gap-1 px-2 py-0.5 bg-primary/10 text-primary border border-primary/20 rounded-md text-[10px] font-bold hover:bg-primary/20 transition-all cursor-pointer" 
+                                        onclick="showLeafletMap('<?= htmlspecialchars(addslashes($row['first_name'] . ' ' . $row['last_name'])) ?>', {
+                                            in_lat: <?= $row['clock_in_latitude'] ? (float)$row['clock_in_latitude'] : 'null' ?>,
+                                            in_lng: <?= $row['clock_in_longitude'] ? (float)$row['clock_in_longitude'] : 'null' ?>,
+                                            out_lat: <?= $row['clock_out_latitude'] ? (float)$row['clock_out_latitude'] : 'null' ?>,
+                                            out_lng: <?= $row['clock_out_longitude'] ? (float)$row['clock_out_longitude'] : 'null' ?>,
+                                            office_lat: <?= $cfg['office_lat'] ? (float)$cfg['office_lat'] : 'null' ?>,
+                                            office_lng: <?= $cfg['office_lng'] ? (float)$cfg['office_lng'] : 'null' ?>,
+                                            office_radius: <?= $cfg['office_radius_m'] ? (int)$cfg['office_radius_m'] : 50 ?>,
+                                            home_lat: <?= $row['home_latitude'] ? (float)$row['home_latitude'] : 'null' ?>,
+                                            home_lng: <?= $row['home_longitude'] ? (float)$row['home_longitude'] : 'null' ?>,
+                                            home_radius: <?= isset($cfg['home_radius_m']) ? (int)$cfg['home_radius_m'] : 100 ?>,
+                                            clock_in: '<?= $row['clock_in'] ? date('H:i', strtotime($row['clock_in'])) : '--:--' ?>',
+                                            clock_out: '<?= $row['clock_out'] ? date('H:i', strtotime($row['clock_out'])) : '--:--' ?>',
+                                            work_mode: '<?= htmlspecialchars($row['work_mode']) ?>',
+                                            work_mode_out: '<?= htmlspecialchars($row['work_mode_out']) ?>'
+                                        })">
+                                    <span class="material-symbols-outlined text-[12px] font-bold">map</span>
+                                    <span>Lihat Peta</span>
+                                </button>
+                                <?php endif; ?>
+                            <?php elseif ($row['correction_reason']): ?>
+                                <div class="text-xs text-purple-600 font-semibold flex items-center gap-1">
+                                    <span class="material-symbols-outlined text-sm">edit_note</span> Koreksi HR
+                                </div>
+                            <?php else: ?>
+                                <span class="text-on-surface-variant/30 text-xs">—</span>
                             <?php endif; ?>
                         </td>
                         <td class="py-4 px-6 text-right">

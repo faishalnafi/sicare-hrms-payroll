@@ -127,7 +127,9 @@ try {
         "ALTER TABLE users ADD COLUMN IF NOT EXISTS annual_leave_quota INT DEFAULT 12 AFTER jenis_kelamin",
         "ALTER TABLE users ADD COLUMN IF NOT EXISTS department_id CHAR(36) NULL AFTER annual_leave_quota",
         "ALTER TABLE users ADD COLUMN IF NOT EXISTS job_title VARCHAR(100) NULL AFTER department_id",
-        "ALTER TABLE users ADD COLUMN IF NOT EXISTS base_salary DECIMAL(15,2) DEFAULT 0.00 AFTER job_title"
+        "ALTER TABLE users ADD COLUMN IF NOT EXISTS base_salary DECIMAL(15,2) DEFAULT 0.00 AFTER job_title",
+        "ALTER TABLE users ADD COLUMN IF NOT EXISTS profile_reset_token VARCHAR(100) NULL AFTER base_salary",
+        "ALTER TABLE users ADD COLUMN IF NOT EXISTS login_just_occurred TINYINT DEFAULT 0 AFTER profile_reset_token"
     ];
 
     foreach ($alterQueries as $q) {
@@ -282,13 +284,6 @@ try {
         'department_id' => $deptIt,
         'job_title' => 'VP of Information Technology',
         'base_salary' => 20000000.00
-    ]);
-
-    // Seed HR Hiring Manager (HR Operations Director)
-    $hrManagerId = upsertUser($db, 'hr.manager@mail.com', 'hiring_manager', 'Zanuba', 'Arifatul Khafsoh', $passwordHash, [
-        'department_id' => $deptHr,
-        'job_title' => 'HR Operations Director',
-        'base_salary' => 18000000.00
     ]);
 
     // Seed HR Ops Admin
@@ -1027,6 +1022,28 @@ try {
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
     ");
     echo "Table sessions created or verified.\n";
+
+    // 16b. Create login_logs table for access tracking
+    $db->exec("
+        CREATE TABLE IF NOT EXISTS login_logs (
+            id CHAR(36) PRIMARY KEY,
+            user_id CHAR(36) NOT NULL,
+            login_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            latitude DECIMAL(10,7) NULL,
+            longitude DECIMAL(10,7) NULL,
+            ip_address VARCHAR(45) NULL,
+            user_agent TEXT NULL,
+            status VARCHAR(50) DEFAULT 'Akses Aplikasi'
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+    ");
+    
+    // Check if status column exists in login_logs
+    $stmtStatus = $db->query("SHOW COLUMNS FROM login_logs LIKE 'status'");
+    if (!$stmtStatus->fetch()) {
+        $db->exec("ALTER TABLE login_logs ADD COLUMN status VARCHAR(50) DEFAULT 'Akses Aplikasi' AFTER user_agent");
+        echo "Column 'status' added to login_logs.\n";
+    }
+    echo "Table login_logs created or verified.\n";
 
     // 17. Create employee_payroll table
     $createPayrollTableQuery = "

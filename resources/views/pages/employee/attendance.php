@@ -10,10 +10,22 @@ $daysShortIndo = ['Sun' => 'Minggu', 'Mon' => 'Senin', 'Tue' => 'Selasa', 'Wed' 
 $monthsIndo = ['Jan' => 'Jan', 'Feb' => 'Feb', 'Mar' => 'Mar', 'Apr' => 'Apr', 'May' => 'Mei', 'Jun' => 'Jun', 'Jul' => 'Jul', 'Aug' => 'Ags', 'Sep' => 'Sep', 'Oct' => 'Okt', 'Nov' => 'Nov', 'Dec' => 'Des'];
 $monthsFullIndo = ['January' => 'Januari', 'February' => 'Februari', 'March' => 'Maret', 'April' => 'April', 'May' => 'Mei', 'June' => 'Juni', 'July' => 'Juli', 'August' => 'Agustus', 'September' => 'September', 'October' => 'Oktober', 'November' => 'November', 'December' => 'Desember'];
 
+$selectedMonth = $_GET['month'] ?? date('m');
+$selectedYear  = $_GET['year'] ?? date('Y');
+
+if (!is_numeric($selectedMonth) || (int)$selectedMonth < 1 || (int)$selectedMonth > 12) {
+    $selectedMonth = date('m');
+}
+$selectedMonth = str_pad($selectedMonth, 2, '0', STR_PAD_LEFT);
+
+if (!is_numeric($selectedYear) || (int)$selectedYear < 2000 || (int)$selectedYear > 2100) {
+    $selectedYear = date('Y');
+}
+
 if ($userId) {
     try {
         $ctrl = new \App\Controllers\AttendanceController();
-        $attData = $ctrl->getEmployeeData($userId);
+        $attData = $ctrl->getEmployeeData($userId, $selectedMonth, $selectedYear);
         
         $db = \App\Config\Database::getInstance()->getConnection();
         $userStmt = $db->prepare("SELECT home_latitude, home_longitude FROM users WHERE id = :uid LIMIT 1");
@@ -104,7 +116,7 @@ function clockOutStatusBadge($status) {
     return match($status) {
         'pulang lambat' => 'bg-amber-50 text-amber-700 border-amber-200',
         'pulang cepat'  => 'bg-red-50 text-red-700 border-red-200',
-        'wajar', 'normal' => 'bg-emerald-50 text-emerald-700 border-emerald-200',
+        'tepat waktu', 'wajar', 'normal' => 'bg-emerald-50 text-emerald-700 border-emerald-200',
         'tidak presensi pulang' => 'bg-rose-50 text-rose-700 border-rose-200',
         default         => 'bg-surface-container-low text-on-surface-variant/40 border-outline-variant/10',
     };
@@ -113,7 +125,7 @@ function clockOutStatusDot($status) {
     return match($status) {
         'pulang lambat' => 'bg-amber-500',
         'pulang cepat'  => 'bg-red-500',
-        'wajar', 'normal' => 'bg-emerald-500',
+        'tepat waktu', 'wajar', 'normal' => 'bg-emerald-500',
         'tidak presensi pulang' => 'bg-rose-500',
         default         => 'bg-on-surface-variant/20',
     };
@@ -122,7 +134,7 @@ function clockOutStatusLabel($status) {
     return match($status) {
         'pulang lambat' => 'Pulang Lambat',
         'pulang cepat'  => 'Pulang Cepat',
-        'wajar', 'normal' => 'Wajar',
+        'tepat waktu', 'wajar', 'normal' => 'Tepat Waktu',
         'tidak presensi pulang' => 'Tidak Presensi Pulang',
         default         => '—',
     };
@@ -276,10 +288,18 @@ function clockOutStatusLabel($status) {
                         <?= ($daysIndo[date('l')] ?? date('l')) . ', ' . date('d ') . ($monthsIndo[date('M')] ?? date('M')) . date(' Y') ?>
                     </p>
                 </div>
-                <!-- Location status tag (updated by JS) -->
-                <div id="locationStatusTag" class="mt-3 inline-flex items-center gap-2 px-3 py-1.5 rounded-xl text-xs font-bold bg-white/10 text-white/80 border border-white/15">
-                    <span class="material-symbols-outlined text-sm">my_location</span>
-                    <span id="locationTagText">Mendeteksi lokasi...</span>
+                <div class="mt-3 flex flex-wrap gap-2.5">
+                    <!-- Location status tag (updated by JS) -->
+                    <div id="locationStatusTag" class="inline-flex items-center gap-2 px-3 py-1.5 rounded-xl text-xs font-bold bg-white/10 text-white/80 border border-white/15">
+                        <span class="material-symbols-outlined text-sm">my_location</span>
+                        <span id="locationTagText">Mendeteksi lokasi...</span>
+                    </div>
+                    
+                    <!-- Audio alarm status toggle -->
+                    <button id="btnAudioToggle" onclick="window.toggleAudioPermission()" type="button" class="inline-flex items-center gap-2 px-3 py-1.5 rounded-xl text-xs font-bold bg-white/10 hover:bg-white/20 active:scale-95 text-white/80 border border-white/15 transition-all cursor-pointer">
+                        <span id="iconAudioToggle" class="material-symbols-outlined text-sm">volume_off</span>
+                        <span id="textAudioToggle">Alarm Nonaktif (Ketuk untuk Aktifkan)</span>
+                    </button>
                 </div>
             </div>
 
@@ -431,14 +451,40 @@ function clockOutStatusLabel($status) {
 
     <!-- ── MONTHLY HISTORY TABLE ── -->
     <div class="bg-surface-container-lowest rounded-2xl border border-outline-variant/15 shadow-sm overflow-hidden">
-        <div class="p-6 border-b border-outline-variant/10 flex items-center justify-between">
+        <?php
+        $monthsList = [
+            '01' => 'Januari', '02' => 'Februari', '03' => 'Maret', '04' => 'April',
+            '05' => 'Mei', '06' => 'Juni', '07' => 'Juli', '08' => 'Agustus',
+            '09' => 'September', '10' => 'Oktober', '11' => 'November', '12' => 'Desember'
+        ];
+        $currentYearInt = (int)date('Y');
+        $yearsList = range($currentYearInt - 3, $currentYearInt + 1);
+
+        $selectedMonthName = date('F', strtotime("{$selectedYear}-{$selectedMonth}-01"));
+        $monthLabelIndo = $monthsFullIndo[$selectedMonthName] ?? $selectedMonthName;
+        ?>
+        <div class="p-6 border-b border-outline-variant/10 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div class="flex items-center gap-2.5">
                 <span class="material-symbols-outlined text-primary">calendar_month</span>
-                <h2 class="text-base font-extrabold text-on-surface">Riwayat Presensi – <?= ($monthsFullIndo[date('F')] ?? date('F')) . date(' Y') ?></h2>
+                <h2 class="text-base font-extrabold text-on-surface">Riwayat Presensi – <?= $monthLabelIndo . ' ' . $selectedYear ?></h2>
             </div>
-            <span class="text-[10px] font-bold text-on-surface-variant uppercase tracking-wider bg-surface-container-low px-3 py-1.5 rounded-full">
-                <?= count($attData['monthly']) ?> Catatan
-            </span>
+            <div class="flex flex-wrap items-center gap-3">
+                <div class="flex items-center gap-1.5">
+                    <select id="filter_month" onchange="window.changeFilter()" class="text-xs font-bold text-on-surface bg-surface-container-low border border-outline-variant/10 px-3 py-1.5 rounded-xl outline-none cursor-pointer focus:border-primary transition-all">
+                        <?php foreach ($monthsList as $mVal => $mName): ?>
+                            <option value="<?= $mVal ?>" <?= $selectedMonth === $mVal ? 'selected' : '' ?>><?= $mName ?></option>
+                        <?php endforeach; ?>
+                    </select>
+                    <select id="filter_year" onchange="window.changeFilter()" class="text-xs font-bold text-on-surface bg-surface-container-low border border-outline-variant/10 px-3 py-1.5 rounded-xl outline-none cursor-pointer focus:border-primary transition-all">
+                        <?php foreach ($yearsList as $yVal): ?>
+                            <option value="<?= $yVal ?>" <?= (int)$selectedYear === $yVal ? 'selected' : '' ?>><?= $yVal ?></option>
+                        <?php endforeach; ?>
+                    </select>
+                </div>
+                <span class="text-[10px] font-bold text-on-surface-variant uppercase tracking-wider bg-surface-container-low px-3 py-1.5 rounded-full whitespace-nowrap">
+                    <?= count($attData['monthly']) ?> Catatan
+                </span>
+            </div>
         </div>
 
         <div class="overflow-x-auto">
@@ -595,12 +641,9 @@ function clockOutStatusLabel($status) {
         </div>
         
         <!-- Pagination Controls -->
-        <div id="paginationControls" class="px-6 py-4 border-t border-outline-variant/10 flex items-center justify-between bg-surface-container-low/30 hidden">
-            <span class="text-xs font-semibold text-on-surface-variant" id="pageInfo">Menampilkan 1-10 dari X</span>
-            <div class="flex items-center gap-2">
-                <button id="btnPrevPage" class="p-1.5 rounded-lg border border-outline-variant/20 text-on-surface hover:bg-surface-container-high transition-colors disabled:opacity-30 disabled:cursor-not-allowed"><span class="material-symbols-outlined text-sm">chevron_left</span></button>
-                <button id="btnNextPage" class="p-1.5 rounded-lg border border-outline-variant/20 text-on-surface hover:bg-surface-container-high transition-colors disabled:opacity-30 disabled:cursor-not-allowed"><span class="material-symbols-outlined text-sm">chevron_right</span></button>
-            </div>
+        <div id="paginationControls" class="px-6 py-4 border-t border-outline-variant/10 flex items-center justify-end bg-surface-container-low/30 gap-2 hidden">
+            <button id="btnPrevPage" class="p-1.5 rounded-lg border border-outline-variant/20 text-on-surface hover:bg-surface-container-high transition-colors disabled:opacity-30 disabled:cursor-not-allowed"><span class="material-symbols-outlined text-sm">chevron_left</span></button>
+            <button id="btnNextPage" class="p-1.5 rounded-lg border border-outline-variant/20 text-on-surface hover:bg-surface-container-high transition-colors disabled:opacity-30 disabled:cursor-not-allowed"><span class="material-symbols-outlined text-sm">chevron_right</span></button>
         </div>
     </div>
 
@@ -631,8 +674,6 @@ function clockOutStatusLabel($status) {
             }
         });
         
-        document.getElementById('pageInfo').innerText = `Menampilkan ${start + 1} - ${Math.min(end, rows.length)} dari ${rows.length}`;
-        
         document.getElementById('btnPrevPage').disabled = currentPage === 1;
         document.getElementById('btnNextPage').disabled = currentPage === totalPages;
     }
@@ -658,6 +699,9 @@ const ATT_CFG = {
     graceMins:    <?= (int)($cfg['grace_period_min']  ?? 10) ?>,
     wifiPrefix:   '<?= htmlspecialchars($cfg['office_wifi_prefix'] ?? '192.168.10.') ?>',
     isOfficeWifi: <?= $isOfficeWifi ? 'true' : 'false' ?>,
+    csrfToken:    '<?= csrf_token() ?>',
+    hasClockIn:   <?= $hasClockIn ? 'true' : 'false' ?>,
+    hasClockOut:  <?= $hasClockOut ? 'true' : 'false' ?>,
 };
 
 // ── Live clock ───────────────────────────────────────────────────
@@ -667,6 +711,9 @@ const ATT_CFG = {
         const now = new Date();
         el.textContent = [now.getHours(), now.getMinutes(), now.getSeconds()]
             .map(n => String(n).padStart(2, '0')).join(':');
+    }
+    if (typeof checkAlarmScheduler === 'function') {
+        checkAlarmScheduler();
     }
     setTimeout(updateClock, 1000);
 })();
@@ -688,14 +735,21 @@ function formatJsDistance(meters) {
     if (meters < 1000) {
         return Math.round(meters) + 'm';
     }
-    return (meters / 1000).toFixed(1) + ' km';
+    const km = meters / 1000;
+    return parseFloat(km.toFixed(2)) + ' km';
 }
 
 // ── Live location status detector ────────────────────────────────
 function detectLocationStatus() {
     const tag  = document.getElementById('locationStatusTag');
     const text = document.getElementById('locationTagText');
-    if (!tag || !text) return;
+    if (!tag || !text) {
+        if (window.attendanceLocationInterval) {
+            clearInterval(window.attendanceLocationInterval);
+            window.attendanceLocationInterval = null;
+        }
+        return;
+    }
 
     if (!navigator.geolocation) {
         text.textContent = 'GPS tidak tersedia';
@@ -720,8 +774,12 @@ function detectLocationStatus() {
             tag.className = 'mt-3 inline-flex items-center gap-2 px-3 py-1.5 rounded-xl text-xs font-bold bg-green-500/20 text-green-200 border border-green-400/30';
             tag.innerHTML = '<span class="material-symbols-outlined text-sm">business</span><span>WFO · Dalam radius kantor (' + formatJsDistance(dist) + ')</span>';
         } else if (ATT_CFG.wfaAllowed) {
+            let detailStr = distKm + ' dari kantor';
+            if (distHome !== null) {
+                detailStr += ', ' + formatJsDistance(distHome) + ' dari rumah';
+            }
             tag.className = 'mt-3 inline-flex items-center gap-2 px-3 py-1.5 rounded-xl text-xs font-bold bg-blue-500/20 text-blue-200 border border-blue-400/30';
-            tag.innerHTML = '<span class="material-symbols-outlined text-sm">home_work</span><span>' + modeLabel + ' · ' + distKm + ' dari kantor (' + modeLabel + ' aktif)</span>';
+            tag.innerHTML = '<span class="material-symbols-outlined text-sm">home_work</span><span>' + modeLabel + ' · ' + detailStr + ' (' + modeLabel + ' aktif)</span>';
         } else {
             let homeStr = distHome !== null ? ' & rumah (' + formatJsDistance(distHome) + ')' : '';
             tag.className = 'mt-3 inline-flex items-center gap-2 px-3 py-1.5 rounded-xl text-xs font-bold bg-red-500/20 text-red-200 border border-red-400/30';
@@ -739,27 +797,36 @@ function detectLocationStatus() {
 }
 window.detectLocationStatus = detectLocationStatus;
 
-// Only run detector if not yet clocked in today
-<?php if (!$hasClockIn): ?>
+// Run detector if not clocked in, OR clocked in but not clocked out yet
+<?php if (!$hasClockIn || ($hasClockIn && !$hasClockOut)): ?>
 detectLocationStatus();
+if (window.attendanceLocationInterval) {
+    clearInterval(window.attendanceLocationInterval);
+}
+window.attendanceLocationInterval = setInterval(detectLocationStatus, 60000);
 <?php elseif ($todayMode): ?>
-// Already clocked in — show recorded mode
+// Already clocked in and clocked out — show recorded mode
 (function() {
     const tag  = document.getElementById('locationStatusTag');
-    const mode = '<?= htmlspecialchars($todayMode) ?>';
+    const modeIn = '<?= htmlspecialchars($today['work_mode'] ?? '') ?>';
+    const modeOut = '<?= htmlspecialchars($today['work_mode_out'] ?? '') ?>';
     if (!tag) return;
-    if (mode === 'WFA') {
-        const hasHomeSet = <?= ($homeLat !== null && $homeLng !== null) ? 'true' : 'false' ?>;
-        const modeLabel = hasHomeSet ? 'WFA/WFC' : 'WFA/WFC/WFH';
-        tag.className = 'mt-3 inline-flex items-center gap-2 px-3 py-1.5 rounded-xl text-xs font-bold bg-blue-500/20 text-blue-200 border border-blue-400/30';
-        tag.innerHTML = '<span class="material-symbols-outlined text-sm">home_work</span><span>Mode ' + modeLabel + ' Aktif Hari Ini</span>';
-    } else if (mode === 'WFH') {
-        tag.className = 'mt-3 inline-flex items-center gap-2 px-3 py-1.5 rounded-xl text-xs font-bold bg-indigo-500/20 text-indigo-200 border border-indigo-400/30';
-        tag.innerHTML = '<span class="material-symbols-outlined text-sm">home</span><span>Mode WFH Aktif Hari Ini</span>';
-    } else if (mode === 'WFO') {
-        tag.className = 'mt-3 inline-flex items-center gap-2 px-3 py-1.5 rounded-xl text-xs font-bold bg-green-500/20 text-green-200 border border-green-400/30';
-        tag.innerHTML = '<span class="material-symbols-outlined text-sm">business</span><span>Mode WFO Aktif Hari Ini</span>';
-    }
+    
+    const hasHomeSet = <?= ($homeLat !== null && $homeLng !== null) ? 'true' : 'false' ?>;
+    const modeLabelIn = modeIn === 'WFA' ? (hasHomeSet ? 'WFA/WFC' : 'WFA/WFC/WFH') : modeIn;
+    const modeLabelOut = modeOut === 'WFA' ? (hasHomeSet ? 'WFA/WFC' : 'WFA/WFC/WFH') : modeOut;
+    
+    tag.className = 'mt-3 inline-flex flex-col gap-1 items-start px-3 py-1.5 rounded-xl text-xs font-bold bg-white/10 text-white/80 border border-white/15';
+    tag.innerHTML = `
+        <div class="flex items-center gap-2">
+            <span class="material-symbols-outlined text-sm">login</span>
+            <span>Masuk: Mode ${modeLabelIn}</span>
+        </div>
+        <div class="flex items-center gap-2">
+            <span class="material-symbols-outlined text-sm">logout</span>
+            <span>Pulang: Mode ${modeLabelOut || '—'}</span>
+        </div>
+    `;
 })();
 <?php endif; ?>
 
@@ -887,6 +954,7 @@ function doClockIn() {
         const fd = new FormData();
         fd.append('lat', lat);
         fd.append('lng', lng);
+        fd.append('csrf_token', ATT_CFG.csrfToken);
 
         fetch('/employee/attendance/clockin', {
             method: 'POST',
@@ -896,12 +964,14 @@ function doClockIn() {
         .then(r => r.json())
         .then(data => {
             if (data.success) {
+                if (typeof window.playSuccessSound === 'function') window.playSuccessSound();
                 const isWfa = data.work_mode === 'WFA';
                 const isWfh = data.work_mode === 'WFH';
                 const statusColor = data.status === 'tepat waktu' ? 'bg-green-100 text-green-700' : (data.status === 'awal' ? 'bg-indigo-100 text-indigo-700' : 'bg-amber-100 text-amber-700');
                 const modeColor   = isWfa ? 'bg-blue-100 text-blue-700' : (isWfh ? 'bg-indigo-100 text-indigo-700' : 'bg-green-100 text-green-700');
                 const modeIcon    = isWfa ? '☕' : (isWfh ? '🏠' : '🏢');
-                const modeLabel   = isWfa ? 'WFA/WFC/WFH (Work From Anywhere/Cafe/Home)' : (isWfh ? 'WFH (Work From Home)' : 'WFO (Work From Office)');
+                const hasHomeSet = ATT_CFG.homeLat !== null && ATT_CFG.homeLng !== null;
+                const modeLabel   = isWfa ? (hasHomeSet ? 'WFA/WFC (Work From Anywhere/Cafe)' : 'WFA/WFC/WFH (Work From Anywhere/Cafe/Home)') : (isWfh ? 'WFH (Work From Home)' : 'WFO (Work From Office)');
                 const statusText  = data.status === 'tepat waktu' ? '🟢 Tepat Waktu' : (data.status === 'awal' ? '🔵 Masuk Awal' : '🟡 Terlambat');
                 Swal.fire({
                     title: '✅ Clock-In Berhasil!',
@@ -968,6 +1038,7 @@ function doClockOut() {
             const fd = new FormData();
             fd.append('lat', lat);
             fd.append('lng', lng);
+            fd.append('csrf_token', ATT_CFG.csrfToken);
             
             fetch('/employee/attendance/clockout', {
                 method: 'POST',
@@ -977,6 +1048,7 @@ function doClockOut() {
             .then(r => r.json())
             .then(data => {
                 if (data.success) {
+                    if (typeof window.playSuccessSound === 'function') window.playSuccessSound();
                     Swal.fire({
                         title: '✅ Clock-Out Berhasil!',
                         html: `<p class="text-sm text-gray-600">${data.message}</p>`,
@@ -1004,4 +1076,241 @@ function doClockOut() {
     });
 }
 window.doClockOut = doClockOut;
+
+function changeFilter() {
+    const month = document.getElementById('filter_month').value;
+    const year = document.getElementById('filter_year').value;
+    const url = window.location.pathname + '?month=' + month + '&year=' + year;
+    if (window.loadPage) {
+        window.loadPage(url);
+    } else {
+        window.location.href = url;
+    }
+}
+window.changeFilter = changeFilter;
+
+function playSuccessSound() {
+    const successAudio = new Audio('/ringtones/freesound_community-header-39344.mp3');
+    successAudio.play().catch(e => console.error('Play success audio failed:', e));
+}
+window.playSuccessSound = playSuccessSound;
+
+// ── Audio & Alarm reminder logic ───────────────────────────────
+let audioContextUnlocked = false;
+let attendanceAlarmAudio = null;
+window.alarmDismissed = false;
+window.alarmPlaying = false;
+
+// Register Service Worker for background notifications
+if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register('/sw.js')
+        .then(reg => {
+            console.log('Service Worker registered successfully:', reg.scope);
+        })
+        .catch(err => {
+            console.error('Service Worker registration failed:', err);
+        });
+        
+    // Listen to messages from Service Worker (like when a notification is clicked)
+    navigator.serviceWorker.addEventListener('message', event => {
+        if (event.data && event.data.action === 'notification-clicked') {
+            stopAlarm();
+        }
+    });
+}
+
+function initAudio() {
+    if (!attendanceAlarmAudio) {
+        attendanceAlarmAudio = new Audio('/ringtones/samsung_s25.mp3');
+        attendanceAlarmAudio.loop = false; // Play only once!
+    }
+}
+
+function toggleAudioPermission() {
+    initAudio();
+    
+    // Request notification permission first
+    if ('Notification' in window) {
+        Notification.requestPermission().then(permission => {
+            if (permission === 'granted') {
+                // Play audio once to unlock
+                attendanceAlarmAudio.play().then(() => {
+                    attendanceAlarmAudio.pause();
+                    attendanceAlarmAudio.currentTime = 0;
+                    
+                    localStorage.setItem('attendance-audio-enabled', 'true');
+                    audioContextUnlocked = true;
+                    updateAudioToggleUI();
+                    
+                    Swal.fire({
+                        title: '🔊 Alarm & Notifikasi Aktif',
+                        text: 'Izin suara dan notifikasi berhasil diaktifkan. Anda akan menerima peringatan suara sekali pada jam masuk dan pulang.',
+                        icon: 'success',
+                        confirmButtonColor: '#000666'
+                    });
+                }).catch(err => {
+                    console.error('Audio unlock failed:', err);
+                });
+            } else {
+                Swal.fire({
+                    title: '⚠️ Izin Notifikasi Ditolak',
+                    text: 'Anda harus mengizinkan notifikasi browser agar alarm pengingat dapat berbunyi.',
+                    icon: 'warning',
+                    confirmButtonColor: '#ba1a1a'
+                });
+            }
+        });
+    } else {
+        Swal.fire({
+            title: '⚠️ Browser Tidak Mendukung',
+            text: 'Browser Anda tidak mendukung fitur notifikasi sistem.',
+            icon: 'error',
+            confirmButtonColor: '#ba1a1a'
+        });
+    }
+}
+window.toggleAudioPermission = toggleAudioPermission;
+
+function updateAudioToggleUI() {
+    const btn = document.getElementById('btnAudioToggle');
+    const icon = document.getElementById('iconAudioToggle');
+    const text = document.getElementById('textAudioToggle');
+    if (!btn || !icon || !text) return;
+    
+    const isEnabled = localStorage.getItem('attendance-audio-enabled') === 'true' && 
+                      ('Notification' in window && Notification.permission === 'granted');
+                      
+    if (isEnabled) {
+        btn.className = 'inline-flex items-center gap-2 px-3 py-1.5 rounded-xl text-xs font-bold bg-emerald-500/20 text-emerald-200 border border-emerald-400/30 hover:bg-emerald-500/30 active:scale-95 transition-all cursor-pointer';
+        icon.textContent = 'volume_up';
+        text.textContent = 'Alarm Aktif';
+    } else {
+        btn.className = 'inline-flex items-center gap-2 px-3 py-1.5 rounded-xl text-xs font-bold bg-white/10 hover:bg-white/20 active:scale-95 text-white/80 border border-white/15 transition-all cursor-pointer';
+        icon.textContent = 'volume_off';
+        text.textContent = 'Alarm Nonaktif (Ketuk untuk Aktifkan)';
+    }
+}
+window.updateAudioToggleUI = updateAudioToggleUI;
+
+function showSystemNotification(title, body) {
+    const options = {
+        body: body,
+        icon: '/favicon.ico',
+        tag: 'attendance-reminder',
+        renotify: true,
+        requireInteraction: true,
+        sound: '/ringtones/samsung_s25.mp3'
+    };
+    
+    if ('serviceWorker' in navigator && navigator.serviceWorker.controller) {
+        navigator.serviceWorker.ready.then(reg => {
+            reg.showNotification(title, options);
+        });
+    } else if ('Notification' in window && Notification.permission === 'granted') {
+        new Notification(title, options);
+    }
+}
+
+function triggerAlarm(type) {
+    if (window.alarmPlaying) return;
+    window.alarmPlaying = true;
+    
+    initAudio();
+    if (attendanceAlarmAudio) {
+        attendanceAlarmAudio.currentTime = 0;
+        attendanceAlarmAudio.play().catch(e => console.error('Audio play failed:', e));
+    }
+    
+    const title = type === 'clockin' ? '⏰ Waktunya Clock-In!' : '⏰ Waktunya Clock-Out!';
+    const message = type === 'clockin' 
+        ? 'Jam kerja telah dimulai. Silakan lakukan Clock-In agar kehadiran Anda tercatat tepat waktu.' 
+        : 'Jam kerja telah berakhir. Silakan lakukan Clock-Out sebelum meninggalkan pekerjaan.';
+        
+    // Send system background notification
+    showSystemNotification(title, message);
+    
+    // Also show standard Swal alert
+    const btnText = type === 'clockin' ? 'Clock-In Sekarang' : 'Clock-Out Sekarang';
+    Swal.fire({
+        title: title,
+        text: message,
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonColor: '#000666',
+        cancelButtonColor: '#ba1a1a',
+        confirmButtonText: btnText,
+        cancelButtonText: 'Tutup',
+        allowOutsideClick: true
+    }).then(result => {
+        stopAlarm();
+        if (result.isConfirmed) {
+            if (type === 'clockin') {
+                window.doClockIn();
+            } else {
+                window.doClockOut();
+            }
+        }
+    });
+}
+window.triggerAlarm = triggerAlarm;
+
+function stopAlarm() {
+    window.alarmPlaying = false;
+    window.alarmDismissed = true;
+    if (attendanceAlarmAudio) {
+        attendanceAlarmAudio.pause();
+        attendanceAlarmAudio.currentTime = 0;
+    }
+}
+window.stopAlarm = stopAlarm;
+
+function checkAlarmScheduler() {
+    if (localStorage.getItem('attendance-audio-enabled') !== 'true') return;
+    if (window.alarmDismissed) return;
+    
+    const now = new Date();
+    const currentHM = [now.getHours(), now.getMinutes()]
+        .map(n => String(n).padStart(2, '0')).join(':');
+    const todayStr = now.getFullYear() + '-' + String(now.getMonth() + 1).padStart(2, '0') + '-' + String(now.getDate()).padStart(2, '0');
+        
+    // Clock-In alarm
+    if (!ATT_CFG.hasClockIn) {
+        if (currentHM >= ATT_CFG.workStart) {
+            if (localStorage.getItem('last-clockin-alarm') !== todayStr) {
+                localStorage.setItem('last-clockin-alarm', todayStr);
+                triggerAlarm('clockin');
+            }
+        }
+    }
+    
+    // Clock-Out alarm
+    if (ATT_CFG.hasClockIn && !ATT_CFG.hasClockOut) {
+        if (currentHM >= ATT_CFG.workEnd) {
+            if (localStorage.getItem('last-clockout-alarm') !== todayStr) {
+                localStorage.setItem('last-clockout-alarm', todayStr);
+                triggerAlarm('clockout');
+            }
+        }
+    }
+}
+window.checkAlarmScheduler = checkAlarmScheduler;
+
+// Unlock on first page interaction if enabled
+document.addEventListener('click', function unlockOnInteraction() {
+    if (localStorage.getItem('attendance-audio-enabled') === 'true' && !audioContextUnlocked) {
+        initAudio();
+        attendanceAlarmAudio.play().then(() => {
+            attendanceAlarmAudio.pause();
+            attendanceAlarmAudio.currentTime = 0;
+            audioContextUnlocked = true;
+            updateAudioToggleUI();
+            document.removeEventListener('click', unlockOnInteraction);
+        }).catch(err => {
+            console.log('Autoplay unlock deferred', err);
+        });
+    }
+}, { once: false });
+
+// Immediate execution to sync UI state
+updateAudioToggleUI();
 </script>

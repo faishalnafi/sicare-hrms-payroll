@@ -362,4 +362,188 @@ class EmployeeMasterController {
             echo json_encode(['success' => false, 'message' => 'Gagal menghapus data: ' . $e->getMessage()]);
         }
     }
+
+    public function resetProfileToken() {
+        if (session_status() === PHP_SESSION_NONE) {
+            session_start();
+        }
+        if (!isset($_SESSION['user_id']) || ($_SESSION['role'] ?? '') !== 'superadmin') {
+            header('Content-Type: application/json');
+            http_response_code(403);
+            echo json_encode(['success' => false, 'message' => 'Hanya Super Admin yang diizinkan melakukan tindakan ini.']);
+            exit;
+        }
+
+        header('Content-Type: application/json');
+
+        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+            echo json_encode(['success' => false, 'message' => 'Invalid request method']);
+            return;
+        }
+
+        $csrfToken = $_POST['csrf_token'] ?? '';
+        if (empty($csrfToken) || $csrfToken !== ($_SESSION['csrf_token'] ?? '')) {
+            echo json_encode(['success' => false, 'message' => 'CSRF Token tidak valid. Mohon muat ulang halaman.']);
+            return;
+        }
+
+        $userId = $_POST['user_id'] ?? '';
+        if (empty($userId)) {
+            echo json_encode(['success' => false, 'message' => 'ID pengguna wajib diisi.']);
+            return;
+        }
+
+        try {
+            $db = Database::getInstance()->getConnection();
+            
+            // Check if user exists
+            $stmt = $db->prepare("SELECT id, email, first_name, last_name FROM users WHERE id = ?");
+            $stmt->execute([$userId]);
+            $user = $stmt->fetch(PDO::FETCH_ASSOC);
+            if (!$user) {
+                echo json_encode(['success' => false, 'message' => 'Pengguna tidak ditemukan.']);
+                return;
+            }
+
+            // Generate secure token
+            $token = bin2hex(random_bytes(32));
+
+            // Reset the locked administrative fields
+            $stmtReset = $db->prepare("
+                UPDATE users 
+                SET nama_sesuai_ktp = NULL, 
+                    ktp_nik = NULL, 
+                    alamat_ktp = NULL, 
+                    bank_name = NULL, 
+                    bank_account_number = NULL, 
+                    npwp_number = NULL, 
+                    bpjs_tk = NULL, 
+                    bpjs_kes = NULL, 
+                    tanggal_lahir = NULL, 
+                    status_pernikahan = NULL, 
+                    jenis_kelamin = NULL,
+                    profile_reset_token = ?
+                WHERE id = ?
+            ");
+            $stmtReset->execute([$token, $userId]);
+
+            // Construct link
+            $protocol = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? 'https' : 'http';
+            $host = $_SERVER['HTTP_HOST'] ?? 'localhost:8000';
+            $resetLink = "{$protocol}://{$host}/employee/profile/fill?token={$token}";
+
+            echo json_encode([
+                'success' => true, 
+                'message' => 'Profil berhasil di-reset. Bagikan tautan berikut ke pengguna.',
+                'link' => $resetLink
+            ]);
+
+        } catch (\Exception $e) {
+            echo json_encode(['success' => false, 'message' => 'Database error: ' . $e->getMessage()]);
+        }
+    }
+
+    public function saveProfileFill() {
+        header('Content-Type: application/json');
+        if (session_status() === PHP_SESSION_NONE) {
+            session_start();
+        }
+
+        if (!isset($_SESSION['user_id'])) {
+            echo json_encode(['success' => false, 'message' => 'Akses ditolak. Silakan login terlebih dahulu.']);
+            return;
+        }
+
+        $userId = $_SESSION['user_id'];
+        $token = $_POST['token'] ?? '';
+
+        if (empty($token)) {
+            echo json_encode(['success' => false, 'message' => 'Token pengisian tidak valid.']);
+            return;
+        }
+
+        $csrfToken = $_POST['csrf_token'] ?? '';
+        if (empty($csrfToken) || $csrfToken !== ($_SESSION['csrf_token'] ?? '')) {
+            echo json_encode(['success' => false, 'message' => 'CSRF Token tidak valid. Mohon muat ulang halaman.']);
+            return;
+        }
+
+        try {
+            $db = Database::getInstance()->getConnection();
+            
+            // Verify token
+            $stmt = $db->prepare("SELECT id FROM users WHERE profile_reset_token = :token LIMIT 1");
+            $stmt->execute(['token' => $token]);
+            $user = $stmt->fetch(PDO::FETCH_ASSOC);
+
+            if (!$user || $user['id'] !== $userId) {
+                echo json_encode(['success' => false, 'message' => 'Token pengisian tidak valid atau tidak cocok dengan akun Anda.']);
+                return;
+            }
+
+            // Extract form inputs
+            $nama_sesuai_ktp     = $_POST['nama_sesuai_ktp'] ?? '';
+            $ktp_nik             = $_POST['ktp_nik'] ?? '';
+            $alamat_ktp          = $_POST['alamat_ktp'] ?? '';
+            $tanggal_lahir       = $_POST['tanggal_lahir'] ?? '';
+            $jenis_kelamin       = $_POST['jenis_kelamin'] ?? '';
+            $status_pernikahan   = $_POST['status_pernikahan'] ?? '';
+            $bank_name           = $_POST['bank_name'] ?? '';
+            $bank_account_number = $_POST['bank_account_number'] ?? '';
+            $npwp_number         = $_POST['npwp_number'] ?? '';
+            $bpjs_tk             = $_POST['bpjs_tk'] ?? '';
+            $bpjs_kes            = $_POST['bpjs_kes'] ?? '';
+            $no_telepon          = $_POST['no_telepon'] ?? '';
+            $alamat_domisili     = $_POST['alamat_domisili'] ?? '';
+
+            // Validation of mandatory fields
+            if (empty($nama_sesuai_ktp) || empty($ktp_nik) || empty($alamat_ktp) || empty($tanggal_lahir) || empty($jenis_kelamin) || empty($status_pernikahan) || empty($bank_name) || empty($bank_account_number) || empty($no_telepon) || empty($alamat_domisili)) {
+                echo json_encode(['success' => false, 'message' => 'Mohon lengkapi semua kolom bertanda bintang (*).']);
+                return;
+            }
+
+            // Update user profile and clear token
+            $stmtUpdate = $db->prepare("
+                UPDATE users 
+                SET nama_sesuai_ktp = ?,
+                    ktp_nik = ?,
+                    alamat_ktp = ?,
+                    tanggal_lahir = ?,
+                    jenis_kelamin = ?,
+                    status_pernikahan = ?,
+                    bank_name = ?,
+                    bank_account_number = ?,
+                    npwp_number = ?,
+                    bpjs_tk = ?,
+                    bpjs_kes = ?,
+                    no_telepon = ?,
+                    alamat_domisili = ?,
+                    profile_reset_token = NULL,
+                    updated_at = NOW()
+                WHERE id = ?
+            ");
+            
+            $stmtUpdate->execute([
+                $nama_sesuai_ktp,
+                $ktp_nik,
+                $alamat_ktp,
+                $tanggal_lahir,
+                $jenis_kelamin,
+                $status_pernikahan,
+                $bank_name,
+                $bank_account_number,
+                $npwp_number,
+                $bpjs_tk,
+                $bpjs_kes,
+                $no_telepon,
+                $alamat_domisili,
+                $userId
+            ]);
+
+            echo json_encode(['success' => true, 'message' => 'Identitas lengkap Anda berhasil disimpan secara permanen.']);
+
+        } catch (\Exception $e) {
+            echo json_encode(['success' => false, 'message' => 'Gagal menyimpan data: ' . $e->getMessage()]);
+        }
+    }
 }

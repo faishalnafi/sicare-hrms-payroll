@@ -83,6 +83,10 @@ $hrDirectorTitle = $hrDirectorData ? ($hrDirectorData['job_title'] ?? 'HR Operat
             size: A4 portrait;
             margin: 1.27cm; /* Narrow margin */
         }
+        html, body.printing-active {
+            background: white !important;
+            background-color: white !important;
+        }
         body.printing-active > :not(#printArea) {
             display: none !important;
         }

@@ -84,6 +84,14 @@ if (!empty($resolvedPage)) {
     <title><?= htmlspecialchars($pageTitle) ?></title>
     <!-- Favicon from Uploaded Logo -->
     <link rel="icon" type="image/x-icon" href="<?= htmlspecialchars($appLogoImage ?: '/favicon.ico') ?>"/>
+    
+    <!-- PWA Meta Tags & Manifest -->
+    <meta name="theme-color" content="#000666"/>
+    <meta name="apple-mobile-web-app-capable" content="yes"/>
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
+    <meta name="apple-mobile-web-app-title" content="<?= htmlspecialchars($appName) ?>"/>
+    <link rel="apple-touch-icon" href="<?= htmlspecialchars($appLogoImage ?: '/images/icons/icon-192x192.png') ?>"/>
+    <link rel="manifest" href="/manifest.php"/>
 
     
     <!-- Fonts & Icons -->
@@ -93,6 +101,9 @@ if (!empty($resolvedPage)) {
     <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
     <!-- SweetAlert2 -->
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <!-- Leaflet CSS & JS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin=""/>
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
     <script>
         tailwind.config = {
           theme: {
@@ -478,6 +489,46 @@ if (!empty($resolvedPage)) {
                 opacity: 1;
                 transform: translateY(-50%) scale(1);
             }
+        }
+
+        /* Custom Leaflet Control Layer Styling */
+        .leaflet-control-layers {
+            border: none !important;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.15) !important;
+            border-radius: 12px !important;
+            overflow: hidden !important;
+        }
+        .leaflet-control-layers-toggle {
+            background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" height="24px" viewBox="0 0 24 24" width="24px" fill="%23454652"><path d="M12 16L1 9.5 12 3l11 6.5L12 16zm0 2.76l-9-5.33v2.85l9 5.33 9-5.33v-2.85l-9 5.33z"/></svg>') !important;
+            background-size: 20px 20px !important;
+            background-position: center !important;
+            width: 40px !important;
+            height: 40px !important;
+        }
+        .leaflet-control-layers-expanded {
+            padding: 12px !important;
+            background-color: #ffffff !important;
+            border-radius: 12px !important;
+            font-family: inherit !important;
+            font-size: 12px !important;
+            font-weight: 600 !important;
+            color: #334155 !important;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15) !important;
+            border: 1px solid rgba(0,0,0,0.05) !important;
+        }
+        .leaflet-control-layers-expanded label {
+            display: flex !important;
+            align-items: center !important;
+            gap: 8px !important;
+            cursor: pointer !important;
+            margin-bottom: 6px !important;
+        }
+        .leaflet-control-layers-expanded label:last-child {
+            margin-bottom: 0 !important;
+        }
+        .leaflet-control-layers-expanded input[type="radio"] {
+            cursor: pointer !important;
+            accent-color: #000666 !important;
         }
     </style>
 </head>
@@ -945,5 +996,303 @@ if (!empty($resolvedPage)) {
         </button>
         <img id="fullscreenImageSrc" src="" class="max-w-full max-h-full object-contain p-4 select-none" />
     </div>
+
+    <!-- Global Leaflet Map Modal -->
+    <div id="globalLeafletMapModal" class="fixed inset-0 z-[100] bg-black/60 backdrop-blur-sm hidden flex items-center justify-center p-4">
+        <div class="bg-surface-container-lowest w-full max-w-2xl rounded-3xl overflow-hidden shadow-2xl flex flex-col border border-outline-variant/10 animate-fade-in relative">
+            <!-- Header -->
+            <div class="px-6 py-4 border-b border-outline-variant/15 bg-surface-container-low/10 flex items-center justify-between">
+                <div>
+                    <h3 id="globalLeafletMapTitle" class="text-sm font-extrabold text-on-surface font-headline flex items-center gap-2">
+                        <span class="material-symbols-outlined text-primary">map</span>
+                        Peta Lokasi Presensi
+                    </h3>
+                    <p id="globalLeafletMapSubtitle" class="text-[11px] text-on-surface-variant font-semibold">Detail lokasi check-in/out karyawan</p>
+                </div>
+                <button onclick="closeGlobalLeafletMap()" class="p-1.5 rounded-lg text-on-surface-variant hover:bg-surface-container-high transition-all cursor-pointer">
+                    <span class="material-symbols-outlined">close</span>
+                </button>
+            </div>
+            
+            <!-- Map Container -->
+            <div class="p-6">
+                <div class="relative w-full h-[350px]">
+                    <div id="leafletMapElement" class="w-full h-full rounded-2xl border border-outline-variant/15 overflow-hidden shadow-inner bg-surface-container-low"></div>
+                    
+                    <!-- Premium Custom Map Controls (Google Maps Style) -->
+                    <div class="absolute bottom-4 right-4 z-[1000] flex flex-col gap-2">
+                        <!-- Geolocation Button -->
+                        <button onclick="recenterLeafletMap()" type="button" title="Pusatkan Peta" class="w-10 h-10 bg-white hover:bg-slate-50 active:bg-slate-100 text-[#1a73e8] rounded-full shadow-[0_2px_8px_rgba(0,0,0,0.15)] border border-slate-100 flex items-center justify-center transition-all duration-200 cursor-pointer">
+                            <span class="material-symbols-outlined" style="font-size: 20px; font-weight: 600; font-variation-settings: 'FILL' 1;">my_location</span>
+                        </button>
+                        
+                        <!-- Zoom Controls -->
+                        <div class="w-10 bg-white rounded-xl shadow-[0_2px_8px_rgba(0,0,0,0.15)] border border-slate-100 flex flex-col items-center overflow-hidden">
+                            <button onclick="globalLeafletMapInstance && globalLeafletMapInstance.zoomIn()" type="button" title="Perbesar" class="w-10 h-10 text-slate-600 hover:text-slate-800 hover:bg-slate-50 active:bg-slate-100 flex items-center justify-center transition-all duration-200 cursor-pointer">
+                                <span class="material-symbols-outlined" style="font-size: 20px; font-weight: 600;">add</span>
+                            </button>
+                            <div class="w-6 h-[1px] bg-slate-100"></div>
+                            <button onclick="globalLeafletMapInstance && globalLeafletMapInstance.zoomOut()" type="button" title="Perkecil" class="w-10 h-10 text-slate-600 hover:text-slate-800 hover:bg-slate-50 active:bg-slate-100 flex items-center justify-center transition-all duration-200 cursor-pointer">
+                                <span class="material-symbols-outlined" style="font-size: 20px; font-weight: 600;">remove</span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                <!-- Map Legend -->
+                <div class="mt-4 flex flex-wrap gap-x-5 gap-y-2 text-xs font-semibold text-on-surface-variant">
+                    <div id="leafletMapLegendClockIn" class="flex items-center gap-1.5">
+                        <span class="w-3.5 h-3.5 rounded-full bg-emerald-500 border-2 border-white shadow-sm"></span>
+                        <span>Clock-In (Masuk)</span>
+                    </div>
+                    <div id="leafletMapLegendClockOut" class="flex items-center gap-1.5">
+                        <span class="w-3.5 h-3.5 rounded-full bg-rose-500 border-2 border-white shadow-sm"></span>
+                        <span>Clock-Out (Pulang)</span>
+                    </div>
+                    <div id="leafletMapLegendAccess" class="flex items-center gap-1.5 hidden">
+                        <span class="w-3.5 h-3.5 rounded-full bg-emerald-500 border-2 border-white shadow-sm"></span>
+                        <span>Lokasi Akses</span>
+                    </div>
+                    <div id="leafletMapLegendOffice" class="flex items-center gap-2">
+                        <div class="w-6 h-6 rounded-full bg-blue-600 text-white flex items-center justify-center shadow-sm border-2 border-white">
+                            <span class="material-symbols-outlined text-[14px]" style="font-variation-settings: 'FILL' 1;">corporate_fare</span>
+                        </div>
+                        <span>Kantor Pusat</span>
+                    </div>
+                    <div id="leafletMapLegendHome" class="flex items-center gap-2 hidden">
+                        <div class="w-6 h-6 rounded-full bg-indigo-600 text-white flex items-center justify-center shadow-sm border-2 border-white">
+                            <span class="material-symbols-outlined text-[14px]" style="font-variation-settings: 'FILL' 1;">home</span>
+                        </div>
+                        <span>Rumah Karyawan</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Footer -->
+            <div class="px-6 py-4 border-t border-outline-variant/15 flex justify-end bg-surface-container-low/10">
+                <button onclick="closeGlobalLeafletMap()" class="px-5 py-2.5 bg-surface-container-high hover:bg-surface-container-high/80 text-on-surface-variant font-bold text-xs rounded-xl shadow-sm transition-all cursor-pointer">
+                    Tutup Peta
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let globalLeafletMapInstance = null;
+
+        window.recenterLeafletMap = function() {
+            if (globalLeafletMapInstance && globalLeafletMapInstance._markers && globalLeafletMapInstance._markers.length > 0) {
+                const group = new L.featureGroup(globalLeafletMapInstance._markers);
+                globalLeafletMapInstance.fitBounds(group.getBounds().pad(0.15));
+            }
+        };
+
+        window.showLeafletMap = function(indexOrEmployeeName, config) {
+            let employeeName = '';
+            let mapConfig = {};
+
+            if (typeof indexOrEmployeeName === 'number') {
+                mapConfig = window.mapConfigs[indexOrEmployeeName];
+                employeeName = mapConfig.employee_name || 'Staf';
+            } else {
+                employeeName = indexOrEmployeeName;
+                mapConfig = config || {};
+            }
+
+            const isAccessTracker = mapConfig.work_mode === 'Access Log' || mapConfig.work_mode === 'Login Log';
+
+            if (isAccessTracker) {
+                document.getElementById('globalLeafletMapTitle').innerHTML = '<span class="material-symbols-outlined text-primary">map</span>Peta Lokasi Akses';
+                document.getElementById('globalLeafletMapSubtitle').innerText = 'Detail lokasi akses aplikasi';
+                document.getElementById('leafletMapLegendClockIn').classList.add('hidden');
+                document.getElementById('leafletMapLegendClockOut').classList.add('hidden');
+                document.getElementById('leafletMapLegendAccess').classList.remove('hidden');
+            } else {
+                document.getElementById('globalLeafletMapTitle').innerHTML = '<span class="material-symbols-outlined text-primary">map</span>Peta Lokasi Presensi';
+                document.getElementById('globalLeafletMapSubtitle').innerText = `Detail lokasi presensi untuk: ${employeeName}`;
+                document.getElementById('leafletMapLegendClockIn').classList.remove('hidden');
+                document.getElementById('leafletMapLegendClockOut').classList.remove('hidden');
+                document.getElementById('leafletMapLegendAccess').classList.add('hidden');
+            }
+
+            const modal = document.getElementById('globalLeafletMapModal');
+            modal.classList.remove('hidden');
+            modal.classList.add('flex');
+
+            // Wait until modal is fully visible so Leaflet can calculate dimensions correctly
+            setTimeout(() => {
+                // Clear any existing map instance
+                if (globalLeafletMapInstance) {
+                    globalLeafletMapInstance.remove();
+                    globalLeafletMapInstance = null;
+                }
+
+                // If coordinates are missing, show error message
+                const inLat = mapConfig.in_lat ? parseFloat(mapConfig.in_lat) : null;
+                const inLng = mapConfig.in_lng ? parseFloat(mapConfig.in_lng) : null;
+                const outLat = mapConfig.out_lat ? parseFloat(mapConfig.out_lat) : null;
+                const outLng = mapConfig.out_lng ? parseFloat(mapConfig.out_lng) : null;
+                const officeLat = mapConfig.office_lat ? parseFloat(mapConfig.office_lat) : null;
+                const officeLng = mapConfig.office_lng ? parseFloat(mapConfig.office_lng) : null;
+                const officeRadius = mapConfig.office_radius ? parseInt(mapConfig.office_radius) : 50;
+                const homeLat = mapConfig.home_lat ? parseFloat(mapConfig.home_lat) : null;
+                const homeLng = mapConfig.home_lng ? parseFloat(mapConfig.home_lng) : null;
+                const homeRadius = mapConfig.home_radius ? parseInt(mapConfig.home_radius) : 100;
+
+                // Center view on available coordinates
+                let centerLat = officeLat || -7.4561879;
+                let centerLng = officeLng || 112.4465263;
+                if (inLat && inLng) {
+                    centerLat = inLat;
+                    centerLng = inLng;
+                }
+
+                globalLeafletMapInstance = L.map('leafletMapElement', { zoomControl: false }).setView([centerLat, centerLng], 15);
+
+                // Define different map tile layers
+                const googleRoadmap = L.tileLayer('https://{s}.google.com/vt/lyrs=m&x={x}&y={y}&z={z}', {
+                    maxZoom: 20,
+                    subdomains: ['mt0', 'mt1', 'mt2', 'mt3'],
+                    attribution: '&copy; <a href="https://maps.google.com" target="_blank">Google Maps</a>'
+                });
+
+                const googleHybrid = L.tileLayer('https://{s}.google.com/vt/lyrs=y&x={x}&y={y}&z={z}', {
+                    maxZoom: 20,
+                    subdomains: ['mt0', 'mt1', 'mt2', 'mt3'],
+                    attribution: '&copy; <a href="https://maps.google.com" target="_blank">Google Maps</a>'
+                });
+
+                const osm = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank">OpenStreetMap</a> contributors'
+                });
+
+                // Default layer is Google Maps
+                googleRoadmap.addTo(globalLeafletMapInstance);
+
+                // Add Premium Layer Control Switcher
+                const baseMaps = {
+                    "Google Maps": googleRoadmap,
+                    "Google Satellite (Hybrid)": googleHybrid,
+                    "OpenStreetMap": osm
+                };
+                L.control.layers(baseMaps, null, { position: 'topright' }).addTo(globalLeafletMapInstance);
+
+                const markers = [];
+
+                // Office marker & circle
+                if (officeLat && officeLng) {
+                    const officeMarker = L.marker([officeLat, officeLng], {
+                        icon: L.divIcon({
+                            className: '',
+                            html: `
+                                <div class="flex items-center justify-center bg-blue-600 text-white rounded-full border-2 border-white shadow-[0_2px_8px_rgba(0,0,0,0.3)]" style="width: 32px; height: 32px;">
+                                    <span class="material-symbols-outlined" style="font-size: 18px; font-weight: 600; font-variation-settings: 'FILL' 1;">corporate_fare</span>
+                                </div>
+                            `,
+                            iconSize: [32, 32],
+                            iconAnchor: [16, 16],
+                            popupAnchor: [0, -16]
+                        })
+                    }).addTo(globalLeafletMapInstance).bindPopup("<b>Kantor Pusat PT SI CARE</b>");
+                    
+                    L.circle([officeLat, officeLng], {
+                        color: '#3b82f6',
+                        fillColor: '#3b82f6',
+                        fillOpacity: 0.1,
+                        radius: officeRadius
+                    }).addTo(globalLeafletMapInstance);
+                    markers.push(officeMarker);
+                }
+
+                // Home marker & circle
+                if (!isAccessTracker && homeLat && homeLng) {
+                    document.getElementById('leafletMapLegendHome').classList.remove('hidden');
+                    const homeMarker = L.marker([homeLat, homeLng], {
+                        icon: L.divIcon({
+                            className: '',
+                            html: `
+                                <div class="flex items-center justify-center bg-indigo-600 text-white rounded-full border-2 border-white shadow-[0_2px_8px_rgba(0,0,0,0.3)]" style="width: 32px; height: 32px;">
+                                    <span class="material-symbols-outlined" style="font-size: 18px; font-weight: 600; font-variation-settings: 'FILL' 1;">home</span>
+                                </div>
+                            `,
+                            iconSize: [32, 32],
+                            iconAnchor: [16, 16],
+                            popupAnchor: [0, -16]
+                        })
+                    }).addTo(globalLeafletMapInstance).bindPopup(`<b>Rumah Karyawan (${employeeName})</b>`);
+                    
+                    L.circle([homeLat, homeLng], {
+                        color: '#6366f1',
+                        fillColor: '#6366f1',
+                        fillOpacity: 0.1,
+                        radius: homeRadius
+                    }).addTo(globalLeafletMapInstance);
+                    markers.push(homeMarker);
+                } else {
+                    document.getElementById('leafletMapLegendHome').classList.add('hidden');
+                }
+
+                // Clock-in / Access marker
+                if (inLat && inLng) {
+                    const popupText = isAccessTracker 
+                        ? `<b>Lokasi Akses</b><br>Waktu: ${mapConfig.clock_in || '--:--'}`
+                        : `<b>Clock-In (Masuk)</b><br>Waktu: ${mapConfig.clock_in || '--:--'}<br>Mode: ${mapConfig.work_mode || 'WFO'}`;
+
+                    const inMarker = L.marker([inLat, inLng], {
+                        icon: L.divIcon({
+                            className: '',
+                            html: `<div style="background-color: #10b981; width: 16px; height: 16px; border-radius: 50%; border: 3px solid white; box-shadow: 0 0 8px rgba(0,0,0,0.5);"></div>`,
+                            iconSize: [16, 16],
+                            iconAnchor: [8, 8]
+                        })
+                    }).addTo(globalLeafletMapInstance).bindPopup(popupText);
+                    markers.push(inMarker);
+                }
+
+                // Clock-out marker
+                if (outLat && outLng) {
+                    const outMarker = L.marker([outLat, outLng], {
+                        icon: L.divIcon({
+                            className: '',
+                            html: `<div style="background-color: #f43f5e; width: 16px; height: 16px; border-radius: 50%; border: 3px solid white; box-shadow: 0 0 8px rgba(0,0,0,0.5);"></div>`,
+                            iconSize: [16, 16],
+                            iconAnchor: [8, 8]
+                        })
+                    }).addTo(globalLeafletMapInstance).bindPopup(`<b>Clock-Out (Pulang)</b><br>Waktu: ${mapConfig.clock_out || '--:--'}<br>Mode: ${mapConfig.work_mode_out || '—'}`);
+                    markers.push(outMarker);
+                }
+
+                // Fit bounds to show all markers
+                if (markers.length > 0) {
+                    const group = new L.featureGroup(markers);
+                    globalLeafletMapInstance.fitBounds(group.getBounds().pad(0.15));
+                }
+                globalLeafletMapInstance._markers = markers;
+            }, 250);
+        };
+
+        window.closeGlobalLeafletMap = function() {
+            const modal = document.getElementById('globalLeafletMapModal');
+            modal.classList.add('hidden');
+            modal.classList.remove('flex');
+            
+            if (globalLeafletMapInstance) {
+                globalLeafletMapInstance.remove();
+                globalLeafletMapInstance = null;
+            }
+        };
+    </script>
+    
+    <!-- PWA Service Worker Registration -->
+    <script>
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', function() {
+                navigator.serviceWorker.register('/sw.js').then(function(reg) {
+                    console.log('ServiceWorker registration successful with scope: ', reg.scope);
+                }, function(err) {
+                    console.error('ServiceWorker registration failed: ', err);
+                });
+            });
+        }
+    </script>
 </body>
 </html>

@@ -65,7 +65,7 @@ class SettingsController {
         header('Content-Type: application/json');
         session_start();
 
-        if (!isset($_SESSION['user_id']) || !in_array($_SESSION['role'], ['superadmin', 'admin'])) {
+        if (!isset($_SESSION['user_id']) || !in_array($_SESSION['role'], ['superadmin', 'admin', 'hr_ops'])) {
             echo json_encode(['success' => false, 'message' => 'Akses ditolak.']);
             return;
         }
@@ -73,7 +73,7 @@ class SettingsController {
         $allowed = [
             'office_lat', 'office_lng', 'office_radius_m',
             'home_radius_m',
-            'work_start_time', 'work_end_time', 'grace_period_min',
+            'work_start_time', 'work_min_start_time', 'work_end_time', 'grace_period_min',
             'office_wifi_prefix', 'wfa_allowed', 'wfa_days',
             'weekly_holidays', 'checkout_grace_period_min',
             'payroll_tunj_jabatan_pct', 'payroll_tunj_jabatan_cap',
@@ -195,7 +195,7 @@ class SettingsController {
         header('Content-Type: application/json');
         session_start();
 
-        if (!isset($_SESSION['user_id']) || !in_array($_SESSION['role'], ['superadmin', 'admin'])) {
+        if (!isset($_SESSION['user_id']) || !in_array($_SESSION['role'], ['superadmin', 'admin', 'hr_ops'])) {
             echo json_encode(['success' => false, 'message' => 'Akses ditolak.']);
             return;
         }
@@ -234,7 +234,7 @@ class SettingsController {
         header('Content-Type: application/json');
         session_start();
 
-        if (!isset($_SESSION['user_id']) || !in_array($_SESSION['role'], ['superadmin', 'admin'])) {
+        if (!isset($_SESSION['user_id']) || !in_array($_SESSION['role'], ['superadmin', 'admin', 'hr_ops'])) {
             echo json_encode(['success' => false, 'message' => 'Akses ditolak.']);
             return;
         }

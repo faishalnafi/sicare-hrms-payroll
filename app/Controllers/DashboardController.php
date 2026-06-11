@@ -92,6 +92,20 @@ class DashboardController {
             $showMoodWarning = !$hasMoodPulse;
         }
 
+        $db = \App\Config\Database::getInstance()->getConnection();
+        $userId = $_SESSION['user_id'];
+        
+        $stmtLogs = $db->prepare("SELECT * FROM login_logs WHERE user_id = :user_id ORDER BY login_at DESC LIMIT 100");
+        $stmtLogs->execute(['user_id' => $userId]);
+        $loginLogs = $stmtLogs->fetchAll(\PDO::FETCH_ASSOC);
+
+        // Fetch office settings
+        $stmtCfg = $db->query("SELECT `key`, `value` FROM global_settings WHERE `group` = 'attendance'");
+        $cfg = [];
+        while ($row = $stmtCfg->fetch(\PDO::FETCH_ASSOC)) {
+            $cfg[$row['key']] = $row['value'];
+        }
+
         $roleFolder = $role;
         if ($role === 'hiring_manager') $roleFolder = 'manager';
         if ($role === 'hr_ops') $roleFolder = 'hrops';
@@ -101,7 +115,9 @@ class DashboardController {
             'role' => $role,
             'roleFolder' => $roleFolder,
             'email' => $_SESSION['email'] ?? '',
-            'showMoodWarning' => $showMoodWarning
+            'showMoodWarning' => $showMoodWarning,
+            'loginLogs' => $loginLogs,
+            'cfg' => $cfg
         ];
 
         // Check if request is AJAX (SPA mode)

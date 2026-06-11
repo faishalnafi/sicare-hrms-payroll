@@ -53,6 +53,125 @@
     </div>
 </div>
 
+<!-- Access Logs Section -->
+<div class="mt-8 bg-surface-container-lowest rounded-2xl border border-outline-variant/15 shadow-sm overflow-hidden">
+    <div class="p-6 border-b border-outline-variant/10 flex items-center justify-between">
+        <div class="flex items-center gap-2.5">
+            <span class="material-symbols-outlined text-primary font-bold">security</span>
+            <h3 class="text-base font-extrabold text-on-surface font-headline">Aktivitas Akses Aplikasi</h3>
+        </div>
+        <span class="text-[10px] font-bold text-on-surface-variant uppercase tracking-wider bg-surface-container-low px-3 py-1.5 rounded-full">
+            <?= count($loginLogs ?? []) ?> Riwayat
+        </span>
+    </div>
+
+    <div class="overflow-x-auto">
+        <table class="w-full text-left border-collapse">
+            <thead>
+                <tr class="bg-surface text-on-surface-variant border-b border-outline-variant/10">
+                    <th class="py-3.5 px-6 text-[10px] font-bold uppercase tracking-wider">Tanggal &amp; Waktu</th>
+                    <th class="py-3.5 px-6 text-[10px] font-bold uppercase tracking-wider">Status</th>
+                    <th class="py-3.5 px-6 text-[10px] font-bold uppercase tracking-wider">Alamat IP</th>
+                    <th class="py-3.5 px-6 text-[10px] font-bold uppercase tracking-wider">Browser &amp; Sistem Operasi</th>
+                    <th class="py-3.5 px-6 text-right text-[10px] font-bold uppercase tracking-wider">Lokasi Akses</th>
+                </tr>
+            </thead>
+            <tbody class="divide-y divide-outline-variant/8" id="loginLogsTableBody">
+                <?php if (empty($loginLogs)): ?>
+                <tr>
+                    <td colspan="5" class="py-12 px-6 text-center">
+                        <span class="material-symbols-outlined text-4xl text-outline-variant block mb-3">lock_open</span>
+                        <p class="text-on-surface-variant font-semibold text-sm">Belum ada riwayat akses tercatat.</p>
+                    </td>
+                </tr>
+                <?php else: ?>
+                <?php foreach ($loginLogs as $log): ?>
+                <?php
+                    $loginAt = date('d M Y, H:i:s', strtotime($log['login_at']));
+                    
+                    // Simple User Agent Parser
+                    $ua = $log['user_agent'] ?? '';
+                    $browser = 'Browser';
+                    $os = 'Unknown OS';
+                    if (preg_match('/chrome/i', $ua)) {
+                        $browser = 'Chrome';
+                    } elseif (preg_match('/firefox/i', $ua)) {
+                        $browser = 'Firefox';
+                    } elseif (preg_match('/safari/i', $ua)) {
+                        $browser = 'Safari';
+                    } elseif (preg_match('/edge/i', $ua)) {
+                        $browser = 'Edge';
+                    }
+                    
+                    if (preg_match('/windows/i', $ua)) {
+                        $os = 'Windows';
+                    } elseif (preg_match('/mac/i', $ua)) {
+                        $os = 'macOS';
+                    } elseif (preg_match('/linux/i', $ua)) {
+                        $os = 'Linux';
+                    } elseif (preg_match('/iphone|ipad/i', $ua)) {
+                        $os = 'iOS';
+                    } elseif (preg_match('/android/i', $ua)) {
+                        $os = 'Android';
+                    }
+                    
+                    $deviceInfo = $browser . ' (' . $os . ')';
+                ?>
+                <tr class="login-log-row hover:bg-surface-container-low/30 transition-colors">
+                    <td class="py-3.5 px-6">
+                        <span class="font-bold text-xs text-on-surface"><?= $loginAt ?></span>
+                    </td>
+                    <td class="py-3.5 px-6">
+                        <?php if (($log['status'] ?? '') === 'Login'): ?>
+                        <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold bg-green-50 text-green-700 border border-green-200">
+                            <span class="w-1.5 h-1.5 rounded-full bg-green-500"></span> Login
+                        </span>
+                        <?php else: ?>
+                        <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold bg-blue-50 text-blue-700 border border-blue-200">
+                            <span class="w-1.5 h-1.5 rounded-full bg-blue-500"></span> Akses Aplikasi
+                        </span>
+                        <?php endif; ?>
+                    </td>
+                    <td class="py-3.5 px-6">
+                        <span class="font-mono text-xs font-semibold text-on-surface-variant"><?= htmlspecialchars($log['ip_address'] ?? '—') ?></span>
+                    </td>
+                    <td class="py-3.5 px-6">
+                        <span class="text-xs font-semibold text-on-surface-variant" title="<?= htmlspecialchars($ua) ?>"><?= $deviceInfo ?></span>
+                    </td>
+                    <td class="py-3.5 px-6 text-right">
+                        <?php if ($log['latitude'] && $log['longitude']): ?>
+                        <button type="button" 
+                                onclick="window.showLeafletMap('Lokasi Akses', {
+                                    in_lat: <?= (float)$log['latitude'] ?>,
+                                    in_lng: <?= (float)$log['longitude'] ?>,
+                                    clock_in: '<?= date('H:i', strtotime($log['login_at'])) ?>',
+                                    work_mode: 'Access Log',
+                                    office_lat: <?= (float)($cfg['office_lat'] ?? -6.2297) ?>,
+                                    office_lng: <?= (float)($cfg['office_lng'] ?? 106.8164) ?>,
+                                    office_radius: <?= (int)($cfg['office_radius_m'] ?? 150) ?>
+                                })"
+                                class="inline-flex items-center gap-1 px-2.5 py-1 bg-primary/10 text-primary border border-primary/20 rounded-md text-[10px] font-bold hover:bg-primary/20 transition-all cursor-pointer">
+                            <span class="material-symbols-outlined text-[12px] font-bold">location_on</span>
+                            <span>Lihat Peta</span>
+                        </button>
+                        <?php else: ?>
+                        <span class="text-on-surface-variant/40 text-xs font-medium">Tidak Ada Koordinat</span>
+                        <?php endif; ?>
+                    </td>
+                </tr>
+                <?php endforeach; ?>
+                <?php endif; ?>
+            </tbody>
+        </table>
+    </div>
+
+    <!-- Pagination Controls -->
+    <div id="loginLogsPagination" class="px-6 py-4 border-t border-outline-variant/10 flex items-center justify-end bg-surface-container-low/30 gap-2 hidden">
+        <button id="btnPrevLoginLogs" type="button" class="p-1.5 rounded-lg border border-outline-variant/20 text-on-surface hover:bg-surface-container-high transition-colors disabled:opacity-30 disabled:cursor-not-allowed"><span class="material-symbols-outlined text-sm">chevron_left</span></button>
+        <button id="btnNextLoginLogs" type="button" class="p-1.5 rounded-lg border border-outline-variant/20 text-on-surface hover:bg-surface-container-high transition-colors disabled:opacity-30 disabled:cursor-not-allowed"><span class="material-symbols-outlined text-sm">chevron_right</span></button>
+    </div>
+</div>
+
 <!-- Modal Pulse Check Mood (Hidden by default) -->
 <div id="moodPulseModal" class="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center hidden opacity-0 pointer-events-none transition-all duration-300">
     <div class="bg-surface-container-lowest border border-outline-variant/20 rounded-2xl w-full max-w-lg mx-4 shadow-2xl overflow-hidden transform scale-95 transition-all duration-300 flex flex-col" id="moodPulseModalContainer">
@@ -221,5 +340,89 @@
                 Swal.fire('Error', 'Gagal menyimpan mood', 'error');
             });
         };
+
+        // Auto-record access location on application load/refresh
+        <?php
+        if (session_status() === PHP_SESSION_NONE) {
+            session_start();
+        }
+        if (isset($_SESSION['user_id'])):
+        ?>
+        if (!window.appAccessLogged) {
+            window.appAccessLogged = true;
+            if (navigator.geolocation) {
+                navigator.geolocation.getCurrentPosition(pos => {
+                    const fd = new FormData();
+                    fd.append('lat', pos.coords.latitude);
+                    fd.append('lng', pos.coords.longitude);
+                    fetch('/auth/record-login-location', {
+                        method: 'POST',
+                        headers: { 'X-Requested-With': 'XMLHttpRequest' },
+                        body: fd
+                    })
+                    .then(res => res.json())
+                    .then(data => {
+                        if (data.success) {
+                            console.log('Access location recorded successfully.');
+                        }
+                    })
+                    .catch(err => console.error('Error recording access location:', err));
+                }, err => {
+                    console.warn('Geolocation failed for access log:', err);
+                    const fd = new FormData();
+                    fd.append('lat', '');
+                    fd.append('lng', '');
+                    fetch('/auth/record-login-location', {
+                        method: 'POST',
+                        headers: { 'X-Requested-With': 'XMLHttpRequest' },
+                        body: fd
+                    });
+                }, { timeout: 10000, enableHighAccuracy: true });
+            } else {
+                const fd = new FormData();
+                fd.append('lat', '');
+                fd.append('lng', '');
+                fetch('/auth/record-login-location', {
+                    method: 'POST',
+                    headers: { 'X-Requested-With': 'XMLHttpRequest' },
+                    body: fd
+                });
+            }
+        }
+        <?php endif; ?>
+
+        // ── Login Logs Pagination Logic ──────────────────────────────────
+        (function() {
+            const rows = Array.from(document.querySelectorAll('.login-log-row'));
+            const rowsPerPage = 10;
+            let currentPage = 1;
+            
+            function renderPagination() {
+                const totalPages = Math.ceil(rows.length / rowsPerPage);
+                if (totalPages <= 1) return;
+                
+                document.getElementById('loginLogsPagination').classList.remove('hidden');
+                
+                const start = (currentPage - 1) * rowsPerPage;
+                const end = start + rowsPerPage;
+                
+                rows.forEach((row, index) => {
+                    if (index >= start && index < end) {
+                        row.style.display = '';
+                    } else {
+                        row.style.display = 'none';
+                    }
+                });
+                
+                document.getElementById('btnPrevLoginLogs').disabled = currentPage === 1;
+                document.getElementById('btnNextLoginLogs').disabled = currentPage === totalPages;
+            }
+            
+            if (rows.length > rowsPerPage) {
+                document.getElementById('btnPrevLoginLogs').addEventListener('click', () => { if (currentPage > 1) { currentPage--; renderPagination(); } });
+                document.getElementById('btnNextLoginLogs').addEventListener('click', () => { if (currentPage < Math.ceil(rows.length / rowsPerPage)) { currentPage++; renderPagination(); } });
+                renderPagination();
+            }
+        })();
     })();
 </script>

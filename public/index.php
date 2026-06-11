@@ -37,6 +37,25 @@ ini_set('session.cookie_lifetime', $sessionLifetime);
 $sessionHandler = new \App\Session\UnifiedSessionHandler();
 session_set_save_handler($sessionHandler, true);
 
+// CSRF Protection Helpers
+if (!function_exists('csrf_token')) {
+    function csrf_token() {
+        if (session_status() === PHP_SESSION_NONE) {
+            session_start();
+        }
+        if (empty($_SESSION['csrf_token'])) {
+            $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
+        }
+        return $_SESSION['csrf_token'];
+    }
+}
+
+if (!function_exists('csrfField')) {
+    function csrfField() {
+        return '<input type="hidden" name="csrf_token" value="' . htmlspecialchars(csrf_token()) . '">';
+    }
+}
+
 // Simple Router
 $requestUri = parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH);
 $path = trim($requestUri, '/');
@@ -74,9 +93,38 @@ if ($method === 'GET' && $path === 'database/migrate') {
     }
     exit;
 }
+if ($method === 'GET' && str_starts_with($path, 'storage/secured_storage/onboarding/')) {
+    if (session_status() === PHP_SESSION_NONE) {
+        session_start();
+    }
+    if (!isset($_SESSION['user_id'])) {
+        header('HTTP/1.1 403 Forbidden');
+        echo 'Akses Ditolak: Silakan login terlebih dahulu.';
+        exit;
+    }
+    $fileName = basename($path);
+    $filePath = __DIR__ . '/../storage/secured_storage/onboarding/' . $fileName;
+    if (file_exists($filePath)) {
+        $finfo = finfo_open(FILEINFO_MIME_TYPE);
+        $mimeType = finfo_file($finfo, $filePath);
+        finfo_close($finfo);
+        header('Content-Type: ' . $mimeType);
+        header('Content-Length: ' . filesize($filePath));
+        header('Cache-Control: private, max-age=86400');
+        readfile($filePath);
+        exit;
+    } else {
+        header('HTTP/1.1 404 Not Found');
+        echo 'Berkas tidak ditemukan.';
+        exit;
+    }
+}
 
 if ($method === 'POST' && $path === 'auth/login') {
     (new \App\Controllers\AuthController())->login();
+    exit;
+} elseif ($method === 'POST' && $path === 'auth/record-login-location') {
+    (new \App\Controllers\AuthController())->recordLoginLocation();
     exit;
 } elseif ($method === 'POST' && $path === 'auth/register') {
     (new \App\Controllers\AuthController())->register();
@@ -104,6 +152,49 @@ if ($method === 'POST' && $path === 'auth/login') {
     exit;
 } elseif ($method === 'POST' && $path === 'employee/profile/save') {
     (new \App\Controllers\AuthController())->saveProfile();
+    exit;
+} elseif ($method === 'GET' && $path === 'employee/profile/fill') {
+    if (session_status() === PHP_SESSION_NONE) {
+        session_start();
+    }
+    if (!isset($_SESSION['user_id'])) {
+        $token = $_GET['token'] ?? '';
+        header("Location: /signin?redirect=" . urlencode("/employee/profile/fill?token=" . $token));
+        exit;
+    }
+    $token = $_GET['token'] ?? '';
+    try {
+        $db = \App\Config\Database::getInstance()->getConnection();
+        $stmt = $db->prepare("SELECT id FROM users WHERE profile_reset_token = :token LIMIT 1");
+        $stmt->execute(['token' => $token]);
+        $user = $stmt->fetch();
+        if (!$user) {
+            $error = "Tautan pengisian identitas tidak valid, sudah digunakan, atau kedaluwarsa.";
+            $content = renderView('pages/error_invalid_token', ['message' => $error]);
+            $page = 'error_token';
+            require __DIR__ . '/../resources/views/layouts/app.php';
+            exit;
+        }
+        if ($user['id'] !== $_SESSION['user_id']) {
+            $error = "Tautan ini diperuntukkan bagi akun lain. Silakan keluar (logout) dan masuk dengan akun yang sesuai.";
+            $content = renderView('pages/error_invalid_token', ['message' => $error]);
+            $page = 'error_token';
+            require __DIR__ . '/../resources/views/layouts/app.php';
+            exit;
+        }
+    } catch (\Exception $e) {
+        $error = "Terjadi kesalahan sistem: " . $e->getMessage();
+        $content = renderView('pages/error_invalid_token', ['message' => $error]);
+        $page = 'error_token';
+        require __DIR__ . '/../resources/views/layouts/app.php';
+        exit;
+    }
+    $content = renderView('pages/employee/profile_fill', ['token' => $token]);
+    $page = 'employee_profile_fill';
+    require __DIR__ . '/../resources/views/layouts/app.php';
+    exit;
+} elseif ($method === 'POST' && $path === 'employee/profile/save-fill') {
+    (new \App\Controllers\EmployeeMasterController())->saveProfileFill();
     exit;
 } elseif ($method === 'POST' && $path === 'hrops/verifications/approve') {
     (new \App\Controllers\CorrectionController())->approve();
@@ -174,13 +265,13 @@ if ($method === 'POST' && $path === 'auth/login') {
 } elseif ($method === 'GET' && $path === 'reflection/analytics') {
     (new \App\Controllers\ReflectionController())->getAnalytics();
     exit;
-} elseif ($method === 'POST' && $path === 'admin/settings/save') {
+} elseif ($method === 'POST' && ($path === 'admin/settings/save' || $path === 'hrops/settings/save')) {
     (new \App\Controllers\SettingsController())->save();
     exit;
-} elseif ($method === 'POST' && $path === 'admin/holidays/add') {
+} elseif ($method === 'POST' && ($path === 'admin/holidays/add' || $path === 'hrops/holidays/add')) {
     (new \App\Controllers\SettingsController())->addHoliday();
     exit;
-} elseif ($method === 'POST' && $path === 'admin/holidays/delete') {
+} elseif ($method === 'POST' && ($path === 'admin/holidays/delete' || $path === 'hrops/holidays/delete')) {
     (new \App\Controllers\SettingsController())->deleteHoliday();
     exit;
 } elseif ($method === 'GET' && $path === 'hrops/employees/list') {
@@ -191,6 +282,9 @@ if ($method === 'POST' && $path === 'auth/login') {
     exit;
 } elseif ($method === 'POST' && $path === 'hrops/employees/delete') {
     (new \App\Controllers\EmployeeMasterController())->delete();
+    exit;
+} elseif ($method === 'POST' && $path === 'superadmin/users/reset-profile') {
+    (new \App\Controllers\EmployeeMasterController())->resetProfileToken();
     exit;
 } elseif ($method === 'POST' && $path === 'hrops/payroll/generate') {
     (new \App\Controllers\PayrollController())->generate();

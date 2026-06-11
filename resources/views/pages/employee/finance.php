@@ -72,9 +72,9 @@ $rawBankAccount = $dbUser['bank_account_number'] ?? '';
 $isBankEmpty = empty($rawBankName) || $rawBankName === '-' || empty($rawBankAccount) || $rawBankAccount === '-';
 $bankName = !$isBankEmpty ? $rawBankName : '';
 $bankAccountNumber = !$isBankEmpty ? $rawBankAccount : '';
-$npwpNumber = $dbUser['npwp_number'] ?? '12.345.678.9-012.000';
-$bpjsTk = $dbUser['bpjs_tk'] ?? '12098765432';
-$bpjsKes = $dbUser['bpjs_kes'] ?? '0001234567890';
+$npwpNumber = !empty($dbUser['npwp_number']) && trim($dbUser['npwp_number']) !== '-' ? trim($dbUser['npwp_number']) : '-';
+$bpjsTk = !empty($dbUser['bpjs_tk']) && trim($dbUser['bpjs_tk']) !== '-' ? trim($dbUser['bpjs_tk']) : '-';
+$bpjsKes = !empty($dbUser['bpjs_kes']) && trim($dbUser['bpjs_kes']) !== '-' ? trim($dbUser['bpjs_kes']) : '-';
 $tanggalLahir = $dbUser['tanggal_lahir'] ?? '12 September 1995';
 $statusPernikahan = $dbUser['status_pernikahan'] ?? 'Belum Menikah';
 $jenisKelamin = $dbUser['jenis_kelamin'] ?? 'Laki-Laki';
@@ -302,6 +302,10 @@ $latestBaseSalary = $latest ? $latest['base_salary'] : $baseSalary;
             size: A4 portrait;
             margin: 1.27cm; /* Narrow margin */
         }
+        html, body.printing-active {
+            background: white !important;
+            background-color: white !important;
+        }
         body.printing-active > :not(#printArea) {
             display: none !important;
         }
@@ -439,21 +443,27 @@ $latestBaseSalary = $latest ? $latest['base_salary'] : $baseSalary;
                     <span class="text-on-surface-variant font-medium">NPWP</span>
                     <span class="font-mono font-bold text-on-surface flex items-center gap-1">
                         <?= htmlspecialchars($npwpNumber) ?>
-                        <span class="material-symbols-outlined text-green-500 text-sm font-bold">verified</span>
+                        <?php if ($npwpNumber !== '-'): ?>
+                            <span class="material-symbols-outlined text-green-500 text-sm font-bold">verified</span>
+                        <?php endif; ?>
                     </span>
                 </div>
                 <div class="flex justify-between items-center text-xs">
                     <span class="text-on-surface-variant font-medium">BPJS Ketenagakerjaan</span>
                     <span class="font-mono font-bold text-on-surface flex items-center gap-1">
                         <?= htmlspecialchars($bpjsTk) ?>
-                        <span class="material-symbols-outlined text-green-500 text-sm font-bold">verified</span>
+                        <?php if ($bpjsTk !== '-'): ?>
+                            <span class="material-symbols-outlined text-green-500 text-sm font-bold">verified</span>
+                        <?php endif; ?>
                     </span>
                 </div>
                 <div class="flex justify-between items-center text-xs">
                     <span class="text-on-surface-variant font-medium">BPJS Kesehatan</span>
                     <span class="font-mono font-bold text-on-surface flex items-center gap-1">
                         <?= htmlspecialchars($bpjsKes) ?>
-                        <span class="material-symbols-outlined text-green-500 text-sm font-bold">verified</span>
+                        <?php if ($bpjsKes !== '-'): ?>
+                            <span class="material-symbols-outlined text-green-500 text-sm font-bold">verified</span>
+                        <?php endif; ?>
                     </span>
                 </div>
             </div>

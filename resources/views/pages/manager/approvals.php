@@ -474,6 +474,7 @@ function getGravatarIcon($email) {
                                 <th class="py-4 px-6 text-center">Mode Masuk</th>
                                 <th class="py-4 px-6 text-center">Mode Pulang</th>
                                 <th class="py-4 px-6 text-center">Metode</th>
+                                <th class="py-4 px-6 text-center">IP &amp; Lokasi</th>
                                 <th class="py-4 px-6">Alasan Koreksi</th>
                                 <th class="py-4 px-6 text-center">Aksi</th>
                             </tr>
@@ -768,6 +769,7 @@ function getGravatarIcon($email) {
         .then(res => res.json())
         .then(data => {
             if (data.success) {
+                const cfg = data.settings || {};
                 // Populate KPIs
                 document.getElementById('att-stat-total').innerText = data.stats.total;
                 document.getElementById('att-stat-hadir').innerText = data.stats.hadir;
@@ -896,6 +898,55 @@ function getGravatarIcon($email) {
                         `;
                     }
 
+                    // IP & Lokasi
+                    let lokasiHtml = '<span class="text-on-surface-variant/30 text-xs">—</span>';
+                    if (r.location_method) {
+                        let details = '';
+                        if (r.ip_address) {
+                            details += `<div class="text-[10px] text-on-surface-variant/60 font-mono">IP: ${escapeHtml(r.ip_address)}</div>`;
+                        }
+                        if (r.clock_in_latitude) {
+                            details += `<div class="text-[10px] text-on-surface-variant/50 font-mono mt-0.5" title="Koordinat Masuk">In: ${parseFloat(r.clock_in_latitude).toFixed(4)}, ${parseFloat(r.clock_in_longitude).toFixed(4)}</div>`;
+                        }
+                        if (r.clock_out_latitude) {
+                            details += `<div class="text-[10px] text-on-surface-variant/50 font-mono mt-0.5" title="Koordinat Pulang">Out: ${parseFloat(r.clock_out_latitude).toFixed(4)}, ${parseFloat(r.clock_out_longitude).toFixed(4)}</div>`;
+                        }
+                        if (r.clock_in_latitude || r.clock_out_latitude) {
+                            const empName = `${r.first_name} ${r.last_name}`;
+                            const mapConfigObj = {
+                                employee_name: empName,
+                                in_lat: r.clock_in_latitude,
+                                in_lng: r.clock_in_longitude,
+                                out_lat: r.clock_out_latitude,
+                                out_lng: r.clock_out_longitude,
+                                office_lat: cfg.office_lat,
+                                office_lng: cfg.office_lng,
+                                office_radius: cfg.office_radius_m,
+                                home_lat: r.home_latitude,
+                                home_lng: r.home_longitude,
+                                home_radius: cfg.home_radius_m,
+                                clock_in: clockInStr,
+                                clock_out: clockOutStr,
+                                work_mode: r.work_mode,
+                                work_mode_out: r.work_mode_out
+                            };
+                            window.mapConfigs = window.mapConfigs || [];
+                            const mapIndex = window.mapConfigs.push(mapConfigObj) - 1;
+                            details += `
+                                <button type="button" class="mt-1.5 inline-flex items-center gap-1 px-2 py-0.5 bg-primary/10 text-primary border border-primary/20 rounded-md text-[9px] font-bold hover:bg-primary/20 transition-all cursor-pointer" 
+                                        onclick="showLeafletMap(${mapIndex})">
+                                    <span class="material-symbols-outlined text-[10px] font-bold">map</span>
+                                    <span>Peta</span>
+                                </button>
+                            `;
+                        }
+                        lokasiHtml = `
+                            <div class="flex flex-col items-center">
+                                ${details}
+                            </div>
+                        `;
+                    }
+
                     const reasonText = r.correction_reason || '-';
                     const hash = md5((r.email || '').trim().toLowerCase());
                     const avatar = r.profile_picture ? r.profile_picture : `https://www.gravatar.com/avatar/${hash}?d=404&s=80`;
@@ -919,6 +970,7 @@ function getGravatarIcon($email) {
                         <td class="py-4 px-6 text-center whitespace-nowrap">${modeMasukHtml}</td>
                         <td class="py-4 px-6 text-center whitespace-nowrap">${modePulangHtml}</td>
                         <td class="py-4 px-6 text-center whitespace-nowrap">${metodeHtml}</td>
+                        <td class="py-4 px-6 text-center whitespace-nowrap">${lokasiHtml}</td>
                         <td class="py-4 px-6 min-w-[300px] whitespace-normal break-words font-medium text-on-surface-variant leading-relaxed" title="${escapeHtml(reasonText)}">${escapeHtml(reasonText)}</td>
                         <td class="py-4 px-6 text-center">
                             <button onclick="openEditAttendanceModalByIndex(${index})" class="p-1.5 text-primary bg-primary/5 hover:bg-primary/10 rounded-lg border border-primary/20 transition-colors cursor-pointer" title="Koreksi Presensi">
@@ -929,7 +981,7 @@ function getGravatarIcon($email) {
                 });
                 tbody.innerHTML = html;
             } else {
-                tbody.innerHTML = `<tr><td colspan="11" class="py-8 px-6 text-center text-red-600 font-bold">${data.message}</td></tr>`;
+                tbody.innerHTML = `<tr><td colspan="12" class="py-8 px-6 text-center text-red-600 font-bold">${data.message}</td></tr>`;
             }
         });
     }
@@ -969,6 +1021,7 @@ function getGravatarIcon($email) {
         switch (status) {
             case 'pulang lambat': return 'bg-amber-50 text-amber-700 border-amber-200';
             case 'pulang cepat':  return 'bg-red-50 text-red-700 border-red-200';
+            case 'tepat waktu':
             case 'wajar':
             case 'normal':        return 'bg-emerald-50 text-emerald-700 border-emerald-200';
             case 'tidak presensi pulang': return 'bg-rose-50 text-rose-700 border-rose-200';
@@ -979,6 +1032,7 @@ function getGravatarIcon($email) {
         switch (status) {
             case 'pulang lambat': return 'bg-amber-500';
             case 'pulang cepat':  return 'bg-red-500';
+            case 'tepat waktu':
             case 'wajar':
             case 'normal':        return 'bg-emerald-500';
             case 'tidak presensi pulang': return 'bg-rose-500';
@@ -989,8 +1043,9 @@ function getGravatarIcon($email) {
         switch (status) {
             case 'pulang lambat': return 'Pulang Lambat';
             case 'pulang cepat':  return 'Pulang Cepat';
+            case 'tepat waktu':
             case 'wajar':
-            case 'normal':        return 'Wajar';
+            case 'normal':        return 'Tepat Waktu';
             case 'tidak presensi pulang': return 'Tidak Presensi Pulang';
             default:              return '—';
         }

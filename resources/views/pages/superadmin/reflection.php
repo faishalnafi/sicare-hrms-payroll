@@ -15,7 +15,7 @@ $quarter = isset($parts[1]) ? (int)$parts[1] : (int)ceil(date('n') / 3);
 
 // Fetch all reflections in the company for the selected period (NO ANONYMITY, superadmin can see names of everyone)
 $stmtRef = $db->prepare("
-    SELECT r.*, u.first_name, u.last_name, u.email, u.employee_id, u.job_title, d.name AS department_name,
+    SELECT r.*, u.first_name, u.last_name, u.email, u.employee_id, u.job_title, u.profile_picture, d.name AS department_name,
            COALESCE(latest_mood.mood_rating, 'neutral') AS mood_rating,
            COALESCE(latest_mood.workload_rating, 3) AS workload_rating
     FROM self_reflections r

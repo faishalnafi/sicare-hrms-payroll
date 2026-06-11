@@ -28,6 +28,30 @@ class AuthController {
             $_SESSION['name'] = $user['first_name'] . ' ' . $user['last_name'];
             $_SESSION['email'] = $user['email'];
             $_SESSION['profile_picture'] = $user['profile_picture'];
+            $_SESSION['login_just_occurred'] = true;
+            
+            // Set dynamic database flag for login tracking
+            try {
+                $db = \App\Config\Database::getInstance()->getConnection();
+                $db->prepare("UPDATE users SET login_just_occurred = 1 WHERE id = ?")->execute([$user['id']]);
+            } catch (\Exception $e) {
+                // Fail-safe
+            }
+            
+            // Set secure and samesite cookie parameters correctly
+            $isSecure = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') || (isset($_SERVER['HTTP_X_FORWARDED_PROTO']) && $_SERVER['HTTP_X_FORWARDED_PROTO'] === 'https');
+            if (PHP_VERSION_ID >= 70300) {
+                setcookie('login_just_occurred', '1', [
+                    'expires' => time() + 300,
+                    'path' => '/',
+                    'domain' => '',
+                    'secure' => $isSecure,
+                    'httponly' => false,
+                    'samesite' => 'Lax'
+                ]);
+            } else {
+                setcookie('login_just_occurred', '1', time() + 300, '/; SameSite=Lax', '', $isSecure, false);
+            }
             
             if ($remember) {
                 $_SESSION['remember_me'] = true;
@@ -46,7 +70,14 @@ class AuthController {
                 );
             }
             
-            echo json_encode(['success' => true, 'message' => 'Berhasil masuk!', 'redirect' => '/dashboard']);
+            session_write_close();
+            
+            $redirect = $_POST['redirect'] ?? '';
+            if (empty($redirect) || !str_starts_with($redirect, '/')) {
+                $redirect = '/dashboard';
+            }
+            
+            echo json_encode(['success' => true, 'message' => 'Berhasil masuk!', 'redirect' => $redirect]);
         } else {
             echo json_encode(['success' => false, 'message' => 'Email atau kata sandi salah.']);
         }
@@ -89,14 +120,34 @@ class AuthController {
         if (isset($_SERVER['HTTP_X_FORWARDED_PROTO']) && $_SERVER['HTTP_X_FORWARDED_PROTO'] === 'https') {
             $protocol = 'https';
         }
-        $host = $_SERVER['HTTP_HOST'] ?? 'localhost:8000';
+        
+        // Handle X-Forwarded-Host if behind a proxy
+        $host = $_SERVER['HTTP_X_FORWARDED_HOST'] ?? $_SERVER['HTTP_HOST'] ?? 'localhost:8000';
+        // Strip ports or multiple hosts if present in header
+        if (strpos($host, ',') !== false) {
+            $parts = explode(',', $host);
+            $host = trim(end($parts));
+        }
         
         if (!empty($envUri)) {
+            $parsedEnv = parse_url($envUri);
+            $envHost = $parsedEnv['host'] ?? '';
+            
+            // Check if current request host is different from the env host
+            // and build redirect URI using current host's protocol and host, but retaining path
+            $reqHostOnly = parse_url($protocol . '://' . $host, PHP_URL_HOST);
+            
+            if ($envHost !== $reqHostOnly && !empty($reqHostOnly)) {
+                $path = $parsedEnv['path'] ?? '/auth/google/callback';
+                $query = isset($parsedEnv['query']) ? '?' . $parsedEnv['query'] : '';
+                return "{$protocol}://{$host}{$path}{$query}";
+            }
+            
             // Behind SSL terminating load balancers, automatically adjust http:// to https://
             if ($protocol === 'https' && str_starts_with($envUri, 'http://')) {
-                $envHost = parse_url($envUri, PHP_URL_HOST);
-                $reqHost = parse_url($protocol . '://' . $host, PHP_URL_HOST);
-                if ($envHost === $reqHost) {
+                $envHostUrl = parse_url($envUri, PHP_URL_HOST);
+                $reqHostUrl = parse_url($protocol . '://' . $host, PHP_URL_HOST);
+                if ($envHostUrl === $reqHostUrl) {
                     return str_replace('http://', 'https://', $envUri);
                 }
             }
@@ -176,6 +227,30 @@ class AuthController {
                     $_SESSION['name'] = $user['first_name'] . ' ' . $user['last_name'];
                     $_SESSION['email'] = $user['email'];
                     $_SESSION['profile_picture'] = $user['profile_picture'];
+                    $_SESSION['login_just_occurred'] = true;
+                    
+                    // Set dynamic database flag for login tracking
+                    try {
+                        $db = \App\Config\Database::getInstance()->getConnection();
+                        $db->prepare("UPDATE users SET login_just_occurred = 1 WHERE id = ?")->execute([$user['id']]);
+                    } catch (\Exception $e) {
+                        // Fail-safe
+                    }
+                    
+                    // Set secure and samesite cookie parameters correctly
+                    $isSecure = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') || (isset($_SERVER['HTTP_X_FORWARDED_PROTO']) && $_SERVER['HTTP_X_FORWARDED_PROTO'] === 'https');
+                    if (PHP_VERSION_ID >= 70300) {
+                        setcookie('login_just_occurred', '1', [
+                            'expires' => time() + 300,
+                            'path' => '/',
+                            'domain' => '',
+                            'secure' => $isSecure,
+                            'httponly' => false,
+                            'samesite' => 'Lax'
+                        ]);
+                    } else {
+                        setcookie('login_just_occurred', '1', time() + 300, '/; SameSite=Lax', '', $isSecure, false);
+                    }
                     
                     if (isset($_COOKIE['remember_google']) && $_COOKIE['remember_google'] === '1') {
                         $_SESSION['remember_me'] = true;
@@ -197,6 +272,7 @@ class AuthController {
                         );
                     }
                     
+                    session_write_close();
                     header('Location: /dashboard');
                     exit;
                 }
@@ -362,5 +438,95 @@ class AuthController {
 
         header('Location: /dashboard');
         exit;
+    }
+
+    public function recordLoginLocation() {
+        header('Content-Type: application/json');
+        if (session_status() === PHP_SESSION_NONE) {
+            session_start();
+        }
+
+        if (!isset($_SESSION['user_id'])) {
+            echo json_encode(['success' => false, 'message' => 'Akses ditolak. Silakan masuk terlebih dahulu.']);
+            return;
+        }
+
+        // Parse JSON input or POST parameters
+        $input = json_decode(file_get_contents('php://input'), true) ?: $_POST;
+        $lat = (isset($input['lat']) && $input['lat'] !== '') ? (float)$input['lat'] : null;
+        $lng = (isset($input['lng']) && $input['lng'] !== '') ? (float)$input['lng'] : null;
+
+        $userId = $_SESSION['user_id'];
+        $ipAddress = $_SERVER['REMOTE_ADDR'] ?? null;
+        $userAgent = $_SERVER['HTTP_USER_AGENT'] ?? null;
+        
+        // Generate UUID
+        $uuid = sprintf('%04x%04x-%04x-%04x-%04x-%04x%04x%04x',
+            mt_rand(0, 0xffff), mt_rand(0, 0xffff), mt_rand(0, 0xffff),
+            mt_rand(0, 0x0fff) | 0x4000, mt_rand(0, 0x3fff) | 0x8000,
+            mt_rand(0, 0xffff), mt_rand(0, 0xffff), mt_rand(0, 0xffff)
+        );
+
+        // Determine status
+        $status = 'Akses Aplikasi';
+        $db = \App\Config\Database::getInstance()->getConnection();
+        
+        // Check database flag as the primary source of truth for login event
+        $loginJustOccurredDb = false;
+        try {
+            $stmtCheck = $db->prepare("SELECT login_just_occurred FROM users WHERE id = :id LIMIT 1");
+            $stmtCheck->execute(['id' => $userId]);
+            $loginJustOccurredDb = ((int)$stmtCheck->fetchColumn() === 1);
+        } catch (\Exception $e) {
+            // Fail-safe
+        }
+
+        if ($loginJustOccurredDb || (isset($_COOKIE['login_just_occurred']) && $_COOKIE['login_just_occurred'] === '1') || isset($_SESSION['login_just_occurred'])) {
+            $status = 'Login';
+            
+            // Clear all flags (db, session, cookie)
+            try {
+                $db->prepare("UPDATE users SET login_just_occurred = 0 WHERE id = ?")->execute([$userId]);
+            } catch (\Exception $e) {
+                // Fail-safe
+            }
+            
+            $isSecure = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') || (isset($_SERVER['HTTP_X_FORWARDED_PROTO']) && $_SERVER['HTTP_X_FORWARDED_PROTO'] === 'https');
+            if (PHP_VERSION_ID >= 70300) {
+                setcookie('login_just_occurred', '', [
+                    'expires' => time() - 3600,
+                    'path' => '/',
+                    'domain' => '',
+                    'secure' => $isSecure,
+                    'httponly' => false,
+                    'samesite' => 'Lax'
+                ]);
+            } else {
+                setcookie('login_just_occurred', '', time() - 3600, '/; SameSite=Lax', '', $isSecure, false);
+            }
+            unset($_SESSION['login_just_occurred']);
+        }
+
+        try {
+            $db = \App\Config\Database::getInstance()->getConnection();
+            $stmt = $db->prepare("
+                INSERT INTO login_logs (id, user_id, latitude, longitude, ip_address, user_agent, status, login_at)
+                VALUES (:id, :user_id, :latitude, :longitude, :ip_address, :user_agent, :status, NOW())
+            ");
+            $stmt->execute([
+                'id' => $uuid,
+                'user_id' => $userId,
+                'latitude' => $lat,
+                'longitude' => $lng,
+                'ip_address' => $ipAddress,
+                'user_agent' => $userAgent,
+                'status' => $status
+            ]);
+
+            $_SESSION['login_location_recorded'] = true;
+            echo json_encode(['success' => true, 'message' => 'Aktivitas akses berhasil direkam.']);
+        } catch (\Exception $e) {
+            echo json_encode(['success' => false, 'message' => 'Gagal merekam aktivitas akses: ' . $e->getMessage()]);
+        }
     }
 }

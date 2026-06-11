@@ -413,6 +413,9 @@
                             '<button onclick="window.openSuperAdminMutationModal(\'' + escHtml(user.id) + '\')" class="px-3 py-1.5 bg-primary/5 hover:bg-primary text-primary hover:text-white rounded-full text-xs font-bold border border-primary/10 shadow-sm transition-all flex items-center gap-1">' +
                                 '<span class="material-symbols-outlined text-[14px]">published_with_changes</span> Mutasi' +
                             '</button>' +
+                            '<button onclick="window.triggerSuperAdminResetProfile(\'' + escHtml(user.id) + '\', \'' + fullName + '\')" class="px-3 py-1.5 bg-red-500/10 hover:bg-red-500 text-red-700 hover:text-white rounded-full text-xs font-bold border border-red-500/20 shadow-sm transition-all flex items-center gap-1" title="Reset Identitas Lengkap Karyawan">' +
+                                '<span class="material-symbols-outlined text-[14px]">restart_alt</span> Reset' +
+                            '</button>' +
                         '</div>' +
                     '</td>';
 
@@ -483,6 +486,59 @@
                     .catch(function(err) {
                         console.error('Impersonation error:', err);
                         Swal.fire('Error', 'Terjadi kesalahan sistem saat mencoba login.', 'error');
+                    });
+            }
+        });
+    };
+
+    // ─── Reset Profile ──────────────────────────────────────────────────────────
+    window.triggerSuperAdminResetProfile = function(userId, fullName) {
+        if (typeof Swal === 'undefined') return;
+
+        Swal.fire({
+            title: 'Reset Identitas Lengkap?',
+            text: 'Tindakan ini akan mengosongkan seluruh data administratif terkunci (NIK, Rekening Bank, NPWP, BPJS, dll.) milik "' + fullName + '" dan membuat tautan baru bagi karyawan untuk mengisinya kembali.',
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#ef4444', // Red-500
+            cancelButtonColor: '#c6c5d4',
+            confirmButtonText: 'Ya, Reset Data',
+            cancelButtonText: 'Batal'
+        }).then(function(result) {
+            if (result.isConfirmed) {
+                var formData = new FormData();
+                formData.append('user_id', userId);
+                formData.append('csrf_token', <?= json_encode(csrf_token()) ?>);
+
+                fetch('/superadmin/users/reset-profile', { method: 'POST', body: formData })
+                    .then(function(res) { return res.json(); })
+                    .then(function(data) {
+                        if (data.success) {
+                            Swal.fire({
+                                title: 'Tautan Berhasil Dibuat!',
+                                html: '<p class="text-sm mb-3">Tautan pengisian identitas untuk <b>' + fullName + '</b>:</p>' +
+                                      '<div class="relative bg-surface-container-low border border-outline-variant/30 rounded-xl p-3 mb-4 font-mono text-xs break-all select-all text-left">' + data.link + '</div>' +
+                                      '<p class="text-xs text-on-surface-variant">Karyawan harus login ke portal siCare terlebih dahulu saat membuka tautan ini.</p>',
+                                icon: 'success',
+                                showCancelButton: true,
+                                confirmButtonText: 'Salin Tautan',
+                                cancelButtonText: 'Tutup',
+                                confirmButtonColor: '#000666'
+                            }).then(function(swalResult) {
+                                if (swalResult.isConfirmed) {
+                                    navigator.clipboard.writeText(data.link).then(function() {
+                                        Swal.fire({ title: 'Disalin!', text: 'Tautan berhasil disalin ke clipboard.', icon: 'success', timer: 1500, showConfirmButton: false });
+                                    });
+                                }
+                            });
+                            window.loadSuperAdminUsers();
+                        } else {
+                            Swal.fire('Error', data.message || 'Gagal mereset profil', 'error');
+                        }
+                    })
+                    .catch(function(err) {
+                        console.error('Reset profile error:', err);
+                        Swal.fire('Error', 'Terjadi kesalahan sistem.', 'error');
                     });
             }
         });

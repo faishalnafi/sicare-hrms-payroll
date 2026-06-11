@@ -17,6 +17,7 @@ $cfg = array_merge([
     'office_radius_m'          => '150',
     'home_radius_m'            => '100',
     'work_start_time'          => '08:00',
+    'work_min_start_time'      => '06:00',
     'work_end_time'            => '17:00',
     'grace_period_min'         => '10',
     'office_wifi_prefix'       => '192.168.10.',
@@ -45,6 +46,119 @@ $allDays = ['Mon' => 'Senin', 'Tue' => 'Selasa', 'Wed' => 'Rabu', 'Thu' => 'Kami
 
 <style>
 .settings-card { background:#fff; border:1px solid rgba(0,6,102,.07); border-radius:1.25rem; box-shadow:0 2px 16px rgba(0,6,102,.04); }
+/* --- Premium Calendar Styles --- */
+.calendar-container {
+    background: #ffffff;
+    border: 1px solid #dde0f0;
+    border-radius: 1rem;
+    padding: 1.25rem;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.02);
+}
+.calendar-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1rem;
+}
+.calendar-month-year {
+    font-family: 'Outfit', sans-serif;
+    font-size: 0.95rem;
+    font-weight: 800;
+    color: #000666;
+}
+.calendar-nav-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 2rem;
+    height: 2rem;
+    border-radius: 50%;
+    background: #f1f5f9;
+    border: 1px solid #dde0f0;
+    color: #475569;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+.calendar-nav-btn:hover {
+    background: #e2e8f0;
+    color: #0f172a;
+}
+.calendar-grid-weekdays {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    text-align: center;
+    margin-bottom: 0.5rem;
+}
+.calendar-weekday {
+    font-size: 0.65rem;
+    font-weight: 700;
+    color: #94a3b8;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    padding: 0.25rem 0;
+}
+.calendar-grid-days {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    gap: 0.35rem;
+}
+.calendar-day {
+    position: relative;
+    aspect-ratio: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.78rem;
+    font-weight: 700;
+    color: #334155;
+    border-radius: 0.75rem;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+.calendar-day.prev-month, .calendar-day.next-month {
+    color: #cbd5e1;
+    cursor: default;
+    pointer-events: none;
+}
+.calendar-day.current-month:hover {
+    background: #f1f5f9;
+    color: #000666;
+}
+.calendar-day.current-month.is-holiday {
+    background: #fef2f2;
+    color: #b91c1c;
+    border: 1px solid #fecaca;
+}
+.calendar-day.current-month.is-holiday:hover {
+    background: #fee2e2;
+}
+.calendar-day.current-month.is-holiday::after {
+    content: '';
+    position: absolute;
+    bottom: 0.25rem;
+    width: 0.25rem;
+    height: 0.25rem;
+    border-radius: 50%;
+    background: #ef4444;
+}
+.calendar-day.current-month.is-today {
+    border: 1.5px solid #000666;
+}
+.holiday-item-mini {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: #ffffff;
+    padding: 0.65rem 0.85rem;
+    border-radius: 0.75rem;
+    border: 1px solid #dde0f0;
+    transition: transform 0.2s, box-shadow 0.2s;
+}
+.holiday-item-mini:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.03);
+}
 .settings-section-title { font-family:'Manrope',sans-serif; font-weight:800; font-size:.875rem; color:#000666; letter-spacing:.02em; }
 .settings-input {
     width:100%; padding:.6rem .9rem; font-size:.8rem; font-weight:600; color:#1a1c2d;
@@ -282,9 +396,9 @@ $allDays = ['Mon' => 'Senin', 'Tue' => 'Selasa', 'Wed' => 'Rabu', 'Thu' => 'Kami
                                 class="settings-input font-mono" />
                         </div>
                         <div>
-                            <label class="settings-label" for="work_end_time">Jam Pulang Standar</label>
-                            <input type="time" id="work_end_time" name="work_end_time"
-                                value="<?= htmlspecialchars($cfg['work_end_time']) ?>"
+                            <label class="settings-label" for="work_min_start_time">Minimal Jam Masuk</label>
+                            <input type="time" id="work_min_start_time" name="work_min_start_time"
+                                value="<?= htmlspecialchars($cfg['work_min_start_time']) ?>"
                                 class="settings-input font-mono" />
                         </div>
                         <div>
@@ -313,6 +427,12 @@ $allDays = ['Mon' => 'Senin', 'Tue' => 'Selasa', 'Wed' => 'Rabu', 'Thu' => 'Kami
 
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div>
+                            <label class="settings-label" for="work_end_time">Jam Pulang Standar</label>
+                            <input type="time" id="work_end_time" name="work_end_time"
+                                value="<?= htmlspecialchars($cfg['work_end_time']) ?>"
+                                class="settings-input font-mono" />
+                        </div>
+                        <div>
                             <label class="settings-label" for="checkout_grace_period_min">Toleransi Pulang Lambat</label>
                             <div class="flex items-center gap-2">
                                 <input type="number" id="checkout_grace_period_min" name="checkout_grace_period_min"
@@ -321,9 +441,9 @@ $allDays = ['Mon' => 'Senin', 'Tue' => 'Selasa', 'Wed' => 'Rabu', 'Thu' => 'Kami
                                     class="settings-input" style="padding:.6rem" />
                                 <span class="text-xs font-semibold text-on-surface-variant whitespace-nowrap">menit</span>
                             </div>
-                            <p class="settings-helper mt-2">Batas toleransi kepulangan karyawan setelah jam pulang standar. Karyawan yang clock-out melewati batas ini akan tercatat sebagai Pulang Terlambat. Jika melewati hari (masuk jam 00:00) dan belum melakukan presensi pulang, maka akan tercatat sebagai Tidak Presensi Pulang.</p>
                         </div>
                     </div>
+                    <p class="settings-helper mt-2">Batas toleransi kepulangan karyawan setelah jam pulang standar. Karyawan yang clock-out melewati batas ini akan tercatat sebagai Pulang Terlambat. Jika melewati hari (masuk jam 00:00) dan belum melakukan presensi pulang, maka akan tercatat sebagai Tidak Presensi Pulang.</p>
 
                     <!-- Live preview khusus checkout status -->
                     <div id="checkoutPreview" class="mt-4 p-4 rounded-xl bg-orange-50/50 border border-orange-100 text-xs font-semibold text-orange-850">
@@ -580,30 +700,36 @@ $allDays = ['Mon' => 'Senin', 'Tue' => 'Selasa', 'Wed' => 'Rabu', 'Thu' => 'Kami
                     <div>
                         <label class="settings-label mb-3">Tanggal Merah / Libur Nasional</label>
                         
-                        <!-- List of holidays -->
-                        <div class="space-y-2 max-h-48 overflow-y-auto mb-4 pr-1" id="holidaysList">
-                            <?php if (empty($holidays)): ?>
-                            <p class="text-xs font-semibold text-on-surface-variant/60 text-center py-4 bg-surface rounded-xl">Belum ada hari libur nasional.</p>
-                            <?php else: ?>
-                            <?php foreach ($holidays as $h): ?>
-                            <div class="flex justify-between items-center bg-surface p-3 rounded-xl border border-outline-variant/10">
-                                <div>
-                                    <p class="text-xs font-extrabold text-on-surface"><?= htmlspecialchars($h['description']) ?></p>
-                                    <p class="text-[10px] font-mono text-on-surface-variant font-medium mt-0.5"><?= date('d M Y', strtotime($h['holiday_date'])) ?></p>
-                                </div>
-                                <button type="button" onclick="deleteHoliday('<?= $h['id'] ?>')" class="text-red-500 hover:text-red-700 p-1 flex items-center justify-center hover:bg-red-50 rounded-lg transition-colors">
-                                    <span class="material-symbols-outlined text-sm font-bold">delete</span>
+                        <!-- Event Calendar Container -->
+                        <div class="calendar-container mb-4">
+                            <div class="calendar-header">
+                                <button type="button" class="calendar-nav-btn" onclick="prevCalendarMonth()">
+                                    <span class="material-symbols-outlined text-base">chevron_left</span>
+                                </button>
+                                <span id="calendarMonthYear" class="calendar-month-year"></span>
+                                <button type="button" class="calendar-nav-btn" onclick="nextCalendarMonth()">
+                                    <span class="material-symbols-outlined text-base">chevron_right</span>
                                 </button>
                             </div>
-                            <?php endforeach; ?>
-                            <?php endif; ?>
+                            <div class="calendar-grid-weekdays">
+                                <div class="calendar-weekday">Sen</div>
+                                <div class="calendar-weekday">Sel</div>
+                                <div class="calendar-weekday">Rab</div>
+                                <div class="calendar-weekday">Kam</div>
+                                <div class="calendar-weekday">Jum</div>
+                                <div class="calendar-weekday">Sab</div>
+                                <div class="calendar-weekday">Min</div>
+                            </div>
+                            <div id="calendarDaysGrid" class="calendar-grid-days"></div>
                         </div>
 
-                        <!-- Add holiday button trigger -->
-                        <button type="button" onclick="openAddHolidayModal()" class="w-full inline-flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-xl bg-red-50 hover:bg-red-100 text-red-700 text-xs font-bold transition-all border border-red-200">
-                            <span class="material-symbols-outlined text-sm font-bold">add</span>
-                            Tambah Tanggal Merah
-                        </button>
+                        <!-- Daftar Libur Bulan Ini -->
+                        <div class="bg-surface p-3.5 rounded-xl border border-outline-variant/10 mb-4" style="background:#f8f9fa">
+                            <p class="text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-2" id="holidayMonthListTitle">Daftar Libur Bulan Ini</p>
+                            <div class="space-y-2 max-h-36 overflow-y-auto pr-1" id="calendarMonthHolidaysList">
+                                <!-- Rendered dynamically -->
+                            </div>
+                        </div>
                     </div>
                 </div>
 
@@ -785,11 +911,12 @@ function toggleDay(el) {
 // ── Schedule preview ─────────────────────────────────────────
 function updateSchedulePreview() {
     const start = document.getElementById('work_start_time').value;
+    const minStart = document.getElementById('work_min_start_time').value;
     const end   = document.getElementById('work_end_time').value;
     const grace = document.getElementById('grace_period_min').value;
     const coGrace = document.getElementById('checkout_grace_period_min').value;
 
-    if (!start || !end) return;
+    if (!start || !end || !minStart) return;
     const [sh, sm] = start.split(':').map(Number);
     const deadline = new Date(0, 0, 0, sh, sm + parseInt(grace || 0));
     const deadlineStr = deadline.toTimeString().substring(0,5);
@@ -802,8 +929,8 @@ function updateSchedulePreview() {
         <div class="flex items-start gap-2">
             <span class="material-symbols-outlined text-amber-600 text-sm mt-0.5">info</span>
             <div>
-                <strong>Jam Masuk Standar ${start}</strong> &nbsp;·&nbsp; Toleransi Masuk ${grace} menit<br>
-                Karyawan masuk hingga <strong>${deadlineStr}</strong> masih dianggap <span class="text-green-700 font-semibold">Tepat Waktu</span>. Masuk setelah <strong>${deadlineStr}</strong> tercatat sebagai <span class="text-amber-700 font-semibold">Terlambat</span>.
+                <strong>Jam Masuk Standar ${start}</strong> &nbsp;·&nbsp; Minimal Masuk ${minStart} &nbsp;·&nbsp; Toleransi Masuk ${grace} menit<br>
+                Karyawan hanya diperbolehkan masuk mulai pukul <strong>${minStart}</strong>. Masuk hingga <strong>${deadlineStr}</strong> masih dianggap <span class="text-green-700 font-semibold">Tepat Waktu</span>. Masuk setelah <strong>${deadlineStr}</strong> tercatat sebagai <span class="text-amber-700 font-semibold">Terlambat</span>.
             </div>
         </div>
     `;
@@ -814,7 +941,7 @@ function updateSchedulePreview() {
                 <span class="material-symbols-outlined text-orange-600 text-sm mt-0.5">info</span>
                 <div>
                     <strong>Jam Pulang Standar ${end}</strong> &nbsp;·&nbsp; Toleransi Pulang Lambat ${coGrace} menit<br>
-                    Karyawan pulang hingga <strong>${coDeadlineStr}</strong> masih dianggap <span class="text-emerald-700 font-semibold">Wajar</span>. Pulang setelah <strong>${coDeadlineStr}</strong> tercatat sebagai <span class="text-orange-700 font-semibold">Pulang Terlambat</span>. Jika melewati hari (masuk jam 00:00) dan belum melakukan presensi pulang, maka tercatat sebagai <span class="text-rose-700 font-semibold">Tidak Presensi Pulang</span>.
+                    Karyawan pulang hingga <strong>${coDeadlineStr}</strong> masih dianggap <span class="text-emerald-700 font-semibold">Tepat Waktu</span>. Pulang setelah <strong>${coDeadlineStr}</strong> tercatat sebagai <span class="text-orange-700 font-semibold">Pulang Terlambat</span>. Jika melewati hari (masuk jam 00:00) and belum melakukan presensi pulang, maka tercatat sebagai <span class="text-rose-700 font-semibold">Tidak Presensi Pulang</span>.
                 </div>
             </div>
         `;
@@ -829,10 +956,233 @@ function updateSchedulePreview() {
 }
 
 // Init and bind live preview
-['work_start_time','work_end_time','grace_period_min','checkout_grace_period_min'].forEach(id => {
+['work_start_time','work_min_start_time','work_end_time','grace_period_min','checkout_grace_period_min'].forEach(id => {
     document.getElementById(id).addEventListener('input', updateSchedulePreview);
 });
 updateSchedulePreview();
+
+// --- Event Calendar Logic ---
+const holidayData = <?= json_encode($holidays) ?>;
+let calYear = new Date().getFullYear();
+let calMonth = new Date().getMonth(); // 0-11
+
+function initCalendar() {
+    renderCalendar(calYear, calMonth);
+}
+
+function prevCalendarMonth() {
+    calMonth--;
+    if (calMonth < 0) {
+        calMonth = 11;
+        calYear--;
+    }
+    renderCalendar(calYear, calMonth);
+}
+
+function nextCalendarMonth() {
+    calMonth++;
+    if (calMonth > 11) {
+        calMonth = 0;
+        calYear++;
+    }
+    renderCalendar(calYear, calMonth);
+}
+
+function renderCalendar(year, month) {
+    const monthNames = ["Januari", "Februari", "Maret", "April", "Mei", "Juni", "Juli", "Agustus", "September", "Oktober", "November", "Desember"];
+    
+    // Set Header
+    document.getElementById('calendarMonthYear').textContent = monthNames[month] + " " + year;
+    
+    // Get first day of the month
+    const firstDayIndex = new Date(year, month, 1).getDay(); // 0 is Sunday
+    let startDay = firstDayIndex === 0 ? 6 : firstDayIndex - 1;
+    
+    const totalDays = new Date(year, month + 1, 0).getDate();
+    const prevTotalDays = new Date(year, month, 0).getDate();
+    
+    const today = new Date();
+    const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+    
+    let html = '';
+    
+    for (let i = startDay - 1; i >= 0; i--) {
+        html += `<div class="calendar-day prev-month">${prevTotalDays - i}</div>`;
+    }
+    
+    for (let day = 1; day <= totalDays; day++) {
+        const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+        const holiday = holidayData.find(h => h.holiday_date === dateStr);
+        
+        let classList = "calendar-day current-month";
+        let attr = `data-date="${dateStr}"`;
+        
+        if (holiday) {
+            classList += " is-holiday";
+            attr += ` data-holiday-id="${holiday.id}" data-holiday-desc="${escapeHtml(holiday.description)}"`;
+        }
+        
+        if (dateStr === todayStr) {
+            classList += " is-today";
+        }
+        
+        html += `<div class="${classList}" ${attr} onclick="handleDayClick(this)">
+            <span class="day-number">${day}</span>
+        </div>`;
+    }
+    
+    const totalGrid = startDay + totalDays;
+    const nextDays = totalGrid <= 35 ? 35 - totalGrid : 42 - totalGrid;
+    for (let i = 1; i <= nextDays; i++) {
+        html += `<div class="calendar-day next-month">${i}</div>`;
+    }
+    
+    document.getElementById('calendarDaysGrid').innerHTML = html;
+    
+    renderMonthHolidaysList(year, month);
+}
+
+function renderMonthHolidaysList(year, month) {
+    const listContainer = document.getElementById('calendarMonthHolidaysList');
+    const monthStr = String(month + 1).padStart(2, '0');
+    const prefix = `${year}-${monthStr}`;
+    
+    const monthHolidays = holidayData.filter(h => h.holiday_date.startsWith(prefix));
+    
+    if (monthHolidays.length === 0) {
+        listContainer.innerHTML = `<p class="text-[11px] font-semibold text-gray-400 text-center py-3">Tidak ada libur nasional di bulan ini.</p>`;
+        return;
+    }
+    
+    let html = '';
+    monthHolidays.forEach(h => {
+        const d = new Date(h.holiday_date);
+        const dayStr = String(d.getDate()).padStart(2, '0');
+        const monthsShort = ["Jan", "Feb", "Mar", "Apr", "Mei", "Jun", "Jul", "Ags", "Sep", "Okt", "Nov", "Des"];
+        const formattedDate = `${dayStr} ${monthsShort[d.getMonth()]} ${d.getFullYear()}`;
+        
+        html += `
+            <div class="holiday-item-mini">
+                <div class="min-w-0 flex-1">
+                    <p class="text-[11px] font-extrabold text-gray-800 truncate" title="${escapeHtml(h.description)}">${escapeHtml(h.description)}</p>
+                    <p class="text-[9px] font-mono font-medium text-gray-400 mt-0.5">${formattedDate}</p>
+                </div>
+                <button type="button" onclick="deleteHoliday('${h.id}')" class="text-red-500 hover:text-red-700 p-1 flex items-center justify-center hover:bg-red-50 rounded-lg transition-colors ml-2 flex-shrink-0">
+                    <span class="material-symbols-outlined text-sm font-bold">delete</span>
+                </button>
+            </div>
+        `;
+    });
+    
+    listContainer.innerHTML = html;
+}
+
+function handleDayClick(element) {
+    const dateStr = element.dataset.date;
+    const isHoliday = element.classList.contains('is-holiday');
+    
+    if (isHoliday) {
+        const holidayDesc = element.dataset.holidayDesc;
+        const holidayId = element.dataset.holidayId;
+        
+        const parts = dateStr.split('-');
+        const months = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'];
+        const dateLabel = parseInt(parts[2], 10) + ' ' + months[parseInt(parts[1], 10) - 1] + ' ' + parts[0];
+        
+        Swal.fire({
+            title: '🎉 Hari Libur Nasional',
+            html: `
+                <div class="text-center space-y-2 text-sm mt-2">
+                    <p class="font-extrabold text-base text-gray-800">${escapeHtml(holidayDesc)}</p>
+                    <p class="font-semibold text-xs text-gray-450 font-mono">${dateLabel}</p>
+                </div>
+            `,
+            showCancelButton: true,
+            showDenyButton: true,
+            confirmButtonColor: '#000666',
+            denyButtonColor: '#ba1a1a',
+            cancelButtonColor: '#c6c5d4',
+            confirmButtonText: 'Tutup',
+            denyButtonText: 'Hapus Libur',
+            cancelButtonText: 'Batal'
+        }).then(result => {
+            if (result.isDenied) {
+                deleteHoliday(holidayId);
+            }
+        });
+    } else {
+        const parts = dateStr.split('-');
+        const months = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'];
+        const dateLabel = parseInt(parts[2], 10) + ' ' + months[parseInt(parts[1], 10) - 1] + ' ' + parts[0];
+        
+        Swal.fire({
+            title: '🗓️ Tambah Hari Libur',
+            html: `
+                <div class="text-left space-y-4 text-sm mt-2">
+                    <div>
+                        <label class="block font-bold text-[10px] text-gray-500 mb-1.5 uppercase tracking-wider">Tanggal Libur</label>
+                        <input type="text" value="${dateLabel}" class="w-full p-2.5 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none text-sm font-semibold text-gray-750 font-mono" readonly />
+                        <input type="hidden" id="swalHolidayDate" value="${dateStr}" />
+                    </div>
+                    <div>
+                        <label class="block font-bold text-[10px] text-gray-500 mb-1.5 uppercase tracking-wider">Keterangan / Nama Libur</label>
+                        <input type="text" id="swalHolidayDesc" placeholder="Contoh: Hari Raya Idul Fitri" class="w-full p-2.5 border border-gray-200 rounded-xl focus:outline-none focus:border-blue-500 text-sm" />
+                    </div>
+                </div>
+            `,
+            showCancelButton: true,
+            confirmButtonColor: '#b91c1c',
+            cancelButtonColor: '#c6c5d4',
+            confirmButtonText: 'Tambah Libur',
+            cancelButtonText: 'Batal',
+            preConfirm: () => {
+                const date = document.getElementById('swalHolidayDate').value;
+                const desc = document.getElementById('swalHolidayDesc').value.trim();
+                if (!desc) { Swal.showValidationMessage('Keterangan libur wajib diisi.'); return false; }
+                return { date, desc };
+            }
+        }).then(result => {
+            if (!result.isConfirmed) return;
+            submitNewHoliday(result.value.date, result.value.desc);
+        });
+    }
+}
+
+function submitNewHoliday(date, desc) {
+    const fd = new FormData();
+    fd.append('holiday_date', date);
+    fd.append('description', desc);
+    
+    const endpoint = window.location.pathname.startsWith('/hrops') ? '/hrops/holidays/add' : '/admin/holidays/add';
+    
+    fetch(endpoint, {
+        method: 'POST',
+        body: fd
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.success) {
+            Swal.fire({ title: 'Berhasil!', text: data.message, icon: 'success', confirmButtonColor: '#000666' }).then(() => {
+                if (window.loadPage) { window.loadPage(window.location.pathname + window.location.search); }
+                else { window.location.reload(); }
+            });
+        } else {
+            Swal.fire('Gagal', data.message, 'error');
+        }
+    });
+}
+
+function escapeHtml(text) {
+    if (!text) return '';
+    return text
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#039;");
+}
+
+initCalendar();
 
 // Init logo fields
 if (document.getElementById('app_logo_type')) {
@@ -1047,4 +1397,7 @@ window.updateSchedulePreview = updateSchedulePreview;
 window.saveSettings = saveSettings;
 window.toggleLogoFields = toggleLogoFields;
 window.previewLogoFile = previewLogoFile;
+window.prevCalendarMonth = prevCalendarMonth;
+window.nextCalendarMonth = nextCalendarMonth;
+window.handleDayClick = handleDayClick;
 </script>
