@@ -41,6 +41,7 @@ if ($sessRole === 'hr_ops') $roleFolder = 'hrops';
 
 $menus = [];
 $menus[] = ['title' => 'Beranda', 'icon' => 'dashboard', 'link' => '/' . $roleFolder . '/dashboard'];
+$menus[] = ['title' => 'Changelog Rilis', 'icon' => 'history', 'link' => '/changelogs'];
 
 switch ($sessRole) {
     case 'candidate':
@@ -93,6 +94,7 @@ switch ($sessRole) {
         $menus[] = ['title' => 'Manajemen Pengguna', 'icon' => 'manage_accounts', 'link' => '/superadmin/users'];
         $menus[] = ['title' => 'Konfigurasi Global', 'icon' => 'settings', 'link' => '/superadmin/settings'];
         $menus[] = ['title' => 'Audit Log & Security', 'icon' => 'security', 'link' => '/superadmin/audit'];
+        $menus[] = ['title' => 'Pembaruan Sistem', 'icon' => 'system_update', 'link' => '/superadmin/update'];
         $menus[] = ['title' => 'Refleksi Karyawan', 'icon' => 'psychology', 'link' => '/superadmin/reflection'];
         break;
 }

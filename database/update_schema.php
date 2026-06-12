@@ -1400,6 +1400,29 @@ try {
         echo "Seed dummy personal_journals complete.\n";
     }
 
+    // 21. Create changelogs table
+    $createChangelogsTableQuery = "
+        CREATE TABLE IF NOT EXISTS changelogs (
+            version VARCHAR(50) PRIMARY KEY,
+            edition VARCHAR(50) NOT NULL,
+            repo_type VARCHAR(50) NOT NULL DEFAULT 'monorepo',
+            compiled_date DATE NOT NULL,
+            migration_level VARCHAR(100) NOT NULL,
+            summary LONGTEXT NOT NULL,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+    ";
+    $db->exec($createChangelogsTableQuery);
+    
+    // Ensure repo_type column exists if table was already created
+    try {
+        $db->exec("ALTER TABLE changelogs ADD COLUMN IF NOT EXISTS repo_type VARCHAR(50) NOT NULL DEFAULT 'monorepo' AFTER edition");
+    } catch (Exception $ex) {
+        // Ignored
+    }
+    
+    echo "Table changelogs created successfully.\n";
+
 } catch (Exception $e) {
     echo "ERROR: " . $e->getMessage() . "\n";
     exit(1);

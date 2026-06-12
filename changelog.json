@@ -1,0 +1,49 @@
+[
+    {
+        "version": "001.001.000-LTS",
+        "edition": "business",
+        "repo_type": "monorepo",
+        "compiled_date": "2026-06-12",
+        "migration_level": "stg -> production",
+        "summary": {
+            "added": [
+                "Fitur ekspor slip gaji ke format PDF terenkripsi kata sandi (tanggal lahir)"
+            ],
+            "improved": [
+                "Optimasi loading rekap kehadiran karyawan pada dashboard supervisor"
+            ],
+            "fixed": [
+                "Bug pembulatan pecahan rupiah pada penghitungan tunjangan lembur"
+            ],
+            "security": [
+                "Validasi payload token JWT OAuth2 untuk integrasi Google Login"
+            ]
+        }
+    },
+    {
+        "version": "26.05-LTS",
+        "edition": "business",
+        "repo_type": "monorepo",
+        "compiled_date": "2026-06-11",
+        "migration_level": "stg -> production",
+        "summary": {
+            "added": [
+                "Menu Presensi GPS tracking terintegrasi untuk karyawan WFH/WFO",
+                "Integrasi library SweetAlert2 untuk dialog konfirmasi tindakan",
+                "Fitur self-reflection kuartalan (Q2) untuk pelacakan performa karyawan",
+                "Sistem session handler hybrid yang menyimpan state di Redis/DB"
+            ],
+            "improved": [
+                "Mempercepat query perhitungan rekap absensi bulanan untuk payroll"
+            ],
+            "fixed": [
+                "Validasi double clock-in agar tidak menduplikasi baris absensi",
+                "Memperbaiki overflow scroll horizontal pada tabel master data di mobile"
+            ],
+            "security": [
+                "Penggunaan finfo_open() pada backend upload berkas klaim",
+                "Audit log otomatis untuk mencatat semua koreksi data sensitif oleh HR"
+            ]
+        }
+    }
+]

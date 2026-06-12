@@ -248,4 +248,99 @@ class DashboardController {
             require __DIR__ . '/../../resources/views/layouts/app.php';
         }
     }
+
+    public function executeUpdate() {
+        if (session_status() === PHP_SESSION_NONE) session_start();
+        header('Content-Type: application/json');
+
+        // Check if user is logged in and is a superadmin
+        if (!isset($_SESSION['user_id']) || ($_SESSION['role'] ?? '') !== 'superadmin') {
+            echo json_encode(['success' => false, 'message' => 'Akses ditolak. Hanya Super Admin yang diizinkan melakukan update.']);
+            exit;
+        }
+
+        // Validate CSRF token
+        $csrfToken = $_POST['csrf_token'] ?? $_SERVER['HTTP_X_CSRF_TOKEN'] ?? '';
+        if (empty($csrfToken) || $csrfToken !== ($_SESSION['csrf_token'] ?? '')) {
+            echo json_encode(['success' => false, 'message' => 'Token CSRF tidak valid. Silakan muat ulang halaman.']);
+            exit;
+        }
+
+        try {
+            $db = \App\Config\Database::getInstance()->getConnection();
+
+            // 1. Run database migration (update_schema.php)
+            // Use output buffering to prevent database echo statements from breaking JSON response
+            ob_start();
+            require_once __DIR__ . '/../../database/update_schema.php';
+            $migrationOutput = ob_get_clean();
+
+            // 2. Read changelog.json and sync to changelogs table
+            $jsonPath = __DIR__ . '/../../changelog.json';
+            if (file_exists($jsonPath)) {
+                $jsonContent = file_get_contents($jsonPath);
+                $releases = json_decode($jsonContent, true);
+
+                if (is_array($releases)) {
+                    $stmt = $db->prepare("
+                        INSERT INTO changelogs (version, edition, repo_type, compiled_date, migration_level, summary)
+                        VALUES (:version, :edition, :repo_type, :compiled_date, :migration_level, :summary)
+                        ON DUPLICATE KEY UPDATE 
+                            edition = VALUES(edition),
+                            repo_type = VALUES(repo_type),
+                            compiled_date = VALUES(compiled_date),
+                            migration_level = VALUES(migration_level),
+                            summary = VALUES(summary)
+                    ");
+
+                    foreach ($releases as $rel) {
+                        $stmt->execute([
+                            'version' => $rel['version'],
+                            'edition' => $rel['edition'],
+                            'repo_type' => $rel['repo_type'] ?? 'monorepo',
+                            'compiled_date' => $rel['compiled_date'],
+                            'migration_level' => $rel['migration_level'],
+                            'summary' => json_encode($rel['summary'])
+                        ]);
+                    }
+                }
+            }
+
+            // 3. Reset all other role sessions
+            $myId = $_SESSION['user_id'];
+            $stmtSession = $db->prepare("DELETE FROM sessions WHERE user_id IS NULL OR user_id != :my_id");
+            $stmtSession->execute(['my_id' => $myId]);
+
+            // Save system update event to audit log
+            $logStmt = $db->prepare("
+                INSERT INTO audit_logs (id, user_id, action, table_name, ip_address)
+                VALUES (:id, :user_id, :action, 'changelogs', :ip)
+            ");
+            $logId = sprintf('%04x%04x-%04x-%04x-%04x-%04x%04x%04x',
+                mt_rand(0, 0xffff), mt_rand(0, 0xffff), mt_rand(0, 0xffff),
+                mt_rand(0, 0x0fff) | 0x4000, mt_rand(0, 0x3fff) | 0x8000,
+                mt_rand(0, 0xffff), mt_rand(0, 0xffff), mt_rand(0, 0xffff)
+            );
+            $logStmt->execute([
+                'id' => $logId,
+                'user_id' => $myId,
+                'action' => 'Melakukan update sistem ke versi terbaru dari JSON dan mereset session user lain.',
+                'ip' => $_SERVER['REMOTE_ADDR'] ?? '127.0.0.1'
+            ]);
+
+            echo json_encode([
+                'success' => true,
+                'message' => 'Update sistem berhasil! Skema database telah dimigrasikan, riwayat rilis disinkronkan, dan seluruh sesi aktif pengguna lain telah direset secara aman.',
+                'migration_log' => trim($migrationOutput)
+            ]);
+            exit;
+
+        } catch (\Exception $e) {
+            echo json_encode([
+                'success' => false,
+                'message' => 'Gagal melakukan update: ' . $e->getMessage()
+            ]);
+            exit;
+        }
+    }
 }

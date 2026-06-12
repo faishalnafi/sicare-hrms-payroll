@@ -322,7 +322,11 @@ if ($method === 'POST' && $path === 'auth/login') {
 } elseif ($method === 'POST' && $path === 'executive/approvals/reject') {
     (new \App\Controllers\ApprovalController())->reject();
     exit;
+} elseif ($method === 'POST' && $path === 'superadmin/update/execute') {
+    (new \App\Controllers\DashboardController())->executeUpdate();
+    exit;
 } elseif ($method === 'GET' && (
+    $path === 'changelogs' ||
     str_starts_with($path, 'candidate/') || 
     str_starts_with($path, 'employee/') || 
     str_starts_with($path, 'recruiter/') || 
