@@ -23,9 +23,13 @@ class AttendanceController {
         'home_radius_m'      => 100,
         'work_start_time'    => '08:00',
         'work_min_start_time'=> '06:00',
+        'work_min_start_time_enabled' => 'true',
+        'work_min_end_time'  => '15:00',
+        'work_min_end_time_enabled' => 'false',
         'work_end_time'      => '17:00',
         'grace_period_min'   => 10,
         'office_wifi_prefix' => '192.168.10.',
+        'office_wifi_ipv6_prefix' => '',
         'wfa_allowed'        => 'true',
         'wfa_days'           => '',
     ];
@@ -144,6 +148,31 @@ class AttendanceController {
     private function workEnd(): string    { return $this->cfg['work_end_time']   ?? '17:00'; }
     private function graceMins(): int     { return (int)($this->cfg['grace_period_min'] ?? 10); }
     private function wifiPrefix(): string { return $this->cfg['office_wifi_prefix'] ?? '192.168.10.'; }
+    private function isWifiIp(string $ip): bool {
+        // Check IPv4 prefixes
+        $ipv4PrefixesRaw = trim($this->cfg['office_wifi_prefix'] ?? '');
+        if ($ipv4PrefixesRaw !== '') {
+            $prefixes = array_filter(array_map('trim', explode(',', $ipv4PrefixesRaw)));
+            foreach ($prefixes as $prefix) {
+                if ($prefix !== '' && str_starts_with($ip, $prefix)) {
+                    return true;
+                }
+            }
+        }
+
+        // Check IPv6 prefixes
+        $ipv6PrefixesRaw = trim($this->cfg['office_wifi_ipv6_prefix'] ?? '');
+        if ($ipv6PrefixesRaw !== '') {
+            $prefixes = array_filter(array_map('trim', explode(',', $ipv6PrefixesRaw)));
+            foreach ($prefixes as $prefix) {
+                if ($prefix !== '' && str_starts_with(strtolower($ip), strtolower($prefix))) {
+                    return true;
+                }
+            }
+        }
+
+        return false;
+    }
     private function wfaAllowed(): bool   { return strtolower($this->cfg['wfa_allowed'] ?? 'true') === 'true'; }
     private function wfaDays(): array {
         $d = trim($this->cfg['wfa_days'] ?? '');
@@ -208,7 +237,7 @@ class AttendanceController {
             return;
         }
 
-        $method = str_starts_with($ipAddr, $this->wifiPrefix()) ? 'WIFI' : 'GPS';
+        $method = $this->isWifiIp($ipAddr) ? 'WIFI' : 'GPS';
         $distM  = $this->haversine($this->officeLat(), $this->officeLng(), $lat, $lng);
         if ($homeLat !== null && $homeLng !== null) {
             $distHomeM = $this->haversine($homeLat, $homeLng, $lat, $lng);
@@ -253,17 +282,20 @@ class AttendanceController {
         }
 
         // ── Determine attendance status with grace period ─────────────────
-        $minStartStr = $this->cfg['work_min_start_time'] ?? '06:00';
-        [$minH, $minM] = array_map('intval', explode(':', $minStartStr));
-        $minMin = $minH * 60 + $minM;
-        $nowMin = (int)date('H') * 60 + (int)date('i');
-        
-        if ($nowMin < $minMin) {
-            echo json_encode([
-                'success' => false,
-                'message' => "Clock-In ditolak. Minimal jam masuk adalah pukul {$minStartStr}."
-            ]);
-            return;
+        $minStartEnabled = ($this->cfg['work_min_start_time_enabled'] ?? 'true') === 'true';
+        if ($minStartEnabled) {
+            $minStartStr = $this->cfg['work_min_start_time'] ?? '06:00';
+            [$minH, $minM] = array_map('intval', explode(':', $minStartStr));
+            $minMin = $minH * 60 + $minM;
+            $nowMin = (int)date('H') * 60 + (int)date('i');
+            
+            if ($nowMin < $minMin) {
+                echo json_encode([
+                    'success' => false,
+                    'message' => "Clock-In ditolak. Minimal jam masuk adalah pukul {$minStartStr}."
+                ]);
+                return;
+            }
         }
 
         [$startH, $startM] = array_map('intval', explode(':', $this->workStart()));
@@ -434,6 +466,23 @@ class AttendanceController {
             }
         }
         */
+
+        // Enforce minimal clock-out time if enabled
+        $minEndEnabled = ($this->cfg['work_min_end_time_enabled'] ?? 'false') === 'true';
+        if ($minEndEnabled) {
+            $minEndStr = $this->cfg['work_min_end_time'] ?? '15:00';
+            [$minH, $minM] = array_map('intval', explode(':', $minEndStr));
+            $minMin = $minH * 60 + $minM;
+            $nowMin = (int)date('H') * 60 + (int)date('i');
+            
+            if ($nowMin < $minMin) {
+                echo json_encode([
+                    'success' => false,
+                    'message' => "Clock-Out ditolak. Minimal jam pulang adalah pukul {$minEndStr}."
+                ]);
+                return;
+            }
+        }
 
         // Hitung status pulang (checkout status) via helper
         $coStatus = $this->resolveClockOutStatus($nowTime);

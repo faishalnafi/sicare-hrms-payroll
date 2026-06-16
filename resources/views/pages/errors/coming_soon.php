@@ -125,9 +125,9 @@ $pageInfo = $pathLabels[$requestedPath] ?? [
 
     <!-- Center Card -->
     <div class="bg-surface-container-lowest border border-outline-variant/15 rounded-3xl p-16 shadow-[0_8px_30px_rgba(0,6,102,0.015)] flex flex-col items-center justify-center text-center min-h-[340px]">
-        <!-- Naked Large Material Symbol Icon -->
-        <div class="mb-6 flex justify-center items-center">
-            <span class="material-symbols-outlined text-[64px] text-[#a5a9c0] select-none" style="font-size: 64px;">construction</span>
+        <!-- Floating glassmorphic circle -->
+        <div class="w-32 h-32 rounded-full bg-gradient-to-tr from-primary/5 to-primary/15 flex items-center justify-center animate-float shadow-inner border border-white/20 mb-6">
+            <span class="material-symbols-outlined text-[48px] text-primary/70 select-none animate-pulse" style="font-size: 48px;">construction</span>
         </div>
         
         <h3 class="text-xl font-bold text-on-surface font-headline mb-3">Sedang Dibangun</h3>

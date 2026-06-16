@@ -45,7 +45,9 @@ self.addEventListener('fetch', event => {
             .then(response => {
                 // If it's a valid response, we can dynamically cache static assets
                 const url = new URL(event.request.url);
+                const contentType = response.headers.get('content-type') || '';
                 if (response.ok && (
+                    contentType.includes('text/html') ||
                     url.pathname.endsWith('.css') || 
                     url.pathname.endsWith('.js') || 
                     url.pathname.endsWith('.png') || 

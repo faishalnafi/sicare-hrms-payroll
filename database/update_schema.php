@@ -996,6 +996,8 @@ try {
         ['app_logo_icon',            'local_police',           'Logo Aplikasi (Material Icon)',    'general'],
         ['app_logo_type',            'icon',                   'Tipe Logo (icon/image)',           'general'],
         ['app_logo_image',           '',                       'URL Logo Gambar',                  'general'],
+        ['app_idle_timeout_sec',     '0',                      'Batas Waktu Idle Aplikasi (Detik)', 'general'],
+        ['google_maps_api_key',      '',                       'Google Maps API Key',              'general'],
     ];
 
     $stmtSetting = $db->prepare("
@@ -1417,6 +1419,20 @@ try {
     // Ensure repo_type column exists if table was already created
     try {
         $db->exec("ALTER TABLE changelogs ADD COLUMN IF NOT EXISTS repo_type VARCHAR(50) NOT NULL DEFAULT 'monorepo' AFTER edition");
+    } catch (Exception $ex) {
+        // Ignored
+    }
+    
+    // Ensure alias_name column exists for stable version aliases
+    try {
+        $db->exec("ALTER TABLE changelogs ADD COLUMN IF NOT EXISTS alias_name VARCHAR(100) DEFAULT NULL AFTER migration_level");
+    } catch (Exception $ex) {
+        // Ignored
+    }
+    
+    // Migrate edition names: business -> enterprise
+    try {
+        $db->exec("UPDATE changelogs SET edition = 'enterprise' WHERE edition = 'business'");
     } catch (Exception $ex) {
         // Ignored
     }

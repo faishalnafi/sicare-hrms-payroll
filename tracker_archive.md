@@ -17,3 +17,10 @@ This file archives past compiled/published raw logs.
 | 2026-06-12 | Fixed | Bug pembulatan pecahan rupiah pada penghitungan tunjangan lembur | Terjadi selisih pembulatan desimal kecil | dev | Budi Santoso |
 | 2026-06-12 | Improved | Optimasi loading rekap kehadiran karyawan pada dashboard supervisor | Loading lambat saat data di atas 500 baris | tqa | Amanda Putri |
 | 2026-06-12 | Security | Validasi payload token JWT OAuth2 untuk integrasi Google Login | Memverifikasi token tanpa validasi payload penuh | dev | Rian Hidayat |
+| 2026-06-12 | Fixed | Perbaikan tombol Perbarui Aplikasi Sekarang yang unclickable akibat JS syntax error | Tombol tidak merespons dikarenakan template literal bersarang | dev | Antigravity |
+| 2026-06-12 | Changed | Penyesuaian format versi rilis Beta menjadi SemVer 3-digit zero-padded tanpa kata Beta | Menggunakan format penanggalan kalender atau kata Beta | env | Antigravity |
+| 2026-06-16 | Added | Integrasi event listener online/offline global untuk memicu popup SweetAlert2 ketika koneksi internet terputus atau terhubung kembali | Mengandalkan Service Worker offline page bawaan saja | stg | Antigravity |
+| 2026-06-16 | Improved | Optimasi Service Worker sw.js untuk melakukan caching halaman HTML secara dinamis pada request GET | Hanya meng-cache static assets seperti CSS, JS, dan gambar saja | stg | Antigravity |
+| 2026-06-16 | Fixed | Mengatasi double popup error saat SPA page navigation gagal akibat status error server | Muncul popup error bawaan SPA yang menimpa popup detail database error | stg | Antigravity |
+| 2026-06-16 | Added | Penanganan error database (PDOException) pada server-side di Database.php yang mengembalikan respon JSON untuk AJAX dan merender halaman error pangkalan data berdesain premium | Terjadi uncaught PDOException yang memicu PHP Fatal Error mentah pada browser | stg | Antigravity |
+| 2026-06-16 | Security | Menyembunyikan detail log developer (stack trace) pada halaman gangguan database jika environment aplikasi (APP_ENV) diset ke production | Menampilkan rincian kredensial sensitif dalam trace error di semua environment | stg | Antigravity |

@@ -73,8 +73,10 @@ class SettingsController {
         $allowed = [
             'office_lat', 'office_lng', 'office_radius_m',
             'home_radius_m',
-            'work_start_time', 'work_min_start_time', 'work_end_time', 'grace_period_min',
-            'office_wifi_prefix', 'wfa_allowed', 'wfa_days',
+            'work_start_time', 'work_min_start_time', 'work_min_start_time_enabled',
+            'work_end_time', 'work_min_end_time', 'work_min_end_time_enabled',
+            'grace_period_min',
+            'office_wifi_prefix', 'office_wifi_ipv6_prefix', 'wfa_allowed', 'wfa_days',
             'weekly_holidays', 'checkout_grace_period_min',
             'payroll_tunj_jabatan_pct', 'payroll_tunj_jabatan_cap',
             'payroll_tunj_transport', 'payroll_tunj_komunikasi', 'payroll_late_deduction',
@@ -84,6 +86,9 @@ class SettingsController {
             'reimbursement_limit_medis', 'reimbursement_limit_transport',
             'reimbursement_limit_operasional', 'reimbursement_limit_makan',
             'reimbursement_limit_department_default',
+            'app_idle_timeout_sec',
+            'app_idle_countdown_sec',
+            'google_maps_api_key',
         ];
 
         try {
@@ -153,6 +158,12 @@ class SettingsController {
                         echo json_encode(['success' => false, 'message' => "Nilai '{$key}' harus berupa angka positif."]);
                         return;
                     }
+                    if ($key === 'app_idle_timeout_sec') {
+                        if (!is_numeric($val) || (int)$val < 0) {
+                            echo json_encode(['success' => false, 'message' => "Batas waktu idle aplikasi harus berupa angka positif atau 0."]);
+                            return;
+                        }
+                    }
                     if (in_array($key, ['payroll_tunj_jabatan_pct', 'payroll_bpjs_tk_pct', 'payroll_bpjs_kes_pct', 'payroll_pph21_pct'])) {
                         if (!is_numeric($val) || (float)$val < 0 || (float)$val > 100) {
                             echo json_encode(['success' => false, 'message' => "Nilai persentase harus antara 0% sampai 100%."]);
@@ -182,7 +193,19 @@ class SettingsController {
                 $this->set('weekly_holidays', '');
             }
 
-            echo json_encode(['success' => true, 'message' => 'Pengaturan presensi berhasil disimpan.']);
+            echo json_encode([
+                'success' => true,
+                'message' => 'Pengaturan presensi berhasil disimpan.',
+                'settings' => [
+                    'app_idle_timeout_sec' => $this->get('app_idle_timeout_sec', '0'),
+                    'app_idle_countdown_sec' => $this->get('app_idle_countdown_sec', '0'),
+                    'app_name' => $this->get('app_name', 'siCare'),
+                    'app_logo_type' => $this->get('app_logo_type', 'icon'),
+                    'app_logo_icon' => $this->get('app_logo_icon', 'local_police'),
+                    'app_logo_image' => $this->get('app_logo_image', ''),
+                    'google_maps_api_key' => $this->get('google_maps_api_key', ''),
+                ]
+            ]);
         } catch (Exception $e) {
             echo json_encode(['success' => false, 'message' => 'Kesalahan server: ' . $e->getMessage()]);
         }
@@ -253,6 +276,193 @@ class SettingsController {
             echo json_encode(['success' => true, 'message' => 'Hari libur berhasil dihapus.']);
         } catch (Exception $e) {
             echo json_encode(['success' => false, 'message' => 'Gagal menghapus: ' . $e->getMessage()]);
+        }
+    }
+
+    /**
+     * POST /admin/holidays/update | /hrops/holidays/update
+     */
+    public function updateHoliday() {
+        header('Content-Type: application/json');
+        session_start();
+
+        if (!isset($_SESSION['user_id']) || !in_array($_SESSION['role'], ['superadmin', 'admin', 'hr_ops'])) {
+            echo json_encode(['success' => false, 'message' => 'Akses ditolak.']);
+            return;
+        }
+
+        $id          = trim($_POST['id'] ?? '');
+        $date        = trim($_POST['holiday_date'] ?? '');
+        $description = trim($_POST['description'] ?? '');
+
+        if (empty($id) || empty($date) || empty($description)) {
+            echo json_encode(['success' => false, 'message' => 'ID, tanggal, dan keterangan wajib diisi.']);
+            return;
+        }
+
+        // Validate date format YYYY-MM-DD
+        if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $date)) {
+            echo json_encode(['success' => false, 'message' => 'Format tanggal tidak valid.']);
+            return;
+        }
+
+        try {
+            $stmt = $this->db->prepare(
+                "UPDATE company_holidays SET holiday_date = :date, description = :description WHERE id = :id"
+            );
+            $stmt->execute(['date' => $date, 'description' => $description, 'id' => $id]);
+
+            echo json_encode(['success' => true, 'message' => 'Hari libur berhasil diperbarui.']);
+        } catch (Exception $e) {
+            echo json_encode(['success' => false, 'message' => 'Gagal memperbarui: ' . $e->getMessage()]);
+        }
+    }
+
+    /**
+     * GET /admin/settings/fetch-google-holidays
+     */
+    public function fetchGoogleHolidays() {
+        header('Content-Type: application/json');
+        session_start();
+        if (!isset($_SESSION['user_id']) || !in_array($_SESSION['role'], ['superadmin', 'admin', 'hr_ops'])) {
+            echo json_encode(['success' => false, 'message' => 'Akses ditolak.']);
+            return;
+        }
+
+        $year = (int)($_GET['year'] ?? date('Y'));
+        if ($year < 2000 || $year > 2100) {
+            $year = (int)date('Y');
+        }
+
+        // Google Calendar Public ICS Feed for Indonesian Holidays
+        $url = "https://calendar.google.com/calendar/ical/id.indonesian%23holiday%40group.v.calendar.google.com/public/basic.ics";
+
+        $icsContent = @file_get_contents($url);
+        if (!$icsContent) {
+            $ch = curl_init();
+            curl_setopt($ch, CURLOPT_URL, $url);
+            curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+            curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);
+            curl_setopt($ch, CURLOPT_TIMEOUT, 10);
+            $icsContent = curl_exec($ch);
+            curl_close($ch);
+        }
+
+        if (!$icsContent) {
+            echo json_encode(['success' => false, 'message' => 'Gagal mengambil data kalender dari Google.']);
+            return;
+        }
+
+        $events = [];
+        $lines = explode("\n", str_replace("\r", "", $icsContent));
+        $currentEvent = null;
+
+        foreach ($lines as $line) {
+            $line = trim($line);
+            if ($line === 'BEGIN:VEVENT') {
+                $currentEvent = [];
+            } elseif ($line === 'END:VEVENT') {
+                if ($currentEvent && isset($currentEvent['date']) && isset($currentEvent['summary'])) {
+                    if (str_starts_with($currentEvent['date'], (string)$year)) {
+                        $events[] = $currentEvent;
+                    }
+                }
+                $currentEvent = null;
+            } elseif ($currentEvent !== null) {
+                if (str_starts_with($line, 'DTSTART')) {
+                    $parts = explode(':', $line, 2);
+                    if (count($parts) === 2) {
+                        $rawDate = preg_replace('/[^0-9]/', '', $parts[1]);
+                        if (strlen($rawDate) >= 8) {
+                            $y = substr($rawDate, 0, 4);
+                            $m = substr($rawDate, 4, 2);
+                            $d = substr($rawDate, 6, 2);
+                            $currentEvent['date'] = "{$y}-{$m}-{$d}";
+                        }
+                    }
+                } elseif (str_starts_with($line, 'SUMMARY')) {
+                    $parts = explode(':', $line, 2);
+                    if (count($parts) === 2) {
+                        $summary = trim($parts[1]);
+                        $summary = str_replace(['\\,', '\\;'], [',', ';'], $summary);
+                        $currentEvent['summary'] = $summary;
+                    }
+                }
+            }
+        }
+
+        // Deduplicate by date
+        $deduped = [];
+        foreach ($events as $ev) {
+            $dateKey = $ev['date'];
+            if (!isset($deduped[$dateKey])) {
+                $deduped[$dateKey] = $ev;
+            }
+        }
+        $events = array_values($deduped);
+
+        // Sort events by date
+        usort($events, function($a, $b) {
+            return strcmp($a['date'], $b['date']);
+        });
+
+        echo json_encode([
+            'success' => true,
+            'year' => $year,
+            'holidays' => $events
+        ]);
+    }
+
+    /**
+     * POST /admin/settings/import-google-holidays
+     */
+    public function importGoogleHolidays() {
+        header('Content-Type: application/json');
+        session_start();
+
+        if (!isset($_SESSION['user_id']) || !in_array($_SESSION['role'], ['superadmin', 'admin', 'hr_ops'])) {
+            echo json_encode(['success' => false, 'message' => 'Akses ditolak.']);
+            return;
+        }
+
+        $input = json_decode(file_get_contents('php://input'), true);
+        $holidays = $input['holidays'] ?? [];
+
+        if (!is_array($holidays)) {
+            echo json_encode(['success' => false, 'message' => 'Format data tidak valid.']);
+            return;
+        }
+
+        try {
+            $stmt = $this->db->prepare("
+                INSERT INTO company_holidays (id, holiday_date, description)
+                VALUES (:id, :date, :desc)
+                ON DUPLICATE KEY UPDATE description = VALUES(description)
+            ");
+
+            $count = 0;
+            foreach ($holidays as $h) {
+                $date = $h['date'] ?? '';
+                $desc = trim($h['desc'] ?? '');
+
+                if ($date && $desc) {
+                    $uuid = sprintf('%04x%04x-%04x-%04x-%04x-%04x%04x%04x',
+                        mt_rand(0,0xffff), mt_rand(0,0xffff), mt_rand(0,0xffff),
+                        mt_rand(0,0x0fff)|0x4000, mt_rand(0,0x3fff)|0x8000,
+                        mt_rand(0,0xffff), mt_rand(0,0xffff), mt_rand(0,0xffff));
+                    $stmt->execute(['id' => $uuid, 'date' => $date, 'desc' => $desc]);
+                    
+                    // Immediately purge any auto-generated alpa records for all employees on this holiday date
+                    $delStmt = $this->db->prepare("DELETE FROM employee_attendance WHERE attendance_date = :date AND status = 'alpa' AND clock_in IS NULL AND clock_out IS NULL");
+                    $delStmt->execute(['date' => $date]);
+                    
+                    $count++;
+                }
+            }
+
+            echo json_encode(['success' => true, 'message' => "Berhasil mengimpor {$count} hari libur perusahaan."]);
+        } catch (Exception $e) {
+            echo json_encode(['success' => false, 'message' => 'Gagal mengimpor: ' . $e->getMessage()]);
         }
     }
 }

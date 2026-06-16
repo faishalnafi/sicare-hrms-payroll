@@ -35,6 +35,7 @@ try {
                     'compiled_date' => $row['compiled_date'],
                     'applied_date' => date('Y-m-d H:i:s', strtotime($row['created_at'])),
                     'migration_level' => $row['migration_level'],
+                    'alias_name' => $row['alias_name'] ?? null,
                     'summary' => json_decode($row['summary'], true) ?: []
                 ];
             }
@@ -59,6 +60,7 @@ if (empty($changelogs)) {
                 'compiled_date' => $rel['compiled_date'],
                 'applied_date' => $rel['compiled_date'] . ' 00:00:00 (Est)',
                 'migration_level' => $rel['migration_level'],
+                'alias_name' => $rel['alias_name'] ?? null,
                 'summary' => $rel['summary']
             ];
         }
@@ -102,14 +104,15 @@ if (empty($changelogs)) {
     <?php else: ?>
         <div class="relative pl-6 md:pl-8 border-l border-outline-variant/30 space-y-12 ml-4">
             <?php foreach ($changelogs as $index => $rel): 
-                $isBeta = preg_match('/^\d+\.\d+\.\d+-/', $rel['version']) === 1;
+                $isBeta = preg_match('/^\d+\.\d+\.\d+$/', $rel['version']) === 1;
                 $isLTS = strpos($rel['version'], 'LTS') !== false;
                 $isSTS = strpos($rel['version'], 'STS') !== false;
+                $isEnv = preg_match('/^(local|tqa|stg|mtc)-/', $rel['version'], $envMatches) === 1;
 
                 // Color themes based on track
                 if ($isBeta) {
                     $trackBadge = 'bg-amber-100 text-amber-800 border-amber-200';
-                    $trackLabel = $isLTS ? 'Beta LTS' : 'Beta STS';
+                    $trackLabel = 'Beta';
                     $iconColor = 'text-amber-700 bg-amber-50 border-amber-200';
                 } elseif ($isLTS) {
                     $trackBadge = 'bg-green-100 text-green-800 border-green-200';
@@ -119,6 +122,11 @@ if (empty($changelogs)) {
                     $trackBadge = 'bg-blue-100 text-blue-800 border-blue-200';
                     $trackLabel = 'STS (Short Term Support)';
                     $iconColor = 'text-blue-700 bg-blue-50 border-blue-200';
+                } elseif ($isEnv) {
+                    $envName = strtoupper($envMatches[1]);
+                    $trackBadge = 'bg-neutral-100 text-neutral-800 border-neutral-200';
+                    $trackLabel = "Environment ({$envName})";
+                    $iconColor = 'text-neutral-700 bg-neutral-50 border-neutral-200';
                 } else {
                     $trackBadge = 'bg-purple-100 text-purple-800 border-purple-200';
                     $trackLabel = 'Pre-Release';
@@ -129,7 +137,7 @@ if (empty($changelogs)) {
                 <div class="relative">
                     <!-- Marker Dot -->
                     <span class="absolute -left-[39px] md:-left-[47px] top-1.5 flex items-center justify-center w-8 h-8 rounded-full border bg-surface-container-lowest <?= $iconColor ?> shadow-sm z-10">
-                        <span class="material-symbols-outlined text-base font-bold"><?= $isBeta ? 'construction' : 'verified' ?></span>
+                        <span class="material-symbols-outlined text-base font-bold"><?= $isBeta ? 'construction' : ($isEnv ? 'terminal' : 'verified') ?></span>
                     </span>
 
                     <!-- Version Card -->
@@ -137,7 +145,12 @@ if (empty($changelogs)) {
                         <!-- Top Banner / Meta -->
                         <div class="flex flex-wrap items-center justify-between gap-3 mb-4 pb-4 border-b border-outline-variant/10 w-full">
                             <div class="flex items-center gap-3">
-                                <h3 class="text-xl font-black text-on-surface tracking-tight">Version <?= htmlspecialchars($rel['version']) ?></h3>
+                                <h3 class="text-xl font-black text-on-surface tracking-tight">
+                                    Version <?= htmlspecialchars($rel['version']) ?>
+                                    <?php if (!empty($rel['alias_name'])): ?>
+                                        <span class="text-on-surface-variant font-normal"> / <?= htmlspecialchars($rel['alias_name']) ?></span>
+                                    <?php endif; ?>
+                                </h3>
                                 <div class="flex gap-1.5 flex-wrap">
                                     <span class="border rounded-full px-2.5 py-0.5 text-[10px] font-extrabold uppercase <?= $trackBadge ?>"><?= htmlspecialchars(ucfirst($rel['edition'])) ?></span>
                                     <?php if (!$isBeta): ?>

@@ -447,11 +447,94 @@ class LeaveController {
      * Stream uploaded attachment documents securely with owner & manager validation
      */
     public function viewAttachment() {
-        session_start();
+        if (session_status() === PHP_SESSION_NONE) {
+            session_start();
+        }
 
         if (!isset($_SESSION['user_id'])) {
             header('HTTP/1.1 403 Forbidden');
-            echo 'Akses Ditolak: Anda harus login untuk melihat dokumen.';
+            $content = renderView('pages/errors/403');
+            $page = 'error_403';
+            require __DIR__ . '/../../resources/views/layouts/guest.php';
+            return;
+        }
+
+        // Secure Referer & Sec-Fetch-Site checks to prevent direct access / copy-paste URL
+        $allowedOrigin = (isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on' ? 'https' : 'http') . '://' . ($_SERVER['HTTP_HOST'] ?? 'localhost');
+        $secFetchSite = $_SERVER['HTTP_SEC_FETCH_SITE'] ?? '';
+        $referer = $_SERVER['HTTP_REFERER'] ?? '';
+        $secFetchDest = $_SERVER['HTTP_SEC_FETCH_DEST'] ?? '';
+        $isDownload = (isset($_GET['download']) && $_GET['download'] === '1');
+        
+        $isValidRequest = true;
+        
+        // Block direct URL navigation (open in new tab / copy-paste URL)
+        if ($secFetchDest === 'document' && !$isDownload) {
+            $isValidRequest = false;
+        }
+        
+        if ($isValidRequest) {
+            if (!empty($secFetchSite)) {
+                if ($secFetchSite !== 'same-origin' && $secFetchSite !== 'same-site') {
+                    // Check if it's localhost / loopback mismatch
+                    $currentHost = parse_url($allowedOrigin, PHP_URL_HOST);
+                    $isLocalCurrent = in_array(strtolower($currentHost), ['localhost', '127.0.0.1', '::1']);
+                    
+                    if ($isLocalCurrent && !empty($referer)) {
+                        $refererHost = parse_url($referer, PHP_URL_HOST);
+                        if ($refererHost && in_array(strtolower($refererHost), ['localhost', '127.0.0.1', '::1'])) {
+                            // Allow local requests
+                        } else {
+                            $isValidRequest = false;
+                        }
+                    } else {
+                        $isValidRequest = false;
+                    }
+                }
+            } else {
+            if (empty($referer)) {
+                $isValidRequest = false;
+            } else {
+                $refererHost = parse_url($referer, PHP_URL_HOST);
+                $currentHost = parse_url($allowedOrigin, PHP_URL_HOST);
+                
+                if ($refererHost && $currentHost) {
+                    $localHosts = ['localhost', '127.0.0.1', '::1'];
+                    $isLocalReferer = in_array(strtolower($refererHost), $localHosts);
+                    $isLocalCurrent = in_array(strtolower($currentHost), $localHosts);
+                    
+                    if ($isLocalReferer && $isLocalCurrent) {
+                        // Allow localhost / 127.0.0.1 cross-access
+                    } elseif (strcasecmp($refererHost, $currentHost) !== 0) {
+                        $currentHostParts = explode('.', $currentHost);
+                        $refererHostParts = explode('.', $refererHost);
+                        $cCount = count($currentHostParts);
+                        $rCount = count($refererHostParts);
+                        
+                        $shareRoot = false;
+                        if ($cCount >= 2 && $rCount >= 2) {
+                            $currentBase = implode('.', array_slice($currentHostParts, -2));
+                            $refererBase = implode('.', array_slice($refererHostParts, -2));
+                            if (strcasecmp($currentBase, $refererBase) === 0) {
+                                $shareRoot = true;
+                            }
+                        }
+                        if (!$shareRoot) {
+                            $isValidRequest = false;
+                        }
+                    }
+                } else {
+                    $isValidRequest = false;
+                }
+            }
+        }
+        }
+        
+        if (!$isValidRequest) {
+            header('HTTP/1.1 403 Forbidden');
+            $content = renderView('pages/errors/403');
+            $page = 'error_403';
+            require __DIR__ . '/../../resources/views/layouts/guest.php';
             return;
         }
 
@@ -506,7 +589,9 @@ class LeaveController {
                 $seededDummies = ['surat_dokter_rian.pdf', 'rujukan_hpl.pdf'];
                 if (!in_array($fileName, $seededDummies)) {
                     header('HTTP/1.1 403 Forbidden');
-                    echo 'Akses Ditolak: Anda tidak memiliki wewenang untuk melihat berkas bukti ini.';
+                    $content = renderView('pages/errors/403');
+                    $page = 'error_403';
+                    require __DIR__ . '/../../resources/views/layouts/guest.php';
                     return;
                 }
             }
@@ -516,10 +601,22 @@ class LeaveController {
             $mimeType = finfo_file($finfo, $filePath);
             finfo_close($finfo);
 
+            // CORS & Security Headers
+            header('Access-Control-Allow-Origin: ' . $allowedOrigin);
+            header('Access-Control-Allow-Methods: GET');
+            header('Access-Control-Allow-Headers: Content-Type, X-Requested-With');
+            header('Access-Control-Max-Age: 86400');
+            header('X-Content-Type-Options: nosniff');
+            header('X-Frame-Options: SAMEORIGIN');
+
             // Stream file contents
             header('Content-Type: ' . $mimeType);
             header('Content-Length: ' . filesize($filePath));
-            header('Cache-Control: private, max-age=86400');
+            header('Cache-Control: no-cache, must-revalidate');
+            header('Pragma: no-cache');
+            if ($isDownload) {
+                header('Content-Disposition: attachment; filename="' . $fileName . '"');
+            }
             readfile($filePath);
             exit;
 

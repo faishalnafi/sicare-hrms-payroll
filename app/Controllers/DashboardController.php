@@ -54,9 +54,9 @@ class DashboardController {
             $isAjax = !empty($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) == 'xmlhttprequest';
             if ($isAjax) {
                 http_response_code(403);
-                echo renderView('pages/error_403');
+                echo renderView('pages/errors/403');
             } else {
-                $content = renderView('pages/error_403');
+                $content = renderView('pages/errors/403');
                 $page = 'error_403';
                 require __DIR__ . '/../../resources/views/layouts/app.php';
             }
@@ -203,7 +203,7 @@ class DashboardController {
 
         $viewPath = 'pages/' . $path;
         if (!$allowed) {
-            $viewPath = 'pages/error_403';
+            $viewPath = 'pages/errors/403';
         }
 
         $fullPath = __DIR__ . '/../../resources/views/' . $viewPath . '.php';
@@ -211,7 +211,7 @@ class DashboardController {
         // Universal fallback to beautiful Coming Soon page or 404/403 page if the view doesn't exist
         if (!file_exists($fullPath)) {
             if (!$allowed) {
-                $viewPath = 'pages/error_404';
+                $viewPath = 'pages/errors/404';
             } else {
                 $validUnbuilt = [
                     'candidate/jobs', 'candidate/interviews', 'candidate/offerings', 'candidate/onboarding',
@@ -224,9 +224,9 @@ class DashboardController {
                     'superadmin/users', 'superadmin/settings', 'superadmin/audit'
                 ];
                 if (in_array($path, $validUnbuilt)) {
-                    $viewPath = 'pages/profile_coming_soon';
+                    $viewPath = 'pages/errors/coming_soon';
                 } else {
-                    $viewPath = 'pages/error_404';
+                    $viewPath = 'pages/errors/404';
                 }
             }
         }
@@ -283,13 +283,14 @@ class DashboardController {
 
                 if (is_array($releases)) {
                     $stmt = $db->prepare("
-                        INSERT INTO changelogs (version, edition, repo_type, compiled_date, migration_level, summary)
-                        VALUES (:version, :edition, :repo_type, :compiled_date, :migration_level, :summary)
+                        INSERT INTO changelogs (version, edition, repo_type, compiled_date, migration_level, alias_name, summary)
+                        VALUES (:version, :edition, :repo_type, :compiled_date, :migration_level, :alias_name, :summary)
                         ON DUPLICATE KEY UPDATE 
                             edition = VALUES(edition),
                             repo_type = VALUES(repo_type),
                             compiled_date = VALUES(compiled_date),
                             migration_level = VALUES(migration_level),
+                            alias_name = VALUES(alias_name),
                             summary = VALUES(summary)
                     ");
 
@@ -300,6 +301,7 @@ class DashboardController {
                             'repo_type' => $rel['repo_type'] ?? 'monorepo',
                             'compiled_date' => $rel['compiled_date'],
                             'migration_level' => $rel['migration_level'],
+                            'alias_name' => $rel['alias_name'] ?? null,
                             'summary' => json_encode($rel['summary'])
                         ]);
                     }

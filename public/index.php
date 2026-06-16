@@ -99,9 +99,99 @@ if ($method === 'GET' && str_starts_with($path, 'storage/secured_storage/onboard
     }
     if (!isset($_SESSION['user_id'])) {
         header('HTTP/1.1 403 Forbidden');
-        echo 'Akses Ditolak: Silakan login terlebih dahulu.';
+        $content = renderView('pages/errors/403');
+        $page = 'error_403';
+        require __DIR__ . '/../resources/views/layouts/guest.php';
         exit;
     }
+
+    // Secure Referer & Sec-Fetch-Site checks to prevent direct access / copy-paste URL
+    $allowedOrigin = (isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on' ? 'https' : 'http') . '://' . ($_SERVER['HTTP_HOST'] ?? 'localhost');
+    $secFetchSite = $_SERVER['HTTP_SEC_FETCH_SITE'] ?? '';
+    $referer = $_SERVER['HTTP_REFERER'] ?? '';
+    $secFetchDest = $_SERVER['HTTP_SEC_FETCH_DEST'] ?? '';
+    $isDownload = (isset($_GET['download']) && $_GET['download'] === '1');
+    
+    $isValidRequest = true;
+    
+    // Block direct URL navigation (open in new tab / copy-paste URL)
+    if ($secFetchDest === 'document' && !$isDownload) {
+        $isValidRequest = false;
+    }
+    
+    if ($isValidRequest) {
+        if (!empty($secFetchSite)) {
+            if ($secFetchSite !== 'same-origin' && $secFetchSite !== 'same-site') {
+                // Check if it's localhost / loopback mismatch
+                $currentHost = parse_url($allowedOrigin, PHP_URL_HOST);
+                $isLocalCurrent = in_array(strtolower($currentHost), ['localhost', '127.0.0.1', '::1']);
+                
+                if ($isLocalCurrent && !empty($referer)) {
+                    $refererHost = parse_url($referer, PHP_URL_HOST);
+                    if ($refererHost && in_array(strtolower($refererHost), ['localhost', '127.0.0.1', '::1'])) {
+                        // Allow local requests
+                    } else {
+                        $isValidRequest = false;
+                    }
+                } else {
+                    $isValidRequest = false;
+                }
+            }
+        } else {
+            if (empty($referer)) {
+                $isValidRequest = false;
+            } else {
+                $refererHost = parse_url($referer, PHP_URL_HOST);
+                $currentHost = parse_url($allowedOrigin, PHP_URL_HOST);
+                
+                if ($refererHost && $currentHost) {
+                    $localHosts = ['localhost', '127.0.0.1', '::1'];
+                    $isLocalReferer = in_array(strtolower($refererHost), $localHosts);
+                    $isLocalCurrent = in_array(strtolower($currentHost), $localHosts);
+                    
+                    if ($isLocalReferer && $isLocalCurrent) {
+                        // Allow localhost / 127.0.0.1 cross-access
+                    } elseif (strcasecmp($refererHost, $currentHost) !== 0) {
+                        $currentHostParts = explode('.', $currentHost);
+                        $refererHostParts = explode('.', $refererHost);
+                        $cCount = count($currentHostParts);
+                        $rCount = count($refererHostParts);
+                        
+                        $shareRoot = false;
+                        if ($cCount >= 2 && $rCount >= 2) {
+                            $currentBase = implode('.', array_slice($currentHostParts, -2));
+                            $refererBase = implode('.', array_slice($refererHostParts, -2));
+                            if (strcasecmp($currentBase, $refererBase) === 0) {
+                                $shareRoot = true;
+                            }
+                        }
+                        if (!$shareRoot) {
+                            $isValidRequest = false;
+                        }
+                    }
+                } else {
+                    $isValidRequest = false;
+                }
+            }
+        }
+    }
+    
+    if (!$isValidRequest) {
+        header('HTTP/1.1 403 Forbidden');
+        $content = renderView('pages/errors/403');
+        $page = 'error_403';
+        require __DIR__ . '/../resources/views/layouts/guest.php';
+        exit;
+    }
+
+    // CORS & Security Headers
+    header('Access-Control-Allow-Origin: ' . $allowedOrigin);
+    header('Access-Control-Allow-Methods: GET');
+    header('Access-Control-Allow-Headers: Content-Type, X-Requested-With');
+    header('Access-Control-Max-Age: 86400');
+    header('X-Content-Type-Options: nosniff');
+    header('X-Frame-Options: SAMEORIGIN');
+
     $fileName = basename($path);
     $filePath = __DIR__ . '/../storage/secured_storage/onboarding/' . $fileName;
     if (file_exists($filePath)) {
@@ -110,7 +200,11 @@ if ($method === 'GET' && str_starts_with($path, 'storage/secured_storage/onboard
         finfo_close($finfo);
         header('Content-Type: ' . $mimeType);
         header('Content-Length: ' . filesize($filePath));
-        header('Cache-Control: private, max-age=86400');
+        header('Cache-Control: no-cache, must-revalidate');
+        header('Pragma: no-cache');
+        if ($isDownload) {
+            header('Content-Disposition: attachment; filename="' . $fileName . '"');
+        }
         readfile($filePath);
         exit;
     } else {
@@ -170,21 +264,21 @@ if ($method === 'POST' && $path === 'auth/login') {
         $user = $stmt->fetch();
         if (!$user) {
             $error = "Tautan pengisian identitas tidak valid, sudah digunakan, atau kedaluwarsa.";
-            $content = renderView('pages/error_invalid_token', ['message' => $error]);
+            $content = renderView('pages/errors/invalid_token', ['message' => $error]);
             $page = 'error_token';
             require __DIR__ . '/../resources/views/layouts/app.php';
             exit;
         }
         if ($user['id'] !== $_SESSION['user_id']) {
             $error = "Tautan ini diperuntukkan bagi akun lain. Silakan keluar (logout) dan masuk dengan akun yang sesuai.";
-            $content = renderView('pages/error_invalid_token', ['message' => $error]);
+            $content = renderView('pages/errors/invalid_token', ['message' => $error]);
             $page = 'error_token';
             require __DIR__ . '/../resources/views/layouts/app.php';
             exit;
         }
     } catch (\Exception $e) {
         $error = "Terjadi kesalahan sistem: " . $e->getMessage();
-        $content = renderView('pages/error_invalid_token', ['message' => $error]);
+        $content = renderView('pages/errors/invalid_token', ['message' => $error]);
         $page = 'error_token';
         require __DIR__ . '/../resources/views/layouts/app.php';
         exit;
@@ -265,14 +359,23 @@ if ($method === 'POST' && $path === 'auth/login') {
 } elseif ($method === 'GET' && $path === 'reflection/analytics') {
     (new \App\Controllers\ReflectionController())->getAnalytics();
     exit;
-} elseif ($method === 'POST' && ($path === 'admin/settings/save' || $path === 'hrops/settings/save')) {
+} elseif ($method === 'GET' && ($path === 'admin/settings/fetch-google-holidays' || $path === 'hrops/settings/fetch-google-holidays' || $path === 'superadmin/system-settings/settings/fetch-google-holidays')) {
+    (new \App\Controllers\SettingsController())->fetchGoogleHolidays();
+    exit;
+} elseif ($method === 'POST' && ($path === 'admin/settings/import-google-holidays' || $path === 'hrops/settings/import-google-holidays' || $path === 'superadmin/system-settings/settings/import-google-holidays')) {
+    (new \App\Controllers\SettingsController())->importGoogleHolidays();
+    exit;
+} elseif ($method === 'POST' && ($path === 'admin/settings/save' || $path === 'hrops/settings/save' || $path === 'superadmin/system-settings/settings/save')) {
     (new \App\Controllers\SettingsController())->save();
     exit;
-} elseif ($method === 'POST' && ($path === 'admin/holidays/add' || $path === 'hrops/holidays/add')) {
+} elseif ($method === 'POST' && ($path === 'admin/holidays/add' || $path === 'hrops/holidays/add' || $path === 'superadmin/system-settings/holidays/add')) {
     (new \App\Controllers\SettingsController())->addHoliday();
     exit;
-} elseif ($method === 'POST' && ($path === 'admin/holidays/delete' || $path === 'hrops/holidays/delete')) {
+} elseif ($method === 'POST' && ($path === 'admin/holidays/delete' || $path === 'hrops/holidays/delete' || $path === 'superadmin/system-settings/holidays/delete')) {
     (new \App\Controllers\SettingsController())->deleteHoliday();
+    exit;
+} elseif ($method === 'POST' && ($path === 'admin/holidays/update' || $path === 'hrops/holidays/update' || $path === 'superadmin/system-settings/holidays/update')) {
+    (new \App\Controllers\SettingsController())->updateHoliday();
     exit;
 } elseif ($method === 'GET' && $path === 'hrops/employees/list') {
     (new \App\Controllers\EmployeeMasterController())->list();
@@ -327,6 +430,7 @@ if ($method === 'POST' && $path === 'auth/login') {
     exit;
 } elseif ($method === 'GET' && (
     $path === 'changelogs' ||
+    $path === 'changelogs/guide' ||
     str_starts_with($path, 'candidate/') || 
     str_starts_with($path, 'employee/') || 
     str_starts_with($path, 'recruiter/') || 
@@ -383,7 +487,7 @@ switch ($page) {
         $content = renderView('pages/support');
         break;
     default:
-        $content = renderView('pages/error_404');
+        $content = renderView('pages/errors/404');
         break;
 }
 

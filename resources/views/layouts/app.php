@@ -2,6 +2,10 @@
 $db = \App\Config\Database::getInstance()->getConnection();
 $appName = $db->query("SELECT `value` FROM global_settings WHERE `key` = 'app_name' LIMIT 1")->fetchColumn() ?: 'siCare';
 $appLogoImage = $db->query("SELECT `value` FROM global_settings WHERE `key` = 'app_logo_image' LIMIT 1")->fetchColumn() ?: '';
+$appIdleTimeoutSec = (int)($db->query("SELECT `value` FROM global_settings WHERE `key` = 'app_idle_timeout_sec' LIMIT 1")->fetchColumn() ?: 0);
+$appIdleCountdownSec = (int)($db->query("SELECT `value` FROM global_settings WHERE `key` = 'app_idle_countdown_sec' LIMIT 1")->fetchColumn() ?: 0);
+$googleMapsApiKey = $db->query("SELECT `value` FROM global_settings WHERE `key` = 'google_maps_api_key' LIMIT 1")->fetchColumn() ?: '';
+
 
 // Determine dynamic page title
 $requestUri = parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH);
@@ -43,6 +47,7 @@ $pageMapping = [
     'departments' => 'Departments',
     'users' => 'Users',
     'settings' => 'Settings',
+    'system-settings' => 'Pengaturan Sistem',
     'analytics' => 'Analytics',
     'budgets' => 'Budgets',
     'audit' => 'Audit'
@@ -104,6 +109,10 @@ if (!empty($resolvedPage)) {
     <!-- Leaflet CSS & JS -->
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin=""/>
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+    <!-- Google Maps API -->
+    <?php if (!empty($googleMapsApiKey)): ?>
+        <script src="https://maps.googleapis.com/maps/api/js?key=<?= htmlspecialchars($googleMapsApiKey) ?>&libraries=places"></script>
+    <?php endif; ?>
     <script>
         tailwind.config = {
           theme: {
@@ -530,9 +539,29 @@ if (!empty($resolvedPage)) {
             cursor: pointer !important;
             accent-color: #000666 !important;
         }
+
+        /* Map Type Selector Buttons */
+        .map-type-btn {
+            background-color: #ffffff;
+            color: #454652;
+            border-color: #c6c5d4;
+        }
+        .map-type-btn:hover {
+            background-color: #f3f4f5;
+            color: #000666;
+            border-color: rgba(0,6,102,0.3);
+        }
+        .map-type-btn.map-type-active {
+            background-color: #000666;
+            color: #ffffff;
+            border-color: #000666;
+            box-shadow: 0 2px 8px rgba(0,6,102,0.25);
+        }
+
     </style>
 </head>
 <body class="bg-surface text-on-surface flex flex-col min-h-screen overflow-x-hidden">
+
     <script>
         // Immediate check to prevent layout shift (FOUC)
         (function() {
@@ -805,7 +834,12 @@ if (!empty($resolvedPage)) {
                     window.location.href = res.url;
                     return null;
                 }
-                if (!res.ok) throw new Error('Network error');
+                if (!res.ok) {
+                    if (res.status >= 500) {
+                        throw new Error('SERVER_ERROR_HANDLED');
+                    }
+                    throw new Error('Network error: ' + res.status);
+                }
                 return res.text();
             })
             .then(html => {
@@ -826,7 +860,9 @@ if (!empty($resolvedPage)) {
             })
             .catch(err => {
                 document.getElementById('app-content').style.opacity = '1';
-                Swal.fire('Error', 'Gagal memuat halaman', 'error');
+                if (err.message !== 'SERVER_ERROR_HANDLED') {
+                    Swal.fire('Error', 'Gagal memuat halaman (' + err.message + ')', 'error');
+                }
             });
         };
 
@@ -849,7 +885,15 @@ if (!empty($resolvedPage)) {
                 cache: 'no-store',
                 headers: { 'X-Requested-With': 'XMLHttpRequest' }
             })
-            .then(res => res.text())
+            .then(res => {
+                if (!res.ok) {
+                    if (res.status >= 500) {
+                        throw new Error('SERVER_ERROR_HANDLED');
+                    }
+                    throw new Error('Network error: ' + res.status);
+                }
+                return res.text();
+            })
             .then(html => { 
                 injectHtmlAndRunScripts(html);
                 document.getElementById('app-content').style.opacity = '1';
@@ -858,6 +902,12 @@ if (!empty($resolvedPage)) {
                 updatePageTitle(window.location.pathname);
 
                 updateActiveSidebarMenu();
+            })
+            .catch(err => {
+                document.getElementById('app-content').style.opacity = '1';
+                if (err.message !== 'SERVER_ERROR_HANDLED') {
+                    Swal.fire('Error', 'Gagal memuat halaman (' + err.message + ')', 'error');
+                }
             });
         });
 
@@ -885,6 +935,12 @@ if (!empty($resolvedPage)) {
             const titleEl = document.getElementById('globalFilePreviewTitle');
             const subtitleEl = document.getElementById('globalFilePreviewSubtitle');
             const bodyEl = document.getElementById('globalFilePreviewBody');
+            const downloadBtn = document.getElementById('globalFilePreviewDownloadBtn');
+            
+            // Reset download button visibility
+            if (downloadBtn) {
+                downloadBtn.classList.remove('hidden');
+            }
             
             titleEl.innerText = title;
             if (subtitle) {
@@ -909,6 +965,53 @@ if (!empty($resolvedPage)) {
                 img.src = url;
                 img.className = "max-w-full max-h-[380px] object-contain rounded-xl shadow-sm border border-outline-variant/20 cursor-zoom-in hover:scale-[1.01] transition-transform select-none";
                 img.alt = title;
+                img.onerror = function() {
+                    // Fetch the URL to find out the exact HTTP status code
+                    fetch(url)
+                        .then(response => {
+                            let errorIcon = 'block';
+                            let errorTitle = `${title} Tidak Dapat di Akses!`;
+                            let errorMessage = 'Berkas tidak dapat dimuat karena kebijakan keamanan, batas akses, atau sesi Anda telah kedaluwarsa.';
+                            
+                            if (response.status === 404) {
+                                errorIcon = 'image_not_supported';
+                                errorTitle = `${title} Tidak Dapat di Akses!`;
+                                errorMessage = 'Berkas fisik tidak dapat diakses dikarenakan tidak ditemukan di server oleh sistem aplikasi.';
+                            } else if (response.status === 403) {
+                                errorIcon = 'block';
+                                errorTitle = `${title} Tidak Dapat di Akses!`;
+                                errorMessage = 'Akses ditolak karena kebijakan keamanan, batas akses, atau sesi Anda telah kedaluwarsa (403 Forbidden).';
+                            }
+                            
+                            bodyEl.innerHTML = `
+                                <div class="flex flex-col items-center justify-center p-8 text-center bg-red-50 border border-red-200 rounded-2xl w-full py-10 min-h-[220px] animate-fade-in">
+                                    <div class="w-16 h-16 rounded-full bg-red-100 flex items-center justify-center mb-4 text-red-600">
+                                        <span class="material-symbols-outlined text-3xl font-medium" style="font-variation-settings: 'FILL' 0, 'wght' 500, 'GRAD' 0, 'opsz' 40;">${errorIcon}</span>
+                                    </div>
+                                    <h4 class="text-base font-extrabold text-red-900 mb-2 leading-snug">${errorTitle}</h4>
+                                    <p class="text-xs text-red-700/80 max-w-xs leading-relaxed">
+                                        ${errorMessage}
+                                    </p>
+                                </div>
+                            `;
+                        })
+                        .catch(() => {
+                            bodyEl.innerHTML = `
+                                <div class="flex flex-col items-center justify-center p-8 text-center bg-red-50 border border-red-200 rounded-2xl w-full py-10 min-h-[220px] animate-fade-in">
+                                    <div class="w-16 h-16 rounded-full bg-red-100 flex items-center justify-center mb-4 text-red-600">
+                                        <span class="material-symbols-outlined text-3xl font-medium" style="font-variation-settings: 'FILL' 0, 'wght' 500, 'GRAD' 0, 'opsz' 40;">block</span>
+                                    </div>
+                                    <h4 class="text-base font-extrabold text-red-900 mb-2 leading-snug">${title} Tidak Dapat di Akses!</h4>
+                                    <p class="text-xs text-red-700/80 max-w-xs leading-relaxed">
+                                        Berkas tidak dapat dimuat karena kebijakan keamanan, batas akses, atau sesi Anda telah kedaluwarsa.
+                                    </p>
+                                </div>
+                            `;
+                        });
+                    if (downloadBtn) {
+                        downloadBtn.classList.add('hidden');
+                    }
+                };
                 img.onclick = function() {
                     window.openFullscreenImage(url);
                 };
@@ -916,9 +1019,8 @@ if (!empty($resolvedPage)) {
             }
             
             // Configure download button
-            const downloadBtn = document.getElementById('globalFilePreviewDownloadBtn');
             if (downloadBtn) {
-                downloadBtn.href = url;
+                downloadBtn.href = url + (url.includes('?') ? '&' : '?') + 'download=1';
                 let filename = url.substring(url.lastIndexOf('/') + 1);
                 if (!filename || filename.indexOf('.') === -1) {
                     const isPdf = lowerUrl.includes('.pdf') || lowerUrl.endsWith('.pdf');
@@ -1028,16 +1130,36 @@ if (!empty($resolvedPage)) {
                         
                         <!-- Zoom Controls -->
                         <div class="w-10 bg-white rounded-xl shadow-[0_2px_8px_rgba(0,0,0,0.15)] border border-slate-100 flex flex-col items-center overflow-hidden">
-                            <button onclick="globalLeafletMapInstance && globalLeafletMapInstance.zoomIn()" type="button" title="Perbesar" class="w-10 h-10 text-slate-600 hover:text-slate-800 hover:bg-slate-50 active:bg-slate-100 flex items-center justify-center transition-all duration-200 cursor-pointer">
+                            <button onclick="zoomInMap()" type="button" title="Perbesar" class="w-10 h-10 text-slate-600 hover:text-slate-800 hover:bg-slate-50 active:bg-slate-100 flex items-center justify-center transition-all duration-200 cursor-pointer">
                                 <span class="material-symbols-outlined" style="font-size: 20px; font-weight: 600;">add</span>
                             </button>
                             <div class="w-6 h-[1px] bg-slate-100"></div>
-                            <button onclick="globalLeafletMapInstance && globalLeafletMapInstance.zoomOut()" type="button" title="Perkecil" class="w-10 h-10 text-slate-600 hover:text-slate-800 hover:bg-slate-50 active:bg-slate-100 flex items-center justify-center transition-all duration-200 cursor-pointer">
+                            <button onclick="zoomOutMap()" type="button" title="Perkecil" class="w-10 h-10 text-slate-600 hover:text-slate-800 hover:bg-slate-50 active:bg-slate-100 flex items-center justify-center transition-all duration-200 cursor-pointer">
                                 <span class="material-symbols-outlined" style="font-size: 20px; font-weight: 600;">remove</span>
                             </button>
                         </div>
                     </div>
                 </div>
+
+                <!-- Map Type Selector -->
+                <div class="mt-3 flex items-center gap-1.5" id="mapTypeSelector">
+                    <button id="mapType_roadmap" onclick="switchMapType('roadmap')" type="button"
+                        class="map-type-btn map-type-active flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[11px] font-bold transition-all duration-200 cursor-pointer border">
+                        <span class="material-symbols-outlined" style="font-size:14px;font-variation-settings:'FILL' 0,'wght' 600;">map</span>
+                        Jalan
+                    </button>
+                    <button id="mapType_satellite" onclick="switchMapType('satellite')" type="button"
+                        class="map-type-btn flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[11px] font-bold transition-all duration-200 cursor-pointer border">
+                        <span class="material-symbols-outlined" style="font-size:14px;font-variation-settings:'FILL' 0,'wght' 600;">satellite_alt</span>
+                        Satelit
+                    </button>
+                    <button id="mapType_terrain" onclick="switchMapType('terrain')" type="button"
+                        class="map-type-btn flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[11px] font-bold transition-all duration-200 cursor-pointer border">
+                        <span class="material-symbols-outlined" style="font-size:14px;font-variation-settings:'FILL' 0,'wght' 600;">terrain</span>
+                        Terrain
+                    </button>
+                </div>
+
                 <!-- Map Legend -->
                 <div class="mt-4 flex flex-wrap gap-x-5 gap-y-2 text-xs font-semibold text-on-surface-variant">
                     <div id="leafletMapLegendClockIn" class="flex items-center gap-1.5">
@@ -1078,11 +1200,78 @@ if (!empty($resolvedPage)) {
 
     <script>
         let globalLeafletMapInstance = null;
+        let globalGoogleMapInstance = null;
+        let globalGoogleMarkers = [];
+        let globalLeafletTileLayer = null;
+        window.currentMapType = 'roadmap'; // 'roadmap' | 'satellite' | 'terrain'
 
         window.recenterLeafletMap = function() {
-            if (globalLeafletMapInstance && globalLeafletMapInstance._markers && globalLeafletMapInstance._markers.length > 0) {
+            if (globalGoogleMapInstance && globalGoogleMarkers && globalGoogleMarkers.length > 0) {
+                const bounds = new google.maps.LatLngBounds();
+                globalGoogleMarkers.forEach(m => bounds.extend(m.getPosition()));
+                globalGoogleMapInstance.fitBounds(bounds);
+            } else if (globalLeafletMapInstance && globalLeafletMapInstance._markers && globalLeafletMapInstance._markers.length > 0) {
                 const group = new L.featureGroup(globalLeafletMapInstance._markers);
                 globalLeafletMapInstance.fitBounds(group.getBounds().pad(0.15));
+            }
+        };
+
+        window.zoomInMap = function() {
+            if (globalGoogleMapInstance) {
+                globalGoogleMapInstance.setZoom(globalGoogleMapInstance.getZoom() + 1);
+            } else if (globalLeafletMapInstance) {
+                globalLeafletMapInstance.zoomIn();
+            }
+        };
+
+        window.zoomOutMap = function() {
+            if (globalGoogleMapInstance) {
+                globalGoogleMapInstance.setZoom(globalGoogleMapInstance.getZoom() - 1);
+            } else if (globalLeafletMapInstance) {
+                globalLeafletMapInstance.zoomOut();
+            }
+        };
+
+        // Switch map type/style (works for both Google Maps and Leaflet)
+        window.switchMapType = function(type) {
+            window.currentMapType = type;
+
+            // Update button active states
+            ['roadmap','satellite','terrain'].forEach(t => {
+                const btn = document.getElementById('mapType_' + t);
+                if (!btn) return;
+                if (t === type) {
+                    btn.classList.add('map-type-active');
+                } else {
+                    btn.classList.remove('map-type-active');
+                }
+            });
+
+            if (globalGoogleMapInstance) {
+                const typeMap = { roadmap: 'roadmap', satellite: 'hybrid', terrain: 'terrain' };
+                globalGoogleMapInstance.setMapTypeId(typeMap[type] || 'roadmap');
+            } else if (globalLeafletMapInstance) {
+                if (globalLeafletTileLayer) {
+                    globalLeafletMapInstance.removeLayer(globalLeafletTileLayer);
+                }
+                const tileLayers = {
+                    roadmap: L.tileLayer('https://{s}.google.com/vt/lyrs=m&x={x}&y={y}&z={z}', {
+                        maxZoom: 20,
+                        subdomains: ['mt0','mt1','mt2','mt3'],
+                        attribution: '&copy; <a href="https://maps.google.com" target="_blank">Google Maps</a>'
+                    }),
+                    satellite: L.tileLayer('https://{s}.google.com/vt/lyrs=y&x={x}&y={y}&z={z}', {
+                        maxZoom: 20,
+                        subdomains: ['mt0','mt1','mt2','mt3'],
+                        attribution: '&copy; <a href="https://maps.google.com" target="_blank">Google Maps</a>'
+                    }),
+                    terrain: L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank">OpenStreetMap</a> contributors'
+                    })
+                };
+                globalLeafletTileLayer = tileLayers[type] || tileLayers.roadmap;
+                globalLeafletTileLayer.addTo(globalLeafletMapInstance);
+                globalLeafletTileLayer.bringToBack();
             }
         };
 
@@ -1118,13 +1307,29 @@ if (!empty($resolvedPage)) {
             modal.classList.remove('hidden');
             modal.classList.add('flex');
 
-            // Wait until modal is fully visible so Leaflet can calculate dimensions correctly
+            // Sync map type button states
+            ['roadmap','satellite','terrain'].forEach(t => {
+                const btn = document.getElementById('mapType_' + t);
+                if (!btn) return;
+                if (t === (window.currentMapType || 'roadmap')) {
+                    btn.classList.add('map-type-active');
+                } else {
+                    btn.classList.remove('map-type-active');
+                }
+            });
+
+            // Wait until modal is fully visible so map can calculate dimensions correctly
             setTimeout(() => {
                 // Clear any existing map instance
                 if (globalLeafletMapInstance) {
                     globalLeafletMapInstance.remove();
                     globalLeafletMapInstance = null;
                 }
+                if (globalGoogleMapInstance) {
+                    globalGoogleMapInstance = null;
+                    globalGoogleMarkers = [];
+                }
+                document.getElementById('leafletMapElement').innerHTML = '';
 
                 // If coordinates are missing, show error message
                 const inLat = mapConfig.in_lat ? parseFloat(mapConfig.in_lat) : null;
@@ -1146,127 +1351,228 @@ if (!empty($resolvedPage)) {
                     centerLng = inLng;
                 }
 
-                globalLeafletMapInstance = L.map('leafletMapElement', { zoomControl: false }).setView([centerLat, centerLng], 15);
+                const hasGoogleMaps = typeof google !== 'undefined' && typeof google.maps !== 'undefined';
 
-                // Define different map tile layers
-                const googleRoadmap = L.tileLayer('https://{s}.google.com/vt/lyrs=m&x={x}&y={y}&z={z}', {
-                    maxZoom: 20,
-                    subdomains: ['mt0', 'mt1', 'mt2', 'mt3'],
-                    attribution: '&copy; <a href="https://maps.google.com" target="_blank">Google Maps</a>'
-                });
+                if (hasGoogleMaps) {
+                    // Initialize Google Map
+                    const gmapTypeId = window.currentMapType === 'satellite' ? 'hybrid'
+                        : window.currentMapType === 'terrain' ? 'terrain' : 'roadmap';
+                    globalGoogleMapInstance = new google.maps.Map(document.getElementById('leafletMapElement'), {
+                        center: { lat: centerLat, lng: centerLng },
+                        zoom: 15,
+                        mapTypeId: gmapTypeId,
+                        mapTypeControl: false,
+                        streetViewControl: false,
+                        fullscreenControl: false
+                    });
 
-                const googleHybrid = L.tileLayer('https://{s}.google.com/vt/lyrs=y&x={x}&y={y}&z={z}', {
-                    maxZoom: 20,
-                    subdomains: ['mt0', 'mt1', 'mt2', 'mt3'],
-                    attribution: '&copy; <a href="https://maps.google.com" target="_blank">Google Maps</a>'
-                });
+                    globalGoogleMarkers = [];
 
-                const osm = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-                    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank">OpenStreetMap</a> contributors'
-                });
+                    // Office marker & circle
+                    if (officeLat && officeLng) {
+                        const officeMarker = new google.maps.Marker({
+                            position: { lat: officeLat, lng: officeLng },
+                            map: globalGoogleMapInstance,
+                            title: "Kantor Pusat PT SI CARE",
+                            icon: { url: "https://maps.google.com/mapfiles/ms/icons/blue-dot.png" }
+                        });
+                        const info = new google.maps.InfoWindow({ content: "<b>Kantor Pusat PT SI CARE</b>" });
+                        officeMarker.addListener('click', () => info.open(globalGoogleMapInstance, officeMarker));
+                        
+                        new google.maps.Circle({
+                            strokeColor: '#3b82f6',
+                            strokeOpacity: 0.8,
+                            strokeWeight: 2,
+                            fillColor: '#3b82f6',
+                            fillOpacity: 0.1,
+                            map: globalGoogleMapInstance,
+                            center: { lat: officeLat, lng: officeLng },
+                            radius: officeRadius
+                        });
+                        globalGoogleMarkers.push(officeMarker);
+                    }
 
-                // Default layer is Google Maps
-                googleRoadmap.addTo(globalLeafletMapInstance);
+                    // Home marker & circle
+                    if (!isAccessTracker && homeLat && homeLng) {
+                        document.getElementById('leafletMapLegendHome').classList.remove('hidden');
+                        const homeMarker = new google.maps.Marker({
+                            position: { lat: homeLat, lng: homeLng },
+                            map: globalGoogleMapInstance,
+                            title: `Rumah Karyawan (${employeeName})`,
+                            icon: { url: "https://maps.google.com/mapfiles/ms/icons/purple-dot.png" }
+                        });
+                        const info = new google.maps.InfoWindow({ content: `<b>Rumah Karyawan (${employeeName})</b>` });
+                        homeMarker.addListener('click', () => info.open(globalGoogleMapInstance, homeMarker));
 
-                // Add Premium Layer Control Switcher
-                const baseMaps = {
-                    "Google Maps": googleRoadmap,
-                    "Google Satellite (Hybrid)": googleHybrid,
-                    "OpenStreetMap": osm
-                };
-                L.control.layers(baseMaps, null, { position: 'topright' }).addTo(globalLeafletMapInstance);
+                        new google.maps.Circle({
+                            strokeColor: '#6366f1',
+                            strokeOpacity: 0.8,
+                            strokeWeight: 2,
+                            fillColor: '#6366f1',
+                            fillOpacity: 0.1,
+                            map: globalGoogleMapInstance,
+                            center: { lat: homeLat, lng: homeLng },
+                            radius: homeRadius
+                        });
+                        globalGoogleMarkers.push(homeMarker);
+                    } else {
+                        document.getElementById('leafletMapLegendHome').classList.add('hidden');
+                    }
 
-                const markers = [];
+                    // Clock-in / Access marker
+                    if (inLat && inLng) {
+                        const popupText = isAccessTracker 
+                            ? `<b>Lokasi Akses</b><br>Waktu: ${mapConfig.clock_in || '--:--'}`
+                            : `<b>Clock-In (Masuk)</b><br>Waktu: ${mapConfig.clock_in || '--:--'}<br>Mode: ${mapConfig.work_mode || 'WFO'}`;
 
-                // Office marker & circle
-                if (officeLat && officeLng) {
-                    const officeMarker = L.marker([officeLat, officeLng], {
-                        icon: L.divIcon({
-                            className: '',
-                            html: `
-                                <div class="flex items-center justify-center bg-blue-600 text-white rounded-full border-2 border-white shadow-[0_2px_8px_rgba(0,0,0,0.3)]" style="width: 32px; height: 32px;">
-                                    <span class="material-symbols-outlined" style="font-size: 18px; font-weight: 600; font-variation-settings: 'FILL' 1;">corporate_fare</span>
-                                </div>
-                            `,
-                            iconSize: [32, 32],
-                            iconAnchor: [16, 16],
-                            popupAnchor: [0, -16]
-                        })
-                    }).addTo(globalLeafletMapInstance).bindPopup("<b>Kantor Pusat PT SI CARE</b>");
-                    
-                    L.circle([officeLat, officeLng], {
-                        color: '#3b82f6',
-                        fillColor: '#3b82f6',
-                        fillOpacity: 0.1,
-                        radius: officeRadius
-                    }).addTo(globalLeafletMapInstance);
-                    markers.push(officeMarker);
-                }
+                        const inMarker = new google.maps.Marker({
+                            position: { lat: inLat, lng: inLng },
+                            map: globalGoogleMapInstance,
+                            title: isAccessTracker ? "Lokasi Akses" : "Clock-In (Masuk)",
+                            icon: { url: "https://maps.google.com/mapfiles/ms/icons/green-dot.png" }
+                        });
+                        const info = new google.maps.InfoWindow({ content: popupText });
+                        inMarker.addListener('click', () => info.open(globalGoogleMapInstance, inMarker));
+                        globalGoogleMarkers.push(inMarker);
+                    }
 
-                // Home marker & circle
-                if (!isAccessTracker && homeLat && homeLng) {
-                    document.getElementById('leafletMapLegendHome').classList.remove('hidden');
-                    const homeMarker = L.marker([homeLat, homeLng], {
-                        icon: L.divIcon({
-                            className: '',
-                            html: `
-                                <div class="flex items-center justify-center bg-indigo-600 text-white rounded-full border-2 border-white shadow-[0_2px_8px_rgba(0,0,0,0.3)]" style="width: 32px; height: 32px;">
-                                    <span class="material-symbols-outlined" style="font-size: 18px; font-weight: 600; font-variation-settings: 'FILL' 1;">home</span>
-                                </div>
-                            `,
-                            iconSize: [32, 32],
-                            iconAnchor: [16, 16],
-                            popupAnchor: [0, -16]
-                        })
-                    }).addTo(globalLeafletMapInstance).bindPopup(`<b>Rumah Karyawan (${employeeName})</b>`);
-                    
-                    L.circle([homeLat, homeLng], {
-                        color: '#6366f1',
-                        fillColor: '#6366f1',
-                        fillOpacity: 0.1,
-                        radius: homeRadius
-                    }).addTo(globalLeafletMapInstance);
-                    markers.push(homeMarker);
+                    // Clock-out marker
+                    if (outLat && outLng) {
+                        const outMarker = new google.maps.Marker({
+                            position: { lat: outLat, lng: outLng },
+                            map: globalGoogleMapInstance,
+                            title: "Clock-Out (Pulang)",
+                            icon: { url: "https://maps.google.com/mapfiles/ms/icons/red-dot.png" }
+                        });
+                        const info = new google.maps.InfoWindow({ content: `<b>Clock-Out (Pulang)</b><br>Waktu: ${mapConfig.clock_out || '--:--'}<br>Mode: ${mapConfig.work_mode_out || '—'}` });
+                        outMarker.addListener('click', () => info.open(globalGoogleMapInstance, outMarker));
+                        globalGoogleMarkers.push(outMarker);
+                    }
+
+                    // Fit bounds to show all markers
+                    if (globalGoogleMarkers.length > 0) {
+                        const bounds = new google.maps.LatLngBounds();
+                        globalGoogleMarkers.forEach(m => bounds.extend(m.getPosition()));
+                        globalGoogleMapInstance.fitBounds(bounds);
+                    }
                 } else {
-                    document.getElementById('leafletMapLegendHome').classList.add('hidden');
-                }
+                    // Initialize Leaflet Map
+                    globalLeafletMapInstance = L.map('leafletMapElement', { zoomControl: false }).setView([centerLat, centerLng], 15);
 
-                // Clock-in / Access marker
-                if (inLat && inLng) {
-                    const popupText = isAccessTracker 
-                        ? `<b>Lokasi Akses</b><br>Waktu: ${mapConfig.clock_in || '--:--'}`
-                        : `<b>Clock-In (Masuk)</b><br>Waktu: ${mapConfig.clock_in || '--:--'}<br>Mode: ${mapConfig.work_mode || 'WFO'}`;
-
-                    const inMarker = L.marker([inLat, inLng], {
-                        icon: L.divIcon({
-                            className: '',
-                            html: `<div style="background-color: #10b981; width: 16px; height: 16px; border-radius: 50%; border: 3px solid white; box-shadow: 0 0 8px rgba(0,0,0,0.5);"></div>`,
-                            iconSize: [16, 16],
-                            iconAnchor: [8, 8]
+                    // Define tile layers for custom switcher
+                    const leafletTileLayers = {
+                        roadmap: L.tileLayer('https://{s}.google.com/vt/lyrs=m&x={x}&y={y}&z={z}', {
+                            maxZoom: 20,
+                            subdomains: ['mt0','mt1','mt2','mt3'],
+                            attribution: '&copy; <a href="https://maps.google.com" target="_blank">Google Maps</a>'
+                        }),
+                        satellite: L.tileLayer('https://{s}.google.com/vt/lyrs=y&x={x}&y={y}&z={z}', {
+                            maxZoom: 20,
+                            subdomains: ['mt0','mt1','mt2','mt3'],
+                            attribution: '&copy; <a href="https://maps.google.com" target="_blank">Google Maps</a>'
+                        }),
+                        terrain: L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                            attribution: '&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank">OpenStreetMap</a> contributors'
                         })
-                    }).addTo(globalLeafletMapInstance).bindPopup(popupText);
-                    markers.push(inMarker);
-                }
+                    };
 
-                // Clock-out marker
-                if (outLat && outLng) {
-                    const outMarker = L.marker([outLat, outLng], {
-                        icon: L.divIcon({
-                            className: '',
-                            html: `<div style="background-color: #f43f5e; width: 16px; height: 16px; border-radius: 50%; border: 3px solid white; box-shadow: 0 0 8px rgba(0,0,0,0.5);"></div>`,
-                            iconSize: [16, 16],
-                            iconAnchor: [8, 8]
-                        })
-                    }).addTo(globalLeafletMapInstance).bindPopup(`<b>Clock-Out (Pulang)</b><br>Waktu: ${mapConfig.clock_out || '--:--'}<br>Mode: ${mapConfig.work_mode_out || '—'}`);
-                    markers.push(outMarker);
-                }
+                    // Apply current map type
+                    const initType = window.currentMapType || 'roadmap';
+                    globalLeafletTileLayer = leafletTileLayers[initType] || leafletTileLayers.roadmap;
+                    globalLeafletTileLayer.addTo(globalLeafletMapInstance);
 
-                // Fit bounds to show all markers
-                if (markers.length > 0) {
-                    const group = new L.featureGroup(markers);
-                    globalLeafletMapInstance.fitBounds(group.getBounds().pad(0.15));
+                    const markers = [];
+
+                    // Office marker & circle
+                    if (officeLat && officeLng) {
+                        const officeMarker = L.marker([officeLat, officeLng], {
+                            icon: L.divIcon({
+                                className: '',
+                                html: `
+                                    <div class="flex items-center justify-center bg-blue-600 text-white rounded-full border-2 border-white shadow-[0_2px_8px_rgba(0,0,0,0.3)]" style="width: 32px; height: 32px;">
+                                        <span class="material-symbols-outlined" style="font-size: 18px; font-weight: 600; font-variation-settings: 'FILL' 1;">corporate_fare</span>
+                                    </div>
+                                `,
+                                iconSize: [32, 32],
+                                iconAnchor: [16, 16],
+                                popupAnchor: [0, -16]
+                            })
+                        }).addTo(globalLeafletMapInstance).bindPopup("<b>Kantor Pusat PT SI CARE</b>");
+                        
+                        L.circle([officeLat, officeLng], {
+                            color: '#3b82f6',
+                            fillColor: '#3b82f6',
+                            fillOpacity: 0.1,
+                            radius: officeRadius
+                        }).addTo(globalLeafletMapInstance);
+                        markers.push(officeMarker);
+                    }
+
+                    // Home marker & circle
+                    if (!isAccessTracker && homeLat && homeLng) {
+                        document.getElementById('leafletMapLegendHome').classList.remove('hidden');
+                        const homeMarker = L.marker([homeLat, homeLng], {
+                            icon: L.divIcon({
+                                className: '',
+                                html: `
+                                    <div class="flex items-center justify-center bg-indigo-600 text-white rounded-full border-2 border-white shadow-[0_2px_8px_rgba(0,0,0,0.3)]" style="width: 32px; height: 32px;">
+                                        <span class="material-symbols-outlined" style="font-size: 18px; font-weight: 600; font-variation-settings: 'FILL' 1;">home</span>
+                                    </div>
+                                `,
+                                iconSize: [32, 32],
+                                iconAnchor: [16, 16],
+                                popupAnchor: [0, -16]
+                            })
+                        }).addTo(globalLeafletMapInstance).bindPopup(`<b>Rumah Karyawan (${employeeName})</b>`);
+                        
+                        L.circle([homeLat, homeLng], {
+                            color: '#6366f1',
+                            fillColor: '#6366f1',
+                            fillOpacity: 0.1,
+                            radius: homeRadius
+                        }).addTo(globalLeafletMapInstance);
+                        markers.push(homeMarker);
+                    } else {
+                        document.getElementById('leafletMapLegendHome').classList.add('hidden');
+                    }
+
+                    // Clock-in / Access marker
+                    if (inLat && inLng) {
+                        const popupText = isAccessTracker 
+                            ? `<b>Lokasi Akses</b><br>Waktu: ${mapConfig.clock_in || '--:--'}`
+                            : `<b>Clock-In (Masuk)</b><br>Waktu: ${mapConfig.clock_in || '--:--'}<br>Mode: ${mapConfig.work_mode || 'WFO'}`;
+
+                        const inMarker = L.marker([inLat, inLng], {
+                            icon: L.divIcon({
+                                className: '',
+                                html: `<div style="background-color: #10b981; width: 16px; height: 16px; border-radius: 50%; border: 3px solid white; box-shadow: 0 0 8px rgba(0,0,0,0.5);"></div>`,
+                                iconSize: [16, 16],
+                                iconAnchor: [8, 8]
+                            })
+                        }).addTo(globalLeafletMapInstance).bindPopup(popupText);
+                        markers.push(inMarker);
+                    }
+
+                    // Clock-out marker
+                    if (outLat && outLng) {
+                        const outMarker = L.marker([outLat, outLng], {
+                            icon: L.divIcon({
+                                className: '',
+                                html: `<div style="background-color: #f43f5e; width: 16px; height: 16px; border-radius: 50%; border: 3px solid white; box-shadow: 0 0 8px rgba(0,0,0,0.5);"></div>`,
+                                iconSize: [16, 16],
+                                iconAnchor: [8, 8]
+                            })
+                        }).addTo(globalLeafletMapInstance).bindPopup(`<b>Clock-Out (Pulang)</b><br>Waktu: ${mapConfig.clock_out || '--:--'}<br>Mode: ${mapConfig.work_mode_out || '—'}`);
+                        markers.push(outMarker);
+                    }
+
+                    // Fit bounds to show all markers
+                    if (markers.length > 0) {
+                        const group = new L.featureGroup(markers);
+                        globalLeafletMapInstance.fitBounds(group.getBounds().pad(0.15));
+                    }
+                    globalLeafletMapInstance._markers = markers;
                 }
-                globalLeafletMapInstance._markers = markers;
             }, 250);
         };
 
@@ -1279,10 +1585,15 @@ if (!empty($resolvedPage)) {
                 globalLeafletMapInstance.remove();
                 globalLeafletMapInstance = null;
             }
+            if (globalGoogleMapInstance) {
+                globalGoogleMapInstance = null;
+                globalGoogleMarkers = [];
+            }
+            globalLeafletTileLayer = null;
         };
     </script>
     
-    <!-- PWA Service Worker Registration -->
+    <!-- PWA Service Worker Registration & Offline Handler -->
     <script>
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', function() {
@@ -1293,6 +1604,306 @@ if (!empty($resolvedPage)) {
                 });
             });
         }
+
+        // Global network status listeners
+        window.addEventListener('offline', function() {
+            Swal.fire({
+                title: 'Koneksi Terputus',
+                text: 'Koneksi internet Anda terputus. Aplikasi siCare akan menggunakan data cache lokal sementara.',
+                icon: 'warning',
+                confirmButtonColor: '#000666',
+                confirmButtonText: 'Mengerti',
+                allowOutsideClick: false,
+                backdrop: 'rgba(0, 6, 102, 0.25)'
+            });
+        });
+
+        window.addEventListener('online', function() {
+            Swal.fire({
+                title: 'Koneksi Terhubung',
+                text: 'Koneksi internet telah aktif kembali. Mensinkronkan data dengan server...',
+                icon: 'success',
+                timer: 2000,
+                showConfirmButton: false,
+                confirmButtonColor: '#000666'
+            });
+        });
+
+        // Global Fetch Interceptor to handle Backend/Server/Database errors
+        const originalFetch = window.fetch;
+        window.fetch = async function(...args) {
+            try {
+                const response = await originalFetch(...args);
+                if (!response.ok && response.status >= 500) {
+                    Swal.fire({
+                        title: 'Gangguan Layanan Server',
+                        text: 'Terjadi kegagalan komunikasi pada server (Error ' + response.status + ') atau database server sedang sibuk. Silakan coba beberapa saat lagi.',
+                        icon: 'error',
+                        confirmButtonColor: '#000666',
+                        confirmButtonText: 'Tutup'
+                    });
+                }
+                return response;
+            } catch (error) {
+                // Only show backend connection error if the client browser itself is online
+                if (navigator.onLine) {
+                    Swal.fire({
+                        title: 'Koneksi Server Gagal',
+                        text: 'Tidak dapat terhubung ke server utama siCare. Layanan backend atau database mungkin sedang dinonaktifkan atau dalam masa pemeliharaan.',
+                        icon: 'error',
+                        confirmButtonColor: '#000666',
+                        confirmButtonText: 'Tutup'
+                    });
+                }
+                throw error;
+            }
+        };
+    </script>
+
+    <!-- Idle Timeout Modal Overlay -->
+    <div id="idleTimeoutModal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-md hidden transition-all duration-300">
+        <style>
+            @keyframes idleScaleUp {
+                from { transform: scale(0.95); opacity: 0; }
+                to { transform: scale(1); opacity: 1; }
+            }
+            .animate-idle-scale-up {
+                animation: idleScaleUp 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+            }
+        </style>
+        <div class="bg-white border border-neutral-100 rounded-[28px] shadow-[0_24px_50px_-12px_rgba(0,0,0,0.25)] p-8 flex flex-col items-center justify-center text-center max-w-[400px] w-full mx-auto relative overflow-hidden backdrop-blur-xl animate-idle-scale-up">
+            
+            <!-- Glowing Icon Section -->
+            <div class="relative mb-6">
+                <!-- Outer pulsating glow ring -->
+                <div class="absolute inset-0 rounded-full bg-amber-400/20 blur-xl animate-pulse"></div>
+                <!-- Inner modern container -->
+                <div class="relative w-20 h-20 rounded-3xl bg-gradient-to-tr from-amber-500 to-yellow-400 flex items-center justify-center text-white shadow-lg shadow-amber-500/30 transform rotate-3 hover:rotate-0 transition-transform duration-500">
+                    <span class="material-symbols-outlined text-4xl font-light select-none">hourglass_empty</span>
+                </div>
+            </div>
+            
+            <h3 class="text-2xl font-bold text-neutral-900 mb-3 tracking-tight font-headline">Deteksi Sesi Hening</h3>
+            
+            <p class="text-sm text-neutral-500 mb-6 leading-relaxed max-w-[320px]">
+                Halo <strong class="text-neutral-800 font-semibold"><?= htmlspecialchars($_SESSION['name'] ?? 'Karyawan') ?></strong>, Anda terdeteksi tidak ada aktivitas pada aplikasi selama <span id="idleTimeDisplay" class="font-bold text-primary"></span>.
+            </p>
+            
+            <div class="w-full mb-6">
+                <p class="text-[14px] font-medium text-neutral-700 mb-4 leading-normal">
+                    Apakah Anda ingin melanjutkan sesi ini?
+                </p>
+                <div class="flex gap-3 w-full">
+                    <button id="idleNoBtn" class="flex-grow bg-white border border-neutral-200 hover:bg-neutral-50 text-neutral-700 font-semibold py-3 px-4 rounded-xl transition-all duration-200 active:scale-95 flex items-center justify-center gap-2 cursor-pointer text-xs md:text-sm whitespace-nowrap">
+                        <span class="material-symbols-outlined text-base">logout</span> Keluar
+                    </button>
+                    <button id="idleYesBtn" class="flex-grow bg-gradient-to-r from-primary to-[#1c2480] hover:shadow-lg hover:shadow-primary/20 text-white font-semibold py-3 px-4 rounded-xl transition-all duration-200 active:scale-95 flex items-center justify-center gap-2 cursor-pointer text-xs md:text-sm whitespace-nowrap">
+                        <span class="material-symbols-outlined text-base">check_circle</span> Lanjutkan Sesi
+                    </button>
+                </div>
+            </div>
+
+            <!-- Sleek Countdown & Progress Bar -->
+            <div class="w-full" id="idleCountdownContainer">
+                <div class="w-full bg-neutral-100 rounded-full h-1.5 mb-2 overflow-hidden">
+                    <div id="idleProgressBar" class="bg-gradient-to-r from-red-500 to-amber-500 h-full w-full rounded-full transition-all duration-1000 ease-linear"></div>
+                </div>
+                <div class="flex justify-between items-center w-full px-1 text-[11px] font-medium text-neutral-400">
+                    <span>Sesi otomatis ditutup</span>
+                    <span class="text-red-500 font-semibold flex items-center gap-1">
+                        <span class="material-symbols-outlined text-[13px] font-bold">alarm</span>
+                        <span id="idleCountdownDisplay" class="font-mono">30</span> detik
+                    </span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Idle Timeout Detection Logic -->
+    <script>
+        (function() {
+            let idleTimeoutSec = <?= (int)$appIdleTimeoutSec ?>;
+            if (idleTimeoutSec <= 0) return; // Feature disabled
+
+            let idleTimer = null;
+            let countdownInterval = null;
+            let maxCountdownSeconds = <?= (int)$appIdleCountdownSec ?>;
+            let countdownSeconds = maxCountdownSeconds; // Seconds to auto-logout after warning
+            const modal = document.getElementById('idleTimeoutModal');
+            const idleTimeDisplay = document.getElementById('idleTimeDisplay');
+            const countdownDisplay = document.getElementById('idleCountdownDisplay');
+            const countdownContainer = document.getElementById('idleCountdownContainer');
+            const progressBar = document.getElementById('idleProgressBar');
+            const yesBtn = document.getElementById('idleYesBtn');
+            const noBtn = document.getElementById('idleNoBtn');
+
+            // Format seconds into dynamic Indonesian text (e.g., 150 seconds -> "2 menit 30 detik")
+            function formatIdleTime(totalSeconds) {
+                if (totalSeconds < 60) {
+                    return totalSeconds + " detik";
+                }
+                const minutes = Math.floor(totalSeconds / 60);
+                const remainingSeconds = totalSeconds % 60;
+                if (remainingSeconds === 0) {
+                    return minutes + " menit";
+                }
+                return minutes + " menit " + remainingSeconds + " detik";
+            }
+
+            // Function to reset the main activity timeout timer
+            function resetIdleTimer() {
+                // If warning is already showing, do not reset it on random background events
+                if (modal && !modal.classList.contains('hidden')) return;
+
+                clearTimeout(idleTimer);
+                idleTimer = setTimeout(showIdleWarning, idleTimeoutSec * 1000);
+            }
+
+            // Show warning modal and begin countdown
+            function showIdleWarning() {
+                if (idleTimeDisplay) {
+                    idleTimeDisplay.innerText = formatIdleTime(idleTimeoutSec);
+                }
+                if (modal) {
+                    modal.classList.remove('hidden');
+                }
+                
+                // If no countdown is configured, hide the countdown UI and don't trigger auto-logout
+                if (maxCountdownSeconds <= 0) {
+                    if (countdownContainer) {
+                        countdownContainer.classList.add('hidden');
+                    }
+                    return;
+                }
+
+                if (countdownContainer) {
+                    countdownContainer.classList.remove('hidden');
+                }
+
+                countdownSeconds = maxCountdownSeconds;
+                if (countdownDisplay) {
+                    countdownDisplay.innerText = countdownSeconds;
+                }
+                if (progressBar) {
+                    progressBar.style.transition = 'none';
+                    progressBar.style.width = '100%';
+                    // Force reflow
+                    progressBar.offsetHeight;
+                    progressBar.style.transition = 'width 1s linear';
+                }
+
+                clearInterval(countdownInterval);
+                countdownInterval = setInterval(() => {
+                    countdownSeconds--;
+                    if (countdownDisplay) {
+                        countdownDisplay.innerText = countdownSeconds;
+                    }
+                    if (progressBar) {
+                        const pct = (countdownSeconds / maxCountdownSeconds) * 100;
+                        progressBar.style.width = pct + '%';
+                    }
+                    if (countdownSeconds <= 0) {
+                        clearInterval(countdownInterval);
+                        logoutUser();
+                    }
+                }, 1000);
+            }
+
+            // Logout user by redirecting to logout page
+            function logoutUser() {
+                window.location.href = '/auth/logout';
+            }
+
+            // Hide warning modal, clear countdown, and restart idle timer
+            function resumeSession() {
+                if (modal) {
+                    modal.classList.add('hidden');
+                }
+                clearInterval(countdownInterval);
+                resetIdleTimer();
+            }
+
+            // Bind activity event listeners to reset timer
+            const activityEvents = ['mousemove', 'mousedown', 'keydown', 'scroll', 'touchstart'];
+            activityEvents.forEach(evt => {
+                window.addEventListener(evt, resetIdleTimer, true);
+            });
+
+            // Button actions
+            if (yesBtn) {
+                yesBtn.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    resumeSession();
+                });
+            }
+            if (noBtn) {
+                noBtn.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    logoutUser();
+                });
+            }
+
+            // Expose a public function to update idle settings in real-time
+            window.updateIdleSettings = function(timeoutSec, countdownSec) {
+                idleTimeoutSec = parseInt(timeoutSec, 10) || 0;
+                maxCountdownSeconds = parseInt(countdownSec, 10) || 0;
+                
+                if (idleTimeoutSec <= 0) {
+                    clearTimeout(idleTimer);
+                    clearInterval(countdownInterval);
+                    if (modal) modal.classList.add('hidden');
+                    activityEvents.forEach(evt => {
+                        window.removeEventListener(evt, resetIdleTimer, true);
+                    });
+                    return;
+                }
+
+                // Bind activity listeners if they were not bound or reset
+                activityEvents.forEach(evt => {
+                    window.addEventListener(evt, resetIdleTimer, true);
+                });
+
+                resumeSession();
+            };
+
+            // Initialize on load
+            resetIdleTimer();
+        })();
+
+        // Real-time app branding update
+        function escapeHtml(text) {
+            if (!text) return '';
+            return text.toString()
+                .replace(/&/g, "&amp;")
+                .replace(/</g, "&lt;")
+                .replace(/>/g, "&gt;")
+                .replace(/"/g, "&quot;")
+                .replace(/'/g, "&#039;");
+        }
+
+        window.updateAppAppearance = function(name, logoType, logoIcon, logoImage) {
+            const appNameElements = document.querySelectorAll('.brand-text');
+            appNameElements.forEach(el => {
+                el.textContent = name;
+            });
+
+            const originalTitle = document.title;
+            if (originalTitle.includes(' | ')) {
+                const parts = originalTitle.split(' | ');
+                document.title = name + ' | ' + parts[1];
+            } else {
+                document.title = name;
+            }
+
+            const logoLinks = document.querySelectorAll('.brand-logo-link');
+            logoLinks.forEach(link => {
+                if (logoType === 'image' && logoImage) {
+                    link.innerHTML = `<img src="${escapeHtml(logoImage)}" class="brand-logo-icon h-9 w-auto object-contain flex-shrink-0" alt="Logo" /><span class="brand-text bg-gradient-to-r from-primary to-blue-800 bg-clip-text text-transparent whitespace-nowrap">${escapeHtml(name)}</span>`;
+                } else {
+                    link.innerHTML = `<span class="brand-logo-icon material-symbols-outlined text-primary text-3xl font-bold flex-shrink-0">${escapeHtml(logoIcon)}</span><span class="brand-text bg-gradient-to-r from-primary to-blue-800 bg-clip-text text-transparent whitespace-nowrap">${escapeHtml(name)}</span>`;
+                }
+            });
+        };
     </script>
 </body>
 </html>

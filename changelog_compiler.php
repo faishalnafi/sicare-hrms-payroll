@@ -1,18 +1,25 @@
 <?php
 /**
- * siCare Changelog Compiler & Publisher
+ * siCare Changelog Compiler & Publisher v2
+ * ═══════════════════════════════════════════════════════
  * Versioning Tracks:
- * - Stable LTS: Released once a year (YY.05-LTS)
- * - Stable STS: Released once a year (YY.09-STS)
- * - Beta: Released every 3 months (Semantic X.Y.Z-Beta)
- * - Pre-releases/Dev: alpha, canary, gamma
+ * - Stable LTS: yy.05-LTS (May, subscription annual updates)
+ * - Stable STS: yy.11-STS (November, one-time lifetime purchase)
+ * - Beta: X.Y.Z (SemVer, no LTS/STS suffix)
+ * - Pre-release: yy.mm.nnnnn (Enterprise only)
+ * - Pre-production: [env]-yy.mm.nnnnn (local/tqa/stg/mtc, Enterprise only)
+ *
+ * Editions:
+ * - Enterprise: Mono + Multi fork
+ * - Community: Mono only
  */
 
 // Define files
-$trackerFile = __DIR__ . '/tracker.md';
-$archiveFile = __DIR__ . '/tracker_archive.md';
-$jsonFile = __DIR__ . '/changelog.json';
-$mdFile = __DIR__ . '/changelog.md';
+$trackerFile    = __DIR__ . '/tracker.md';
+$archiveFile    = __DIR__ . '/tracker_archive.md';
+$trackerTxtFile = __DIR__ . '/tracker.txt';
+$jsonFile       = __DIR__ . '/changelog.json';
+$mdFile         = __DIR__ . '/changelog.md';
 
 // Print header
 echo "\n=============================================\n";
@@ -20,34 +27,75 @@ echo "    siCare CHANGELOG COMPILER & PUBLISHER    \n";
 echo "=============================================\n\n";
 
 if (!file_exists($trackerFile)) {
-    echo "Error: tracker.md not found. Creating a default one first...\n";
+    echo "Error: tracker.md not found.\n";
     exit(1);
 }
 
 // Parse command line arguments
-$options = getopt("", ["type:", "edition:", "migration:", "version:", "yes", "repo:"]);
-$type = isset($options['type']) ? strtoupper($options['type']) : 'LTS'; // Default LTS
-$edition = isset($options['edition']) ? ucfirst($options['edition']) : 'Business'; // Default Business
-$repo = isset($options['repo']) ? strtolower($options['repo']) : 'monorepo'; // Default monorepo
-$migration = isset($options['migration']) ? $options['migration'] : 'stg -> production';
+$options     = getopt("", ["type:", "edition:", "migration:", "version:", "yes", "repo:", "alias:", "env:"]);
+$type        = isset($options['type']) ? strtoupper($options['type']) : 'LTS';
+$edition     = isset($options['edition']) ? ucfirst(strtolower($options['edition'])) : 'Enterprise';
+$repo        = isset($options['repo']) ? strtolower($options['repo']) : 'mono';
+$migration   = isset($options['migration']) ? $options['migration'] : 'stg -> production';
+$aliasName   = isset($options['alias']) ? trim($options['alias']) : null;
 $autoConfirm = isset($options['yes']);
 
+// Normalize repo tag
+if ($repo === 'monorepo') $repo = 'mono';
+if ($repo === 'multirepo') $repo = 'multi';
+
 // Validate repo type
-if (!in_array($repo, ['monorepo', 'multirepo'])) {
-    echo "Error: Invalid repo type '{$repo}'. Valid types are: monorepo, multirepo\n";
+if (!in_array($repo, ['mono', 'multi'])) {
+    echo "Error: Invalid repo type '{$repo}'. Valid types are: mono, multi\n";
     exit(1);
 }
 
-// Validate release types
-$validTypes = ['LTS', 'STS', 'BETA', 'ALPHA', 'CANARY', 'GAMMA'];
-if (!in_array($type, $validTypes)) {
-    echo "Error: Invalid release type '{$type}'. Valid types are: " . implode(', ', $validTypes) . "\n";
+// Validate edition
+if (!in_array(strtolower($edition), ['enterprise', 'community'])) {
+    echo "Error: Invalid edition '{$edition}'. Valid editions are: Enterprise, Community\n";
     exit(1);
 }
 
-// Validate Edition vs Track Suffix
-if (strtolower($edition) === 'business' && $type === 'STS') {
-    echo "Error: Business Edition is exclusive to LTS. STS is not supported for Business Edition.\n";
+// Validate: Community only supports Mono
+if (strtolower($edition) === 'community' && $repo === 'multi') {
+    echo "Error: Community Edition only supports Mono (monorepo). Multi (multirepo) is exclusive to Enterprise.\n";
+    exit(1);
+}
+
+// Classify release types
+$stableTypes     = ['LTS', 'STS'];
+$betaType        = 'BETA';
+$preReleaseType  = 'PRERELEASE';
+$envTypes        = ['LOCAL', 'TQA', 'STG', 'MTC'];
+$allValidTypes   = array_merge($stableTypes, [$betaType, $preReleaseType], $envTypes);
+
+if (!in_array($type, $allValidTypes)) {
+    echo "Error: Invalid release type '{$type}'.\n";
+    echo "Valid types: " . implode(', ', $allValidTypes) . "\n";
+    exit(1);
+}
+
+// Validate: Pre-release and env types are Enterprise only
+$isPreRelease = ($type === $preReleaseType);
+$isEnvType    = in_array($type, $envTypes);
+
+if (($isPreRelease || $isEnvType) && strtolower($edition) === 'community') {
+    echo "Error: Pre-release and environment versions are exclusive to Enterprise Edition.\n";
+    exit(1);
+}
+
+// Validate: Stable versions require alias
+$isStable = in_array($type, $stableTypes);
+if ($isStable && empty($aliasName) && !$autoConfirm) {
+    echo "Stable releases require an alias name (e.g., 'Ammonite').\n";
+    echo "Enter alias name: ";
+    $aliasName = trim(fgets(STDIN));
+    if (empty($aliasName)) {
+        echo "Error: Alias name is required for stable releases.\n";
+        exit(1);
+    }
+} elseif ($isStable && empty($aliasName) && $autoConfirm) {
+    echo "Error: Stable releases require --alias parameter.\n";
     exit(1);
 }
 
@@ -57,23 +105,21 @@ $lines = file($trackerFile, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
 $rawEntries = [];
 
 foreach ($lines as $line) {
-    // Check if it's a table row (starts and ends with |)
     if (preg_match('/^\|\s*(.*?)\s*\|$/', $line, $matches)) {
         $columns = explode('|', $matches[1]);
         $columns = array_map('trim', $columns);
-        
-        // Skip header and divider rows
+
         if (count($columns) < 6 || strtolower($columns[0]) === 'date' || strpos($columns[0], '---') !== false) {
             continue;
         }
-        
+
         $rawEntries[] = [
-            'date' => $columns[0],
-            'type' => ucfirst(strtolower($columns[1])),
+            'date'        => $columns[0],
+            'type'        => ucfirst(strtolower($columns[1])),
             'description' => $columns[2],
-            'original' => $columns[3],
-            'stage' => $columns[4],
-            'developer' => $columns[5]
+            'original'    => $columns[3],
+            'stage'       => $columns[4],
+            'developer'   => $columns[5]
         ];
     }
 }
@@ -86,9 +132,10 @@ if ($entryCount === 0) {
     exit(0);
 }
 
-// Determine version number
-$version = '';
-$currentYear = date('y'); // e.g. "26" for 2026
+// ── Determine version number ──────────────────────────────────
+$version     = '';
+$currentYear = date('y');
+$currentMonth = date('m');
 
 if (isset($options['version'])) {
     $version = $options['version'];
@@ -96,47 +143,36 @@ if (isset($options['version'])) {
     if ($type === 'LTS') {
         $version = "{$currentYear}.05-LTS";
     } elseif ($type === 'STS') {
-        $version = "{$currentYear}.09-STS";
+        $version = "{$currentYear}.11-STS";
     } elseif ($type === 'BETA') {
-        // Read previous beta version from JSON to increment
-        $prevVersion = getPreviousVersion($jsonFile, 'BETA');
-        
-        // Extract semantic part and suffix (LTS/STS)
-        if (preg_match('/^(\d+\.\d+\.\d+)-(LTS|STS)$/', $prevVersion, $matches)) {
-            $semPart = $matches[1];
-            $suffix = $matches[2];
-        } else {
-            $semPart = '1.0.0';
-            $suffix = 'LTS'; // Default
-        }
-        
-        // If Business Edition, force LTS suffix
-        if (strtolower($edition) === 'business') {
-            $suffix = 'LTS';
-        }
-        
-        $newSem = incrementSemantic($semPart, $rawEntries);
-        $semParts = explode('.', $newSem);
-        $paddedSem = sprintf('%03d.%03d.%03d', (int)$semParts[0], (int)$semParts[1], (int)$semParts[2]);
-        $version = "{$paddedSem}-{$suffix}";
+        // SemVer auto-increment from previous Beta
+        $prevVersion = getPreviousBetaVersion($jsonFile);
+        $newSem = incrementSemantic($prevVersion, $rawEntries);
+        $version = $newSem;
+    } elseif ($type === 'PRERELEASE') {
+        // Pre-release: yy.mm.nnnnn
+        $counter = getNextPreReleaseCounter($jsonFile, null, "{$currentYear}.{$currentMonth}");
+        $version = "{$currentYear}.{$currentMonth}." . str_pad($counter, 5, '0', STR_PAD_LEFT);
     } else {
-        // Continuous Releases: alpha, canary, gamma
-        $prefix = strtolower($type);
-        $month = date('m');
-        $counter = getNextPreReleaseCounter($jsonFile, $prefix, "{$currentYear}.{$month}");
-        $version = "{$prefix}-{$currentYear}.{$month}-" . str_pad($counter, 5, '0', STR_PAD_LEFT);
+        // Environment: [env]-yy.mm.nnnnn
+        $envPrefix = strtolower($type);
+        $counter = getNextPreReleaseCounter($jsonFile, $envPrefix, "{$currentYear}.{$currentMonth}");
+        $version = "{$envPrefix}-{$currentYear}.{$currentMonth}." . str_pad($counter, 5, '0', STR_PAD_LEFT);
     }
 }
 
-// Validate version suffix for Business Edition
-if (strtolower($edition) === 'business' && strpos(strtoupper($version), '-STS') !== false) {
-    echo "Error: Business Edition is exclusive to LTS. Version cannot have STS suffix.\n";
-    exit(1);
-}
+// Determine display label for type
+$typeLabel = match($type) {
+    'LTS'        => 'STABLE LTS (Long Term Support)',
+    'STS'        => 'STABLE STS (Short Term Support)',
+    'BETA'       => 'BETA (SemVer)',
+    'PRERELEASE' => 'PRE-RELEASE',
+    default      => strtoupper($type) . ' (Environment)'
+};
 
 echo "---------------------------------------------\n";
-echo "Target Release:   " . ($type === 'LTS' ? 'STABLE LTS (Long Term Support)' : ($type === 'STS' ? 'STABLE STS (Short Term Support)' : $type)) . "\n";
-echo "Target Version:   {$version}\n";
+echo "Target Release:   {$typeLabel}\n";
+echo "Target Version:   {$version}" . ($aliasName ? " / {$aliasName}" : "") . "\n";
 echo "Edition:          {$edition}\n";
 echo "Repo Architecture: " . ucfirst($repo) . "\n";
 echo "Migration Level:  {$migration}\n";
@@ -151,15 +187,15 @@ if (!$autoConfirm) {
     }
 }
 
-// Group entries by type
+// ── Group entries by type ─────────────────────────────────────
 $summary = [
-    'added' => [],
-    'improved' => [],
-    'fixed' => [],
-    'security' => [],
+    'added'      => [],
+    'improved'   => [],
+    'fixed'      => [],
+    'security'   => [],
     'deprecated' => [],
-    'removed' => [],
-    'changed' => [],
+    'removed'    => [],
+    'changed'    => [],
     'refactored' => []
 ];
 
@@ -168,24 +204,20 @@ foreach ($rawEntries as $entry) {
     if (!array_key_exists($t, $summary)) {
         $summary[$t] = [];
     }
-    
-    // Format descriptive string - focus strictly on development changes, omitting developer name and previous implementation details
-    $desc = $entry['description'];
-    
-    $summary[$t][] = $desc;
+    $summary[$t][] = $entry['description'];
 }
 
-// Clean empty arrays in summary
 $summary = array_filter($summary);
 
-// 1. Compile to JSON
+// ── 1. Compile to JSON ────────────────────────────────────────
 $newRelease = [
-    'version' => $version,
-    'edition' => strtolower($edition),
-    'repo_type' => strtolower($repo),
-    'compiled_date' => date('Y-m-d'),
+    'version'         => $version,
+    'edition'         => strtolower($edition),
+    'repo_type'       => strtolower($repo),
+    'compiled_date'   => date('Y-m-d'),
     'migration_level' => $migration,
-    'summary' => $summary
+    'alias_name'      => $aliasName,
+    'summary'         => $summary
 ];
 
 $existingData = [];
@@ -196,13 +228,17 @@ if (file_exists($jsonFile)) {
     }
 }
 
-// Prepend the new release to the JSON array
 array_unshift($existingData, $newRelease);
 file_put_contents($jsonFile, json_encode($existingData, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES));
 echo "✓ Saved compiled JSON to: changelog.json\n";
 
-// 2. Prepend to Markdown
-$newMdContent = "## Version {$version} ({$edition}) - " . ucfirst($repo) . "\n";
+// ── 2. Prepend to Markdown ────────────────────────────────────
+$versionDisplay = $version;
+if ($aliasName) {
+    $versionDisplay .= " / {$aliasName}";
+}
+
+$newMdContent = "## Version {$versionDisplay} ({$edition}) - " . ucfirst($repo) . "\n";
 $newMdContent .= "*Compiled Date: " . date('Y-m-d') . " | Migration: {$migration}*\n\n";
 
 foreach ($summary as $key => $items) {
@@ -223,7 +259,6 @@ if (file_exists($mdFile)) {
     $existingMd = "# siCare Release Changelog\n\nAll public releases of the siCare HRMS Payroll system are listed here.\n\n---\n";
 }
 
-// Split the title/intro and prepend the new release block
 $pos = strpos($existingMd, '---');
 if ($pos !== false) {
     $header = substr($existingMd, 0, $pos + 4);
@@ -236,7 +271,15 @@ if ($pos !== false) {
 file_put_contents($mdFile, $finalMd);
 echo "✓ Prepend compiled changelog to: changelog.md\n";
 
-// 3. Archive compiled entries
+// ── 3. Append to tracker.txt (PERMANENT — never deleted) ─────
+$trackerTxtContent = "";
+foreach ($rawEntries as $entry) {
+    $trackerTxtContent .= "[{$entry['date']}] [{$entry['type']}] {$entry['description']}\n";
+}
+file_put_contents($trackerTxtFile, $trackerTxtContent, FILE_APPEND);
+echo "✓ Appended to permanent log: tracker.txt\n";
+
+// ── 4. Archive compiled entries to tracker_archive.md ─────────
 $archiveHeader = '';
 if (!file_exists($archiveFile)) {
     $archiveHeader = "# siCare Development Tracker Archive\n\nThis file archives past compiled/published raw logs.\n\n";
@@ -252,9 +295,9 @@ foreach ($rawEntries as $entry) {
 file_put_contents($archiveFile, $archiveHeader . $archiveContent, FILE_APPEND);
 echo "✓ Archived compiled entries to: tracker_archive.md\n";
 
-// 4. Clear tracker.md (except title and header table format)
+// ── 5. Clear tracker.md ───────────────────────────────────────
 $cleanTracker = "# siCare Development Tracker\n\n";
-$cleanTracker .= "This file records local developer changes across `env`, `dev`, and `tqa` environments.\n";
+$cleanTracker .= "This file records local developer changes across `local`, `tqa`, `stg`, and `mtc` environments.\n";
 $cleanTracker .= "The compiler script will parse these entries and compile them into a public release.\n\n";
 $cleanTracker .= "| Date | Type | Description | Original Code/Behavior | Stage | Developer |\n";
 $cleanTracker .= "| :--- | :--- | :--- | :--- | :--- | :--- |\n";
@@ -264,21 +307,30 @@ echo "✓ Cleaned tracker.md for next development cycle.\n\n";
 
 echo "Publishing complete. Version {$version} is now LIVE!\n";
 
+// ═════════════════════════════════════════════════════════════
+// HELPER FUNCTIONS
+// ═════════════════════════════════════════════════════════════
+
 /**
- * Get previous version from JSON file
+ * Get previous Beta version (X.Y.Z format) from JSON
  */
-function getPreviousVersion($jsonFile, $type) {
-    if (!file_exists($jsonFile)) return '001.000.000-LTS';
+function getPreviousBetaVersion($jsonFile) {
+    if (!file_exists($jsonFile)) return '1.0.0';
     $data = json_decode(file_get_contents($jsonFile), true);
-    if (!is_array($data)) return '001.000.000-LTS';
-    
+    if (!is_array($data)) return '1.0.0';
+
     foreach ($data as $release) {
         $v = $release['version'];
-        if ($type === 'BETA' && preg_match('/^\d+\.\d+\.\d+-(LTS|STS)$/', $v)) {
+        // Match pure SemVer: X.Y.Z (no suffix, no prefix, no env)
+        if (preg_match('/^\d+\.\d+\.\d+$/', $v)) {
             return $v;
         }
+        // Also match legacy format XXX.YYY.ZZZ-LTS/STS (for backward compat)
+        if (preg_match('/^(\d+\.\d+\.\d+)-(LTS|STS)$/', $v, $matches)) {
+            return $matches[1];
+        }
     }
-    return '001.000.000-LTS';
+    return '1.0.0';
 }
 
 /**
@@ -286,17 +338,15 @@ function getPreviousVersion($jsonFile, $type) {
  */
 function incrementSemantic($prevVersion, $entries) {
     $parts = explode('.', $prevVersion);
-    if (count($parts) < 3) {
-        $parts = [1, 0, 0];
-    }
-    
+    if (count($parts) < 3) $parts = [1, 0, 0];
+
     $x = (int)$parts[0];
     $y = (int)$parts[1];
     $z = (int)$parts[2];
-    
+
     $hasMajor = false;
     $hasMinor = false;
-    
+
     foreach ($entries as $entry) {
         $type = strtolower($entry['type']);
         if ($type === 'removed' || $type === 'changed') {
@@ -305,37 +355,48 @@ function incrementSemantic($prevVersion, $entries) {
             $hasMinor = true;
         }
     }
-    
+
     if ($hasMajor) {
-        $x++;
-        $y = 0;
-        $z = 0;
+        $x++; $y = 0; $z = 0;
     } elseif ($hasMinor) {
-        $y++;
-        $z = 0;
+        $y++; $z = 0;
     } else {
         $z++;
     }
-    
+
     return "{$x}.{$y}.{$z}";
 }
 
 /**
- * Get the next numeric counter for pre-releases (alpha, canary, gamma)
+ * Get the next numeric counter for pre-releases and env versions
+ * For pre-release (no prefix): matches yy.mm.nnnnn
+ * For env (with prefix): matches [env]-yy.mm.nnnnn
  */
 function getNextPreReleaseCounter($jsonFile, $prefix, $yearMonth) {
     if (!file_exists($jsonFile)) return 1;
     $data = json_decode(file_get_contents($jsonFile), true);
     if (!is_array($data)) return 1;
-    
+
     $maxCounter = 0;
     foreach ($data as $release) {
         $v = $release['version'];
-        // Format: prefix-YY.MM-NNNNN
-        if (preg_match("/^{$prefix}-{$yearMonth}-(\d+)$/", $v, $matches)) {
-            $val = (int)$matches[1];
-            if ($val > $maxCounter) {
-                $maxCounter = $val;
+
+        if ($prefix) {
+            // Environment format: [env]-YY.MM.NNNNN
+            if (preg_match("/^{$prefix}-{$yearMonth}\\.(\d+)$/", $v, $matches)) {
+                $val = (int)$matches[1];
+                if ($val > $maxCounter) $maxCounter = $val;
+            }
+        } else {
+            // Pre-release format: YY.MM.NNNNN (no prefix)
+            if (preg_match("/^{$yearMonth}\\.(\d+)$/", $v, $matches)) {
+                $val = (int)$matches[1];
+                if ($val > $maxCounter) $maxCounter = $val;
+            }
+            // Also match legacy canary-YY.MM-NNNNN format for backward compat
+            if (preg_match("/^(?:canary|alpha|gamma)-{$yearMonth}-(\d+)$/", $v, $matches)) {
+                $val = (int)$matches[1];
+                if ($val > $maxCounter) $maxCounter = $val;
             }
         }
     }

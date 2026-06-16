@@ -182,13 +182,12 @@ $isUpToDate = ($dbVersion === $jsonVersion);
 </div>
 
 <script>
-document.addEventListener('DOMContentLoaded', function() {
     const btnUpdate = document.getElementById('btnRunUpdate');
     if (btnUpdate) {
         btnUpdate.addEventListener('click', function() {
             // Check for fork warnings
-            const currentTrack = '<?= preg_match("/^\d+\.\d+\.\d+-/", $dbVersion) ? "Beta" : (strpos($dbVersion, "LTS") !== false ? "LTS" : (strpos($dbVersion, "STS") !== false ? "STS" : (strpos($dbVersion, "Belum") !== false ? "None" : "Pre-release"))) ?>';
-            const targetTrack = '<?= preg_match("/^\d+\.\d+\.\d+-/", $jsonVersion) ? "Beta" : (strpos($jsonVersion, "LTS") !== false ? "LTS" : (strpos($jsonVersion, "STS") !== false ? "STS" : "Pre-release")) ?>';
+            const currentTrack = '<?= preg_match("/^\\d+\\.\\d+\\.\\d+$/", $dbVersion) ? "Beta" : (strpos($dbVersion, "LTS") !== false ? "LTS" : (strpos($dbVersion, "STS") !== false ? "STS" : (preg_match("/^(local|tqa|stg|mtc)-/", $dbVersion) ? "Environment" : (strpos($dbVersion, "Belum") !== false ? "None" : "Pre-release")))) ?>';
+            const targetTrack = '<?= preg_match("/^\\d+\\.\\d+\\.\\d+$/", $jsonVersion) ? "Beta" : (strpos($jsonVersion, "LTS") !== false ? "LTS" : (strpos($jsonVersion, "STS") !== false ? "STS" : (preg_match("/^(local|tqa|stg|mtc)-/", $jsonVersion) ? "Environment" : "Pre-release"))) ?>';
             
             const currentEdition = '<?= htmlspecialchars(strtolower($dbEdition)) ?>';
             const targetEdition = '<?= htmlspecialchars(strtolower($jsonEdition)) ?>';
@@ -311,5 +310,4 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         });
     }
-});
 </script>

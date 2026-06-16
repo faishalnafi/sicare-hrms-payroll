@@ -1,5 +1,11 @@
 <?php
 // HR Ops — Pengaturan Presensi & Lokasi
+$isGlobalConfig = (strpos($_SERVER['REQUEST_URI'], '/superadmin/settings') !== false && strpos($_SERVER['REQUEST_URI'], '/superadmin/settings/') === false);
+$pageTitle = $isGlobalConfig ? 'Konfigurasi Global' : 'Pengaturan Sistem';
+$pageSubtitle = $isGlobalConfig 
+    ? 'Konfigurasi parameter sistem global, keamanan, serta kebijakan operasional perusahaan.' 
+    : 'Konfigurasi lokasi kantor, jam kerja, toleransi, dan kebijakan WFA/WFC/WFO/WFH.';
+
 $cfg = [];
 $holidays = [];
 try {
@@ -18,9 +24,13 @@ $cfg = array_merge([
     'home_radius_m'            => '100',
     'work_start_time'          => '08:00',
     'work_min_start_time'      => '06:00',
+    'work_min_start_time_enabled' => 'true',
+    'work_min_end_time'        => '15:00',
+    'work_min_end_time_enabled'   => 'false',
     'work_end_time'            => '17:00',
     'grace_period_min'         => '10',
     'office_wifi_prefix'       => '192.168.10.',
+    'office_wifi_ipv6_prefix'  => '',
     'wfa_allowed'              => 'true',
     'wfa_days'                 => '',
     'weekly_holidays'          => 'Sat,Sun',
@@ -37,6 +47,9 @@ $cfg = array_merge([
     'app_logo_icon'            => 'local_police',
     'app_logo_type'            => 'icon',
     'app_logo_image'           => '',
+    'app_idle_timeout_sec'     => '0',
+    'app_idle_countdown_sec'   => '0',
+    'google_maps_api_key'      => '',
 ], $cfg);
 
 $wfaDaysArr = array_filter(array_map('trim', explode(',', $cfg['wfa_days'])));
@@ -201,6 +214,11 @@ $allDays = ['Mon' => 'Senin', 'Tue' => 'Selasa', 'Wed' => 'Rabu', 'Thu' => 'Kami
 }
 .save-btn:hover { transform:translateY(-2px); box-shadow:0 10px 28px rgba(0,6,102,.35); }
 .coord-display { font-family:'Courier New',monospace; font-size:.78rem; }
+@media (min-width: 768px) {
+    #logo_icon_wrapper, #logo_image_wrapper {
+        grid-column: span 2 / span 2 !important;
+    }
+}
 </style>
 
 <div class="space-y-6">
@@ -208,8 +226,8 @@ $allDays = ['Mon' => 'Senin', 'Tue' => 'Selasa', 'Wed' => 'Rabu', 'Thu' => 'Kami
     <!-- ── Header ── -->
     <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div class="space-y-1">
-            <h1 class="font-headline text-3xl font-extrabold text-primary tracking-tight">Pengaturan Sistem</h1>
-            <p class="text-on-surface-variant font-medium text-sm">Konfigurasi lokasi kantor, jam kerja, toleransi, dan kebijakan WFA/WFC/WFO/WFH.</p>
+            <h1 class="font-headline text-3xl font-extrabold text-primary tracking-tight"><?= htmlspecialchars($pageTitle) ?></h1>
+            <p class="text-on-surface-variant font-medium text-sm"><?= htmlspecialchars($pageSubtitle) ?></p>
         </div>
         <div class="flex items-center gap-2 text-xs font-semibold text-on-surface-variant bg-surface-container-lowest border border-outline-variant/20 rounded-xl px-4 py-2.5">
             <span class="material-symbols-outlined text-primary text-sm">update</span>
@@ -218,6 +236,8 @@ $allDays = ['Mon' => 'Senin', 'Tue' => 'Selasa', 'Wed' => 'Rabu', 'Thu' => 'Kami
     </div>
 
     <form id="settingsForm" enctype="multipart/form-data" onsubmit="saveSettings(event)">
+        <input type="hidden" id="work_min_start_time_enabled_hidden" name="work_min_start_time_enabled" value="<?= htmlspecialchars($cfg['work_min_start_time_enabled']) ?>" />
+        <input type="hidden" id="work_min_end_time_enabled_hidden" name="work_min_end_time_enabled" value="<?= htmlspecialchars($cfg['work_min_end_time_enabled']) ?>" />
         <div class="grid grid-cols-1 xl:grid-cols-3 gap-6">
 
             <!-- ── Col 1–2: Main Settings ── -->
@@ -256,7 +276,7 @@ $allDays = ['Mon' => 'Senin', 'Tue' => 'Selasa', 'Wed' => 'Rabu', 'Thu' => 'Kami
                             </select>
                             <p class="settings-helper">Pilih jenis logo: menggunakan Google Font Icon atau mengunggah berkas gambar logo custom.</p>
                         </div>
-                        <div id="logo_icon_wrapper" class="<?= $cfg['app_logo_type'] === 'image' ? 'hidden' : '' ?>">
+                        <div id="logo_icon_wrapper" class="md:col-span-2 <?= $cfg['app_logo_type'] === 'image' ? 'hidden' : '' ?>">
                             <label class="settings-label" for="app_logo_icon">Logo Aplikasi (Material Icon)</label>
                             <input type="text" id="app_logo_icon" name="app_logo_icon"
                                 value="<?= htmlspecialchars($cfg['app_logo_icon']) ?>"
@@ -281,6 +301,34 @@ $allDays = ['Mon' => 'Senin', 'Tue' => 'Selasa', 'Wed' => 'Rabu', 'Thu' => 'Kami
                             </div>
                         </div>
                     </div>
+
+                    <div class="mt-5 pt-5 border-t border-dashed border-neutral-200">
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div>
+                                <label class="settings-label" for="app_idle_timeout_sec">Batas Waktu Idle Aplikasi (Detik)</label>
+                                <input type="number" min="0" id="app_idle_timeout_sec" name="app_idle_timeout_sec"
+                                    value="<?= htmlspecialchars($cfg['app_idle_timeout_sec']) ?>"
+                                    class="settings-input" placeholder="0" required />
+                                <p class="settings-helper">Durasi tidak ada aktivitas dalam detik. Isi <code>0</code> untuk menonaktifkan deteksi idle (nilai bawaan).</p>
+                            </div>
+                            <div>
+                                <label class="settings-label" for="app_idle_countdown_sec">Hitungan Mundur Logout (Detik)</label>
+                                <input type="number" min="0" id="app_idle_countdown_sec" name="app_idle_countdown_sec"
+                                    value="<?= htmlspecialchars($cfg['app_idle_countdown_sec'] ?? '0') ?>"
+                                    class="settings-input" placeholder="0" required />
+                                <p class="settings-helper">Durasi konfirmasi sebelum otomatis logout. Isi <code>0</code> jika tidak ada countdown (logout otomatis ditiadakan).</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="mt-5 pt-5 border-t border-dashed border-neutral-200">
+                        <label class="settings-label" for="google_maps_api_key">Google Maps API Key (Opsional)</label>
+                        <input type="text" id="google_maps_api_key" name="google_maps_api_key"
+                            value="<?= htmlspecialchars($cfg['google_maps_api_key'] ?? '') ?>"
+                            class="settings-input" placeholder="AIzaSy..." />
+                        <p class="settings-helper">Masukkan kunci API Google Maps resmi Anda untuk mengaktifkan peta Google Maps & Google Places pencarian lokasi publik interaktif di modal pemilihan koordinat kantor. Jika dibiarkan kosong, sistem akan otomatis menggunakan peta gratis Leaflet (OpenStreetMap).</p>
+                    </div>
+
                 </div>
 
                 <!-- === LOKASI KANTOR === -->
@@ -371,13 +419,35 @@ $allDays = ['Mon' => 'Senin', 'Tue' => 'Selasa', 'Wed' => 'Rabu', 'Thu' => 'Kami
                         </div>
                     </div>
 
-                    <!-- WIFI Prefix -->
-                    <div class="mt-4">
-                        <label class="settings-label" for="office_wifi_prefix">Prefix IP WIFI Kantor (auto-deteksi WFO)</label>
-                        <input type="text" id="office_wifi_prefix" name="office_wifi_prefix"
-                            value="<?= htmlspecialchars($cfg['office_wifi_prefix']) ?>"
-                            class="settings-input font-mono" placeholder="192.168.10." />
-                        <p class="settings-helper">Karyawan yang terhubung ke WIFI dengan prefix IP ini otomatis terdeteksi sebagai WFO tanpa perlu GPS.</p>
+                    <!-- WIFI Prefix (IPv4 & IPv6 Tags) -->
+                    <div class="mt-5 space-y-4">
+                        <!-- IPv4 WiFi Prefixes -->
+                        <div>
+                            <label class="settings-label">Prefix IP WIFI Kantor (IPv4)</label>
+                            
+                            <div class="w-full bg-[#f8f9fa] border border-[#dde0f0] rounded-xl p-3 flex flex-wrap gap-2 items-center focus-within:border-primary focus-within:ring-2 focus-within:ring-primary/10 transition-all duration-200" id="ipv4-tags-container">
+                                <!-- Tags will be dynamically rendered here -->
+                                <input type="text" id="ipv4-tag-input" class="flex-grow min-w-[120px] bg-transparent border-none outline-none focus:ring-0 text-sm font-semibold text-neutral-800 p-0 font-mono" placeholder="Contoh: 192.168.10. (Tekan Enter)" />
+                            </div>
+                            
+                            <!-- Hidden input to hold the actual comma-separated values sent to server -->
+                            <input type="hidden" id="office_wifi_prefix" name="office_wifi_prefix" value="<?= htmlspecialchars($cfg['office_wifi_prefix']) ?>" />
+                            <p class="settings-helper mt-1.5">Prefix IPv4. Contoh: 192.168.1. atau 10.0.0. (Karyawan otomatis WFO jika IP-nya berawalan ini).</p>
+                        </div>
+
+                        <!-- IPv6 WiFi Prefixes -->
+                        <div>
+                            <label class="settings-label">Prefix IP WIFI Kantor (IPv6)</label>
+                            
+                            <div class="w-full bg-[#f8f9fa] border border-[#dde0f0] rounded-xl p-3 flex flex-wrap gap-2 items-center focus-within:border-primary focus-within:ring-2 focus-within:ring-primary/10 transition-all duration-200" id="ipv6-tags-container">
+                                <!-- Tags will be dynamically rendered here -->
+                                <input type="text" id="ipv6-tag-input" class="flex-grow min-w-[120px] bg-transparent border-none outline-none focus:ring-0 text-sm font-semibold text-neutral-800 p-0 font-mono" placeholder="Contoh: fe80:: (Tekan Enter)" />
+                            </div>
+                            
+                            <!-- Hidden input to hold the actual comma-separated values sent to server -->
+                            <input type="hidden" id="office_wifi_ipv6_prefix" name="office_wifi_ipv6_prefix" value="<?= htmlspecialchars($cfg['office_wifi_ipv6_prefix'] ?? '') ?>" />
+                            <p class="settings-helper mt-1.5">Prefix IPv6. Contoh: 2001:db8: atau fe80:12:: (Tekan Enter untuk menambah tag).</p>
+                        </div>
                     </div>
                 </div>
 
@@ -396,10 +466,16 @@ $allDays = ['Mon' => 'Senin', 'Tue' => 'Selasa', 'Wed' => 'Rabu', 'Thu' => 'Kami
                                 class="settings-input font-mono" />
                         </div>
                         <div>
-                            <label class="settings-label" for="work_min_start_time">Minimal Jam Masuk</label>
+                            <div class="flex items-center justify-between mb-1.5">
+                                <label class="settings-label !mb-0" for="work_min_start_time">Minimal Jam Masuk</label>
+                                <label class="relative inline-flex items-center cursor-pointer">
+                                    <input type="checkbox" id="work_min_start_time_enabled" value="true" <?= $cfg['work_min_start_time_enabled'] === 'true' ? 'checked' : '' ?> class="sr-only peer" onchange="toggleMinStart(this.checked)">
+                                    <div class="w-9 h-5 bg-neutral-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-amber-600"></div>
+                                </label>
+                            </div>
                             <input type="time" id="work_min_start_time" name="work_min_start_time"
                                 value="<?= htmlspecialchars($cfg['work_min_start_time']) ?>"
-                                class="settings-input font-mono" />
+                                class="settings-input font-mono transition-opacity duration-200" />
                         </div>
                         <div>
                             <label class="settings-label" for="grace_period_min">Toleransi Terlambat Masuk</label>
@@ -425,12 +501,24 @@ $allDays = ['Mon' => 'Senin', 'Tue' => 'Selasa', 'Wed' => 'Rabu', 'Thu' => 'Kami
                         <h2 class="settings-section-title" style="color:#c2410c">Batas Toleransi Pulang Lambat & Lembur</h2>
                     </div>
 
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
                         <div>
                             <label class="settings-label" for="work_end_time">Jam Pulang Standar</label>
                             <input type="time" id="work_end_time" name="work_end_time"
                                 value="<?= htmlspecialchars($cfg['work_end_time']) ?>"
                                 class="settings-input font-mono" />
+                        </div>
+                        <div>
+                            <div class="flex items-center justify-between mb-1.5">
+                                <label class="settings-label !mb-0" for="work_min_end_time">Minimal Jam Pulang</label>
+                                <label class="relative inline-flex items-center cursor-pointer">
+                                    <input type="checkbox" id="work_min_end_time_enabled" value="true" <?= $cfg['work_min_end_time_enabled'] === 'true' ? 'checked' : '' ?> class="sr-only peer" onchange="toggleMinEnd(this.checked)">
+                                    <div class="w-9 h-5 bg-neutral-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-orange-600"></div>
+                                </label>
+                            </div>
+                            <input type="time" id="work_min_end_time" name="work_min_end_time"
+                                value="<?= htmlspecialchars($cfg['work_min_end_time']) ?>"
+                                class="settings-input font-mono transition-opacity duration-200" />
                         </div>
                         <div>
                             <label class="settings-label" for="checkout_grace_period_min">Toleransi Pulang Lambat</label>
@@ -443,10 +531,8 @@ $allDays = ['Mon' => 'Senin', 'Tue' => 'Selasa', 'Wed' => 'Rabu', 'Thu' => 'Kami
                             </div>
                         </div>
                     </div>
-                    <p class="settings-helper mt-2">Batas toleransi kepulangan karyawan setelah jam pulang standar. Karyawan yang clock-out melewati batas ini akan tercatat sebagai Pulang Terlambat. Jika melewati hari (masuk jam 00:00) dan belum melakukan presensi pulang, maka akan tercatat sebagai Tidak Presensi Pulang.</p>
-
                     <!-- Live preview khusus checkout status -->
-                    <div id="checkoutPreview" class="mt-4 p-4 rounded-xl bg-orange-50/50 border border-orange-100 text-xs font-semibold text-orange-850">
+                    <div id="checkoutPreview" class="mt-4 p-4 rounded-xl bg-amber-50 border border-amber-100 text-xs font-semibold text-amber-800">
                     </div>
                 </div>
 
@@ -698,7 +784,12 @@ $allDays = ['Mon' => 'Senin', 'Tue' => 'Selasa', 'Wed' => 'Rabu', 'Thu' => 'Kami
 
                     <!-- Tanggal Merah / Hari Libur Nasional -->
                     <div>
-                        <label class="settings-label mb-3">Tanggal Merah / Libur Nasional</label>
+                        <div class="flex items-center justify-between mb-3 flex-wrap gap-2">
+                            <label class="settings-label !mb-0">Tanggal Merah / Libur Nasional</label>
+                            <button type="button" onclick="showGoogleHolidaysImporter()" class="text-xs font-bold text-red-600 hover:text-red-700 flex items-center gap-1 bg-red-50 hover:bg-red-100/70 px-3 py-1.5 rounded-xl transition-all border border-red-100">
+                                <span class="material-symbols-outlined text-sm font-bold">sync</span> Ambil dari Google Calendar
+                            </button>
+                        </div>
                         
                         <!-- Event Calendar Container -->
                         <div class="calendar-container mb-4">
@@ -787,6 +878,13 @@ $allDays = ['Mon' => 'Senin', 'Tue' => 'Selasa', 'Wed' => 'Rabu', 'Thu' => 'Kami
 </div>
 
 <script>
+const getRoutePrefix = () => {
+    const p = window.location.pathname;
+    if (p.startsWith('/hrops')) return '/hrops';
+    if (p.startsWith('/superadmin/system-settings')) return '/superadmin/system-settings';
+    if (p.startsWith('/superadmin')) return '/superadmin';
+    return '/admin';
+};
 // ── Radius sync ──────────────────────────────────────────────
 function syncRadius(v) {
     document.getElementById('radiusSlider').value = v;
@@ -831,39 +929,336 @@ function updateMapPreview() {
 }
 updateMapPreview(); // init
 
-// ── Open Google Maps for coordinate picking ──────────────────
+// ── Track current API key to detect changes ──
+window.currentGoogleMapsApiKey = <?= json_encode($cfg['google_maps_api_key'] ?? '') ?>;
+
+// ── Open Map for coordinate picking (Google Maps with Leaflet fallback) ──
 function openMapPicker() {
     const lat = document.getElementById('office_lat').value.replace(',', '.') || '-6.2297';
     const lng = document.getElementById('office_lng').value.replace(',', '.') || '106.8164';
-    const url = `https://www.google.com/maps?q=${lat},${lng}&z=17`;
+    const hasGoogleMaps = typeof google !== 'undefined' && typeof google.maps !== 'undefined' && typeof google.maps.places !== 'undefined';
+    
+    let pickerMap = null;
+    let pickerMarker = null;
+
     Swal.fire({
-        title: '📍 Pilih Koordinat Kantor',
+        title: '📍 Pilih Lokasi Kantor',
+        width: '650px',
         html: `
-            <p class="text-sm text-gray-600 mb-3">Buka Google Maps di bawah, klik kanan pada titik lokasi kantor, lalu salin koordinatnya (baris pertama) dan paste ke form.</p>
-            <a href="${url}" target="_blank" class="inline-flex items-center gap-2 px-5 py-3 rounded-xl bg-blue-600 text-white font-bold text-sm hover:bg-blue-700 transition-colors">
-                <span class="material-symbols-outlined text-base">open_in_new</span> Buka Google Maps
-            </a>
-            <div class="mt-4 grid grid-cols-2 gap-3 text-left">
-                <div>
-                    <label class="block text-xs font-bold text-gray-500 mb-1 uppercase tracking-wider">Latitude</label>
-                    <input id="swalLat" type="number" step="0.00001" value="${lat}" class="w-full p-2.5 border border-gray-200 rounded-xl text-sm font-mono focus:outline-none focus:border-blue-500" />
+            <div class="text-left space-y-4">
+                <p class="text-xs text-gray-500">Cari alamat atau geser pin langsung pada peta untuk menentukan titik koordinat kantor.</p>
+                
+                <!-- Kotak Pencarian -->
+                <div class="flex gap-2">
+                    <input id="swalMapSearch" type="text" placeholder="Masukkan nama tempat atau alamat..." class="flex-grow p-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:border-blue-500" />
+                    <button id="swalMapSearchBtn" type="button" class="px-4 py-2 bg-blue-600 text-white rounded-xl text-sm font-bold flex items-center gap-1 hover:bg-blue-700 transition-all cursor-pointer">
+                        <span class="material-symbols-outlined text-sm font-bold">search</span> Cari
+                    </button>
                 </div>
-                <div>
-                    <label class="block text-xs font-bold text-gray-500 mb-1 uppercase tracking-wider">Longitude</label>
-                    <input id="swalLng" type="number" step="0.00001" value="${lng}" class="w-full p-2.5 border border-gray-200 rounded-xl text-sm font-mono focus:outline-none focus:border-blue-500" />
+
+                <!-- Container Peta -->
+                <div id="swalMapContainer" class="w-full rounded-2xl border border-gray-200 overflow-hidden bg-gray-50 shadow-inner relative" style="height: 320px; min-height: 320px; z-index: 1;"></div>
+
+                <!-- Map Type Selector -->
+                <div class="flex items-center gap-1.5">
+                    <button id="pickerMapType_roadmap" onclick="switchPickerMapType('roadmap')" type="button"
+                        style="display:inline-flex;align-items:center;gap:6px;padding:6px 12px;border-radius:8px;font-size:11px;font-weight:700;cursor:pointer;border:1.5px solid #c6c5d4;background:#fff;color:#454652;transition:all .2s;">
+                        <span class="material-symbols-outlined" style="font-size:14px;font-variation-settings:'FILL' 0,'wght' 600;">map</span>
+                        Jalan
+                    </button>
+                    <button id="pickerMapType_satellite" onclick="switchPickerMapType('satellite')" type="button"
+                        style="display:inline-flex;align-items:center;gap:6px;padding:6px 12px;border-radius:8px;font-size:11px;font-weight:700;cursor:pointer;border:1.5px solid #c6c5d4;background:#fff;color:#454652;transition:all .2s;">
+                        <span class="material-symbols-outlined" style="font-size:14px;font-variation-settings:'FILL' 0,'wght' 600;">satellite_alt</span>
+                        Satelit
+                    </button>
+                    <button id="pickerMapType_terrain" onclick="switchPickerMapType('terrain')" type="button"
+                        style="display:inline-flex;align-items:center;gap:6px;padding:6px 12px;border-radius:8px;font-size:11px;font-weight:700;cursor:pointer;border:1.5px solid #c6c5d4;background:#fff;color:#454652;transition:all .2s;">
+                        <span class="material-symbols-outlined" style="font-size:14px;font-variation-settings:'FILL' 0,'wght' 600;">terrain</span>
+                        Terrain
+                    </button>
+                </div>
+
+                <!-- Tampilan Koordinat -->
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="block text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-1">Latitude</label>
+                        <input id="swalLat" type="number" step="any" value="${lat}" class="w-full p-2.5 border border-gray-200 rounded-xl text-sm font-mono focus:outline-none focus:border-blue-500" />
+                    </div>
+                    <div>
+                        <label class="block text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-1">Longitude</label>
+                        <input id="swalLng" type="number" step="any" value="${lng}" class="w-full p-2.5 border border-gray-200 rounded-xl text-sm font-mono focus:outline-none focus:border-blue-500" />
+                    </div>
                 </div>
             </div>
         `,
         showCancelButton: true,
         confirmButtonColor: '#000666',
         cancelButtonColor: '#c6c5d4',
-        confirmButtonText: 'Terapkan Koordinat',
+        confirmButtonText: 'Terapkan Lokasi',
         cancelButtonText: 'Batal',
+        didOpen: () => {
+            const swalLatInput = document.getElementById('swalLat');
+            const swalLngInput = document.getElementById('swalLng');
+            const searchInput = document.getElementById('swalMapSearch');
+            const searchBtn = document.getElementById('swalMapSearchBtn');
+
+            // Wait 300ms for Swal transition
+            setTimeout(() => {
+                const initialLat = parseFloat(lat);
+                const initialLng = parseFloat(lng);
+
+                if (hasGoogleMaps) {
+                    // Initialize Google Map
+                    const gmPickerType = window.currentPickerMapType === 'satellite' ? 'hybrid'
+                        : window.currentPickerMapType === 'terrain' ? 'terrain' : 'roadmap';
+                    const mapOptions = {
+                        center: { lat: initialLat, lng: initialLng },
+                        zoom: 16,
+                        mapTypeId: gmPickerType,
+                        mapTypeControl: false,
+                        streetViewControl: false,
+                        fullscreenControl: false
+                    };
+                    pickerMap = new google.maps.Map(document.getElementById('swalMapContainer'), mapOptions);
+                    window._pickerGoogleMapRef = pickerMap;
+
+                    // Sync active button state
+                    switchPickerMapType(window.currentPickerMapType || 'roadmap');
+
+                    // Add draggable marker
+                    pickerMarker = new google.maps.Marker({
+                        position: { lat: initialLat, lng: initialLng },
+                        map: pickerMap,
+                        draggable: true
+                    });
+
+                    // Drag end handler
+                    pickerMarker.addListener('dragend', () => {
+                        const pos = pickerMarker.getPosition();
+                        swalLatInput.value = pos.lat().toFixed(6);
+                        swalLngInput.value = pos.lng().toFixed(6);
+                    });
+
+                    // Click on map handler
+                    pickerMap.addListener('click', (e) => {
+                        const coords = e.latLng;
+                        pickerMarker.setPosition(coords);
+                        swalLatInput.value = coords.lat().toFixed(6);
+                        swalLngInput.value = coords.lng().toFixed(6);
+                    });
+
+                    // Manual input handler
+                    const updateFromManualInputGoogle = () => {
+                        const mLat = parseFloat(swalLatInput.value);
+                        const mLng = parseFloat(swalLngInput.value);
+                        if (!isNaN(mLat) && !isNaN(mLng)) {
+                            const newPos = { lat: mLat, lng: mLng };
+                            pickerMarker.setPosition(newPos);
+                            pickerMap.panTo(newPos);
+                        }
+                    };
+                    swalLatInput.addEventListener('input', updateFromManualInputGoogle);
+                    swalLngInput.addEventListener('input', updateFromManualInputGoogle);
+
+                    // Google Places Autocomplete search input integration
+                    const autocomplete = new google.maps.places.Autocomplete(searchInput);
+                    autocomplete.bindTo('bounds', pickerMap);
+
+                    autocomplete.addListener('place_changed', () => {
+                        const place = autocomplete.getPlace();
+                        if (!place.geometry || !place.geometry.location) {
+                            // If place not found, fallback to search query geocoder
+                            const geocoder = new google.maps.Geocoder();
+                            geocoder.geocode({ address: searchInput.value }, (results, status) => {
+                                if (status === 'OK' && results[0]) {
+                                    const loc = results[0].geometry.location;
+                                    pickerMap.setCenter(loc);
+                                    pickerMap.setZoom(16);
+                                    pickerMarker.setPosition(loc);
+                                    swalLatInput.value = loc.lat().toFixed(6);
+                                    swalLngInput.value = loc.lng().toFixed(6);
+                                } else {
+                                    Swal.showValidationMessage('Alamat tidak ditemukan. Silakan periksa kembali.');
+                                    setTimeout(() => Swal.resetValidationMessage(), 3000);
+                                }
+                            });
+                            return;
+                        }
+                        const loc = place.geometry.location;
+                        pickerMap.setCenter(loc);
+                        pickerMap.setZoom(16);
+                        pickerMarker.setPosition(loc);
+                        swalLatInput.value = loc.lat().toFixed(6);
+                        swalLngInput.value = loc.lng().toFixed(6);
+                    });
+
+                    // For search button click, geocode the address
+                    const performGoogleSearch = () => {
+                        const query = searchInput.value.trim();
+                        if (!query) return;
+
+                        searchBtn.disabled = true;
+                        searchBtn.innerHTML = '<span class="material-symbols-outlined text-sm animate-spin">sync</span> Mencari...';
+
+                        const geocoder = new google.maps.Geocoder();
+                        geocoder.geocode({ address: query }, (results, status) => {
+                            if (status === 'OK' && results[0]) {
+                                const loc = results[0].geometry.location;
+                                pickerMap.setCenter(loc);
+                                pickerMap.setZoom(16);
+                                pickerMarker.setPosition(loc);
+                                swalLatInput.value = loc.lat().toFixed(6);
+                                swalLngInput.value = loc.lng().toFixed(6);
+                            } else {
+                                Swal.showValidationMessage('Alamat tidak ditemukan. Silakan periksa kembali.');
+                                setTimeout(() => Swal.resetValidationMessage(), 3000);
+                            }
+                            searchBtn.disabled = false;
+                            searchBtn.innerHTML = '<span class="material-symbols-outlined text-sm font-bold">search</span> Cari';
+                        });
+                    };
+                    searchBtn.addEventListener('click', performGoogleSearch);
+                    searchInput.addEventListener('keydown', (e) => {
+                        if (e.key === 'Enter') {
+                            e.preventDefault();
+                            performGoogleSearch();
+                        }
+                    });
+                } else {
+                    // Initialize Leaflet Map
+                    pickerMap = L.map('swalMapContainer', { zoomControl: true }).setView([initialLat, initialLng], 16);
+                    window._pickerLeafletMapRef = pickerMap;
+                    window._pickerLeafletTileRef = null;
+
+                    // Tile layer definitions for switcher
+                    const pickerTileLayers = {
+                        roadmap: L.tileLayer('https://{s}.google.com/vt/lyrs=m&x={x}&y={y}&z={z}', {
+                            maxZoom: 20,
+                            subdomains: ['mt0','mt1','mt2','mt3'],
+                            attribution: '&copy; <a href="https://maps.google.com" target="_blank">Google Maps</a>'
+                        }),
+                        satellite: L.tileLayer('https://{s}.google.com/vt/lyrs=y&x={x}&y={y}&z={z}', {
+                            maxZoom: 20,
+                            subdomains: ['mt0','mt1','mt2','mt3'],
+                            attribution: '&copy; <a href="https://maps.google.com" target="_blank">Google Maps</a>'
+                        }),
+                        terrain: L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                            attribution: '&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank">OpenStreetMap</a> contributors'
+                        })
+                    };
+                    const initPickerType = window.currentPickerMapType || 'roadmap';
+                    window._pickerLeafletTileRef = pickerTileLayers[initPickerType] || pickerTileLayers.roadmap;
+                    window._pickerLeafletTileRef.addTo(pickerMap);
+                    window._pickerTileLayerDefs = pickerTileLayers;
+
+                    // Sync active button state
+                    switchPickerMapType(window.currentPickerMapType || 'roadmap');
+
+                    // Draggable marker with custom divIcon
+                    pickerMarker = L.marker([initialLat, initialLng], {
+                        draggable: true,
+                        icon: L.divIcon({
+                            className: '',
+                            html: `
+                                <div class="flex items-center justify-center bg-red-600 text-white rounded-full border-2 border-white shadow-[0_2px_8px_rgba(0,0,0,0.3)]" style="width: 36px; height: 36px;">
+                                    <span class="material-symbols-outlined" style="font-size: 20px; font-weight: 600; font-variation-settings: 'FILL' 1;">location_on</span>
+                                </div>
+                            `,
+                            iconSize: [36, 36],
+                            iconAnchor: [18, 18]
+                        })
+                    }).addTo(pickerMap);
+
+                    // Drag end handler
+                    pickerMarker.on('dragend', function() {
+                        const pos = pickerMarker.getLatLng();
+                        swalLatInput.value = pos.lat.toFixed(6);
+                        swalLngInput.value = pos.lng.toFixed(6);
+                    });
+
+                    // Click on map handler
+                    pickerMap.on('click', function(e) {
+                        const coords = e.latlng;
+                        pickerMarker.setLatLng(coords);
+                        swalLatInput.value = coords.lat.toFixed(6);
+                        swalLngInput.value = coords.lng.toFixed(6);
+                    });
+
+                    // Search function using OpenStreetMap Nominatim API
+                    const performSearch = () => {
+                        const query = searchInput.value.trim();
+                        if (!query) return;
+
+                        searchBtn.disabled = true;
+                        searchBtn.innerHTML = '<span class="material-symbols-outlined text-sm animate-spin">sync</span> Mencari...';
+
+                        fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}`)
+                            .then(res => res.json())
+                            .then(data => {
+                                if (data && data.length > 0) {
+                                    const first = data[0];
+                                    const newLat = parseFloat(first.lat);
+                                    const newLng = parseFloat(first.lon);
+
+                                    pickerMap.setView([newLat, newLng], 16);
+                                    pickerMarker.setLatLng([newLat, newLng]);
+
+                                    swalLatInput.value = newLat.toFixed(6);
+                                    swalLngInput.value = newLng.toFixed(6);
+                                } else {
+                                    Swal.showValidationMessage('Alamat tidak ditemukan. Silakan periksa kembali.');
+                                    setTimeout(() => Swal.resetValidationMessage(), 3000);
+                                }
+                            })
+                            .catch(err => {
+                                console.error(err);
+                                Swal.showValidationMessage('Gagal mencari alamat. Silakan coba lagi.');
+                                setTimeout(() => Swal.resetValidationMessage(), 3000);
+                            })
+                            .finally(() => {
+                                searchBtn.disabled = false;
+                                searchBtn.innerHTML = '<span class="material-symbols-outlined text-sm font-bold">search</span> Cari';
+                            });
+                    };
+
+                    searchBtn.addEventListener('click', performSearch);
+                    searchInput.addEventListener('keydown', (e) => {
+                        if (e.key === 'Enter') {
+                            e.preventDefault();
+                            performSearch();
+                        }
+                    });
+
+                    // Manual input handler
+                    const updateFromManualInput = () => {
+                        const mLat = parseFloat(swalLatInput.value);
+                        const mLng = parseFloat(swalLngInput.value);
+                        if (!isNaN(mLat) && !isNaN(mLng)) {
+                            pickerMarker.setLatLng([mLat, mLng]);
+                            pickerMap.panTo([mLat, mLng]);
+                        }
+                    };
+                    swalLatInput.addEventListener('input', updateFromManualInput);
+                    swalLngInput.addEventListener('input', updateFromManualInput);
+
+                    // Fix Leaflet display issues inside modal container
+                    pickerMap.invalidateSize();
+                }
+            }, 300);
+        },
+        willClose: () => {
+            if (pickerMap && !hasGoogleMaps && typeof pickerMap.remove === 'function') {
+                pickerMap.remove();
+            }
+        },
         preConfirm: () => {
-            const lat = document.getElementById('swalLat').value;
-            const lng = document.getElementById('swalLng').value;
-            if (!lat || !lng) { Swal.showValidationMessage('Latitude dan Longitude wajib diisi.'); return false; }
-            return { lat, lng };
+            const latVal = document.getElementById('swalLat').value;
+            const lngVal = document.getElementById('swalLng').value;
+            if (!latVal || !lngVal) {
+                Swal.showValidationMessage('Latitude dan Longitude wajib diisi.');
+                return false;
+            }
+            return { lat: latVal, lng: lngVal };
         }
     }).then(r => {
         if (r.isConfirmed) {
@@ -874,6 +1269,45 @@ function openMapPicker() {
     });
 }
 
+// ── Switch map type for coordinate picker ────────────────────
+window.currentPickerMapType = window.currentPickerMapType || 'roadmap';
+function switchPickerMapType(type) {
+    window.currentPickerMapType = type;
+
+    // Update button styles
+    ['roadmap','satellite','terrain'].forEach(t => {
+        const btn = document.getElementById('pickerMapType_' + t);
+        if (!btn) return;
+        if (t === type) {
+            btn.style.background = '#000666';
+            btn.style.color = '#ffffff';
+            btn.style.borderColor = '#000666';
+            btn.style.boxShadow = '0 2px 8px rgba(0,6,102,0.25)';
+        } else {
+            btn.style.background = '#ffffff';
+            btn.style.color = '#454652';
+            btn.style.borderColor = '#c6c5d4';
+            btn.style.boxShadow = '';
+        }
+    });
+
+    // Apply to Google Maps picker
+    if (window._pickerGoogleMapRef) {
+        const typeMap = { roadmap: 'roadmap', satellite: 'hybrid', terrain: 'terrain' };
+        window._pickerGoogleMapRef.setMapTypeId(typeMap[type] || 'roadmap');
+    }
+
+    // Apply to Leaflet picker
+    if (window._pickerLeafletMapRef && window._pickerTileLayerDefs) {
+        if (window._pickerLeafletTileRef) {
+            window._pickerLeafletMapRef.removeLayer(window._pickerLeafletTileRef);
+        }
+        window._pickerLeafletTileRef = window._pickerTileLayerDefs[type] || window._pickerTileLayerDefs.roadmap;
+        window._pickerLeafletTileRef.addTo(window._pickerLeafletMapRef);
+        window._pickerLeafletTileRef.bringToBack();
+    }
+}
+
 // ── WFA toggle ───────────────────────────────────────────────
 function updateWfaUi() {
     const chk = document.getElementById('wfa_allowed');
@@ -881,6 +1315,25 @@ function updateWfaUi() {
     const section = document.getElementById('wfaDaysSection');
     const disabledMsg = document.getElementById('wfaDisabledMsg');
     const cfgWfa = document.getElementById('cfg_wfa');
+    
+    if (chk.checked) {
+        const activeDays = Array.from(document.querySelectorAll('.wfa-day-chip.active')).map(d => d.dataset.day);
+        if (activeDays.length === 0) {
+            const defaultDays = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri'];
+            defaultDays.forEach(day => {
+                const chip = document.querySelector(`.wfa-day-chip[data-day="${day}"]`);
+                if (chip) {
+                    const weeklyChip = document.querySelector(`.weekly-holiday-chip[data-day="${day}"]`);
+                    if (!weeklyChip || !weeklyChip.classList.contains('active')) {
+                        chip.classList.add('active');
+                    }
+                }
+            });
+            const newActiveDays = Array.from(document.querySelectorAll('.wfa-day-chip.active')).map(d => d.dataset.day);
+            document.getElementById('wfa_days').value = newActiveDays.join(',');
+        }
+    }
+
     hidden.value = chk.checked ? 'true' : 'false';
     section.classList.toggle('opacity-40', !chk.checked);
     section.classList.toggle('pointer-events-none', !chk.checked);
@@ -906,17 +1359,55 @@ function toggleDay(el) {
     el.classList.toggle('active');
     const activeDays = Array.from(document.querySelectorAll('.wfa-day-chip.active')).map(d => d.dataset.day);
     document.getElementById('wfa_days').value = activeDays.join(',');
+
+    if (activeDays.length === 0) {
+        const chk = document.getElementById('wfa_allowed');
+        if (chk && chk.checked) {
+            chk.checked = false;
+            updateWfaUi();
+        }
+    }
+}
+
+// ── Schedule preview toggles & helper ────────────────────────
+function toggleMinStart(enabled) {
+    const input = document.getElementById('work_min_start_time');
+    if (enabled) {
+        input.removeAttribute('disabled');
+        input.classList.remove('opacity-50', 'bg-neutral-100');
+    } else {
+        input.setAttribute('disabled', 'disabled');
+        input.classList.add('opacity-50', 'bg-neutral-100');
+    }
+    document.getElementById('work_min_start_time_enabled_hidden').value = enabled ? 'true' : 'false';
+    updateSchedulePreview();
+}
+
+function toggleMinEnd(enabled) {
+    const input = document.getElementById('work_min_end_time');
+    if (enabled) {
+        input.removeAttribute('disabled');
+        input.classList.remove('opacity-50', 'bg-neutral-100');
+    } else {
+        input.setAttribute('disabled', 'disabled');
+        input.classList.add('opacity-50', 'bg-neutral-100');
+    }
+    document.getElementById('work_min_end_time_enabled_hidden').value = enabled ? 'true' : 'false';
+    updateSchedulePreview();
 }
 
 // ── Schedule preview ─────────────────────────────────────────
 function updateSchedulePreview() {
     const start = document.getElementById('work_start_time').value;
     const minStart = document.getElementById('work_min_start_time').value;
+    const minStartEnabled = document.getElementById('work_min_start_time_enabled').checked;
     const end   = document.getElementById('work_end_time').value;
+    const minEnd = document.getElementById('work_min_end_time').value;
+    const minEndEnabled = document.getElementById('work_min_end_time_enabled').checked;
     const grace = document.getElementById('grace_period_min').value;
     const coGrace = document.getElementById('checkout_grace_period_min').value;
 
-    if (!start || !end || !minStart) return;
+    if (!start || !end || !minStart || !minEnd) return;
     const [sh, sm] = start.split(':').map(Number);
     const deadline = new Date(0, 0, 0, sh, sm + parseInt(grace || 0));
     const deadlineStr = deadline.toTimeString().substring(0,5);
@@ -925,23 +1416,33 @@ function updateSchedulePreview() {
     const coDeadline = new Date(0, 0, 0, eh, em + parseInt(coGrace || 0));
     const coDeadlineStr = coDeadline.toTimeString().substring(0,5);
 
+    const minStartText = minStartEnabled ? `Minimal Masuk ${minStart}` : 'Minimal Masuk: Dinonaktifkan';
+    const minStartDesc = minStartEnabled 
+        ? `Karyawan hanya diperbolehkan masuk mulai pukul <strong>${minStart}</strong>. ` 
+        : 'Karyawan dapat melakukan presensi masuk kapan saja (tidak dibatasi minimal jam masuk). ';
+
     document.getElementById('schedulePreview').innerHTML = `
         <div class="flex items-start gap-2">
             <span class="material-symbols-outlined text-amber-600 text-sm mt-0.5">info</span>
             <div>
-                <strong>Jam Masuk Standar ${start}</strong> &nbsp;·&nbsp; Minimal Masuk ${minStart} &nbsp;·&nbsp; Toleransi Masuk ${grace} menit<br>
-                Karyawan hanya diperbolehkan masuk mulai pukul <strong>${minStart}</strong>. Masuk hingga <strong>${deadlineStr}</strong> masih dianggap <span class="text-green-700 font-semibold">Tepat Waktu</span>. Masuk setelah <strong>${deadlineStr}</strong> tercatat sebagai <span class="text-amber-700 font-semibold">Terlambat</span>.
+                <strong>Jam Masuk Standar ${start}</strong> &nbsp;·&nbsp; ${minStartText} &nbsp;·&nbsp; Toleransi Masuk ${grace} menit<br>
+                ${minStartDesc}Masuk hingga <strong>${deadlineStr}</strong> masih dianggap <span class="text-green-700 font-semibold">Tepat Waktu</span>. Masuk setelah <strong>${deadlineStr}</strong> tercatat sebagai <span class="text-amber-700 font-semibold">Terlambat</span>.
             </div>
         </div>
     `;
 
     if (document.getElementById('checkoutPreview')) {
+        const minEndText = minEndEnabled ? `Minimal Pulang ${minEnd}` : 'Minimal Pulang: Dinonaktifkan';
+        const minEndDesc = minEndEnabled 
+            ? `Karyawan hanya diperbolehkan melakukan presensi pulang mulai pukul <strong>${minEnd}</strong>. ` 
+            : 'Karyawan dapat melakukan presensi pulang kapan saja (tidak dibatasi minimal jam pulang). ';
+
         document.getElementById('checkoutPreview').innerHTML = `
             <div class="flex items-start gap-2">
-                <span class="material-symbols-outlined text-orange-600 text-sm mt-0.5">info</span>
+                <span class="material-symbols-outlined text-amber-600 text-sm mt-0.5">info</span>
                 <div>
-                    <strong>Jam Pulang Standar ${end}</strong> &nbsp;·&nbsp; Toleransi Pulang Lambat ${coGrace} menit<br>
-                    Karyawan pulang hingga <strong>${coDeadlineStr}</strong> masih dianggap <span class="text-emerald-700 font-semibold">Tepat Waktu</span>. Pulang setelah <strong>${coDeadlineStr}</strong> tercatat sebagai <span class="text-orange-700 font-semibold">Pulang Terlambat</span>. Jika melewati hari (masuk jam 00:00) and belum melakukan presensi pulang, maka tercatat sebagai <span class="text-rose-700 font-semibold">Tidak Presensi Pulang</span>.
+                    <strong>Jam Pulang Standar ${end}</strong> &nbsp;·&nbsp; ${minEndText} &nbsp;·&nbsp; Toleransi Pulang Lambat ${coGrace} menit<br>
+                    ${minEndDesc}Karyawan pulang hingga <strong>${coDeadlineStr}</strong> masih dianggap <span class="text-emerald-700 font-semibold">Tepat Waktu</span>. Pulang setelah <strong>${coDeadlineStr}</strong> tercatat sebagai <span class="text-orange-700 font-semibold">Pulang Terlambat</span>. Jika melewati hari (masuk jam 00:00) dan belum melakukan presensi pulang, maka tercatat sebagai <span class="text-rose-700 font-semibold">Tidak Presensi Pulang</span>.
                 </div>
             </div>
         `;
@@ -956,9 +1457,13 @@ function updateSchedulePreview() {
 }
 
 // Init and bind live preview
-['work_start_time','work_min_start_time','work_end_time','grace_period_min','checkout_grace_period_min'].forEach(id => {
+['work_start_time','work_min_start_time','work_min_end_time','work_end_time','grace_period_min','checkout_grace_period_min'].forEach(id => {
     document.getElementById(id).addEventListener('input', updateSchedulePreview);
 });
+
+// Run toggle helper initializers
+toggleMinStart(document.getElementById('work_min_start_time_enabled').checked);
+toggleMinEnd(document.getElementById('work_min_end_time_enabled').checked);
 updateSchedulePreview();
 
 // --- Event Calendar Logic ---
@@ -1067,9 +1572,19 @@ function renderMonthHolidaysList(year, month) {
                     <p class="text-[11px] font-extrabold text-gray-800 truncate" title="${escapeHtml(h.description)}">${escapeHtml(h.description)}</p>
                     <p class="text-[9px] font-mono font-medium text-gray-400 mt-0.5">${formattedDate}</p>
                 </div>
-                <button type="button" onclick="deleteHoliday('${h.id}')" class="text-red-500 hover:text-red-700 p-1 flex items-center justify-center hover:bg-red-50 rounded-lg transition-colors ml-2 flex-shrink-0">
-                    <span class="material-symbols-outlined text-sm font-bold">delete</span>
-                </button>
+                <div class="flex items-center gap-1 flex-shrink-0 ml-2">
+                    <button type="button"
+                        data-holiday-id="${h.id}"
+                        data-holiday-date="${h.holiday_date}"
+                        data-holiday-desc="${escapeHtml(h.description)}"
+                        onclick="editHoliday(this.dataset.holidayId, this.dataset.holidayDate, this.dataset.holidayDesc)"
+                        class="text-blue-500 hover:text-blue-700 p-1 flex items-center justify-center hover:bg-blue-50 rounded-lg transition-colors">
+                        <span class="material-symbols-outlined text-sm font-bold">edit</span>
+                    </button>
+                    <button type="button" onclick="deleteHoliday('${h.id}')" class="text-red-500 hover:text-red-700 p-1 flex items-center justify-center hover:bg-red-50 rounded-lg transition-colors">
+                        <span class="material-symbols-outlined text-sm font-bold">delete</span>
+                    </button>
+                </div>
             </div>
         `;
     });
@@ -1153,7 +1668,7 @@ function submitNewHoliday(date, desc) {
     fd.append('holiday_date', date);
     fd.append('description', desc);
     
-    const endpoint = window.location.pathname.startsWith('/hrops') ? '/hrops/holidays/add' : '/admin/holidays/add';
+    const endpoint = getRoutePrefix() + '/holidays/add';
     
     fetch(endpoint, {
         method: 'POST',
@@ -1207,10 +1722,14 @@ function saveSettings(e) {
     const chk = document.getElementById('wfa_allowed');
     document.getElementById('wfa_allowed_hidden').value = chk.checked ? 'true' : 'false';
 
+    // Sync hidden start/end min time enable fields before submit
+    document.getElementById('work_min_start_time_enabled_hidden').value = document.getElementById('work_min_start_time_enabled').checked ? 'true' : 'false';
+    document.getElementById('work_min_end_time_enabled_hidden').value = document.getElementById('work_min_end_time_enabled').checked ? 'true' : 'false';
+
     const fd = new FormData(document.getElementById('settingsForm'));
     // wfa_allowed checkbox doesn't have name anymore, only hidden field is captured
 
-    fetch('/admin/settings/save', {
+    fetch(getRoutePrefix() + '/settings/save', {
         method: 'POST',
         headers: { 'X-Requested-With': 'XMLHttpRequest' },
         body: fd
@@ -1220,20 +1739,41 @@ function saveSettings(e) {
         btn.innerHTML = '<span class="material-symbols-outlined text-lg">save</span> Simpan Pengaturan';
         btn.disabled = false;
         if (data.success) {
+            // Detect if Google Maps API Key changed – if so, full reload required
+            const newApiKey = (data.settings && data.settings.google_maps_api_key != null) ? data.settings.google_maps_api_key : window.currentGoogleMapsApiKey;
+            const apiKeyChanged = newApiKey !== window.currentGoogleMapsApiKey;
+
+            // Show standard SweetAlert2 modal
             Swal.fire({
-                title: '✅ Tersimpan!',
-                text: data.message,
+                title: 'Berhasil',
+                text: apiKeyChanged
+                    ? data.message + ' Halaman akan dimuat ulang untuk menerapkan perubahan Google Maps API Key...'
+                    : data.message,
                 icon: 'success',
-                confirmButtonColor: '#000666',
-                timer: 1500,
-                showConfirmButton: false
+                timer: apiKeyChanged ? 2000 : 1500,
+                timerProgressBar: true,
+                confirmButtonColor: '#000666'
             }).then(() => {
-                if (window.loadPage) {
-                    window.loadPage(window.location.pathname + window.location.search);
-                } else {
+                if (apiKeyChanged) {
                     window.location.reload();
+                    return;
                 }
             });
+
+            // Update parameters in real-time on the current page session without reloading
+            if (data.settings) {
+                if (window.updateIdleSettings) {
+                    window.updateIdleSettings(data.settings.app_idle_timeout_sec, data.settings.app_idle_countdown_sec);
+                }
+                if (window.updateAppAppearance) {
+                    window.updateAppAppearance(
+                        data.settings.app_name, 
+                        data.settings.app_logo_type, 
+                        data.settings.app_logo_icon, 
+                        data.settings.app_logo_image
+                    );
+                }
+            }
         } else {
             Swal.fire({ title: 'Gagal', text: data.message, icon: 'error', confirmButtonColor: '#ba1a1a' });
         }
@@ -1264,6 +1804,14 @@ function toggleWeeklyHoliday(el) {
     // Sinkronisasi ulang input WFA days
     const activeWfa = Array.from(document.querySelectorAll('.wfa-day-chip.active')).map(d => d.dataset.day);
     document.getElementById('wfa_days').value = activeWfa.join(',');
+
+    if (activeWfa.length === 0) {
+        const chk = document.getElementById('wfa_allowed');
+        if (chk && chk.checked) {
+            chk.checked = false;
+            updateWfaUi();
+        }
+    }
 }
 
 // ── Open Add Holiday Modal ───────────────────────────────────
@@ -1300,7 +1848,7 @@ function openAddHolidayModal() {
         fd.append('holiday_date', result.value.date);
         fd.append('description', result.value.desc);
         
-        fetch('/admin/holidays/add', {
+        fetch(getRoutePrefix() + '/holidays/add', {
             method: 'POST',
             body: fd
         })
@@ -1335,7 +1883,7 @@ function deleteHoliday(id) {
         const fd = new FormData();
         fd.append('id', id);
         
-        fetch('/admin/holidays/delete', {
+        fetch(getRoutePrefix() + '/holidays/delete', {
             method: 'POST',
             body: fd
         })
@@ -1349,6 +1897,204 @@ function deleteHoliday(id) {
             } else {
                 Swal.fire('Gagal', data.message, 'error');
             }
+        });
+    });
+}
+
+// ── Edit Holiday ─────────────────────────────────────────────
+function editHoliday(id, currentDate, currentDesc) {
+    Swal.fire({
+        title: '✏️ Edit Hari Libur',
+        html: `
+            <div class="text-left space-y-4 text-sm mt-2">
+                <div>
+                    <label class="block font-bold text-[10px] text-gray-500 mb-1.5 uppercase tracking-wider">Tanggal Libur</label>
+                    <input type="date" id="swalEditHolidayDate" value="${currentDate}" class="w-full p-2.5 border border-gray-200 rounded-xl focus:outline-none focus:border-blue-500 text-sm" />
+                </div>
+                <div>
+                    <label class="block font-bold text-[10px] text-gray-500 mb-1.5 uppercase tracking-wider">Keterangan / Nama Libur</label>
+                    <input type="text" id="swalEditHolidayDesc" value="${escapeHtml(currentDesc)}" placeholder="Contoh: Hari Raya Idul Fitri" class="w-full p-2.5 border border-gray-200 rounded-xl focus:outline-none focus:border-blue-500 text-sm" />
+                </div>
+            </div>
+        `,
+        showCancelButton: true,
+        confirmButtonColor: '#000666',
+        cancelButtonColor: '#c6c5d4',
+        confirmButtonText: 'Simpan Perubahan',
+        cancelButtonText: 'Batal',
+        preConfirm: () => {
+            const date = document.getElementById('swalEditHolidayDate').value;
+            const desc = document.getElementById('swalEditHolidayDesc').value.trim();
+            if (!date) { Swal.showValidationMessage('Tanggal wajib diisi.'); return false; }
+            if (!desc) { Swal.showValidationMessage('Keterangan libur wajib diisi.'); return false; }
+            return { date, desc };
+        }
+    }).then(result => {
+        if (!result.isConfirmed) return;
+        const fd = new FormData();
+        fd.append('id', id);
+        fd.append('holiday_date', result.value.date);
+        fd.append('description', result.value.desc);
+        fetch(getRoutePrefix() + '/holidays/update', { method: 'POST', body: fd })
+            .then(r => r.json())
+            .then(data => {
+                if (data.success) {
+                    Swal.fire({ title: 'Berhasil!', text: data.message, icon: 'success', confirmButtonColor: '#000666' }).then(() => {
+                        if (window.loadPage) { window.loadPage(window.location.pathname + window.location.search); }
+                        else { window.location.reload(); }
+                    });
+                } else {
+                    Swal.fire('Gagal', data.message, 'error');
+                }
+            })
+            .catch(() => Swal.fire('Error', 'Tidak dapat terhubung ke server.', 'error'));
+    });
+}
+
+// ── Tarik Libur Nasional dari Google Calendar ────────────────
+function showGoogleHolidaysImporter() {
+    const currentYear = new Date().getFullYear();
+    
+    Swal.fire({
+        title: 'Tarik Hari Libur Nasional & Cuti Bersama',
+        text: 'Pilih tahun kalender libur yang ingin ditarik dari Google Calendar:',
+        input: 'select',
+        inputOptions: {
+            [currentYear - 1]: currentYear - 1,
+            [currentYear]: currentYear,
+            [currentYear + 1]: currentYear + 1
+        },
+        inputValue: currentYear,
+        showCancelButton: true,
+        confirmButtonColor: '#000666',
+        cancelButtonColor: '#c6c5d4',
+        confirmButtonText: 'Tampilkan Daftar',
+        cancelButtonText: 'Batal',
+        showLoaderOnConfirm: true,
+        preConfirm: (year) => {
+            return fetch(getRoutePrefix() + '/settings/fetch-google-holidays?year=' + year)
+                .then(response => {
+                    if (!response.ok) throw new Error('Gagal menghubungi server');
+                    return response.json();
+                })
+                .then(data => {
+                    if (!data.success) throw new Error(data.message);
+                    return data;
+                })
+                .catch(error => {
+                    Swal.showValidationMessage(`Request failed: ${error}`);
+                });
+        },
+        allowOutsideClick: () => !Swal.isLoading()
+    }).then((result) => {
+        if (!result.isConfirmed || !result.value) return;
+        
+        const data = result.value;
+        const holidays = data.holidays;
+        if (holidays.length === 0) {
+            Swal.fire({
+                title: 'Tidak Ada Data',
+                text: 'Tidak ada hari libur nasional ditemukan untuk tahun ' + data.year,
+                icon: 'info',
+                confirmButtonColor: '#000666'
+            });
+            return;
+        }
+        
+        let checklistHtml = `
+            <p class="text-xs text-gray-500 mb-4 text-left">Pilih tanggal merah atau cuti bersama yang ingin disetujui / diterapkan pada kalender libur perusahaan Anda:</p>
+            <div class="max-h-[350px] overflow-y-auto border border-gray-150 rounded-xl p-3 text-left space-y-2.5 bg-gray-50/50">
+        `;
+        
+        holidays.forEach((h, index) => {
+            const dateObj = new Date(h.date);
+            const months = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'];
+            const dateLabel = dateObj.getDate() + ' ' + months[dateObj.getMonth()] + ' ' + dateObj.getFullYear();
+            
+            checklistHtml += `
+                <label class="flex items-start gap-3 p-2 hover:bg-white rounded-lg cursor-pointer transition-colors border border-transparent hover:border-gray-150">
+                    <input type="checkbox" id="g_holiday_${index}" class="mt-1 rounded border-gray-300 text-red-600 focus:ring-red-500" value="${h.date}" data-desc="${escapeHtml(h.summary)}" checked />
+                    <div class="text-xs">
+                        <div class="font-extrabold text-gray-800">${escapeHtml(h.summary)}</div>
+                        <div class="font-semibold text-gray-450 font-mono mt-0.5">${dateLabel}</div>
+                    </div>
+                </label>
+            `;
+        });
+        
+        checklistHtml += `</div>`;
+        
+        Swal.fire({
+            title: `🗓️ Kalender Libur ${data.year}`,
+            html: checklistHtml,
+            showCancelButton: true,
+            confirmButtonColor: '#b91c1c',
+            cancelButtonColor: '#c6c5d4',
+            confirmButtonText: 'Impor Terpilih',
+            cancelButtonText: 'Batal',
+            preConfirm: () => {
+                const selected = [];
+                holidays.forEach((h, index) => {
+                    const chk = document.getElementById(`g_holiday_${index}`);
+                    if (chk && chk.checked) {
+                        selected.push({
+                            date: chk.value,
+                            desc: chk.dataset.desc
+                        });
+                    }
+                });
+                if (selected.length === 0) {
+                    Swal.showValidationMessage('Pilih minimal satu hari libur untuk diimpor.');
+                    return false;
+                }
+                return selected;
+            }
+        }).then((importResult) => {
+            if (!importResult.isConfirmed || !importResult.value) return;
+            
+            const selectedHolidays = importResult.value;
+            
+            Swal.fire({
+                title: 'Memproses...',
+                text: 'Mengimpor hari libur terpilih...',
+                allowOutsideClick: false,
+                didOpen: () => {
+                    Swal.showLoading();
+                }
+            });
+            
+            fetch(getRoutePrefix() + '/settings/import-google-holidays', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-Requested-With': 'XMLHttpRequest'
+                },
+                body: JSON.stringify({ holidays: selectedHolidays })
+            })
+            .then(r => r.json())
+            .then(res => {
+                if (res.success) {
+                    Swal.fire({
+                        title: 'Berhasil',
+                        text: res.message,
+                        icon: 'success',
+                        timer: 1500,
+                        timerProgressBar: true,
+                        confirmButtonColor: '#000666'
+                    }).then(() => {
+                        if (window.loadPage) {
+                            window.loadPage(window.location.pathname + window.location.search);
+                        } else {
+                            window.location.reload();
+                        }
+                    });
+                } else {
+                    Swal.fire('Gagal', res.message, 'error');
+                }
+            })
+            .catch(err => {
+                Swal.fire('Error', 'Gagal memproses impor.', 'error');
+            });
         });
     });
 }
@@ -1383,6 +2129,134 @@ function previewLogoFile(event) {
     container.appendChild(img);
 }
 
+class TagInput {
+    constructor(containerId, hiddenInputId, textInputId, placeholder) {
+        this.container = document.getElementById(containerId);
+        this.hiddenInput = document.getElementById(hiddenInputId);
+        this.textInput = document.getElementById(textInputId);
+        this.placeholder = placeholder;
+        this.tags = [];
+
+        if (this.hiddenInput && this.hiddenInput.value) {
+            this.tags = this.hiddenInput.value.split(',')
+                .map(t => t.trim())
+                .filter(t => t.length > 0);
+        }
+
+        this.init();
+    }
+
+    init() {
+        if (!this.container || !this.textInput || !this.hiddenInput) return;
+
+        // Render initial tags
+        this.render();
+
+        // Listen for input keydown events (Enter, Comma, Spacebar, Backspace)
+        this.textInput.addEventListener('keydown', (e) => {
+            // Block space key if input is empty to avoid trailing/leading spaces
+            if (e.key === ' ' && this.textInput.value.trim().length === 0) {
+                e.preventDefault();
+                return;
+            }
+
+            const val = this.textInput.value.trim();
+            
+            if ((e.key === 'Enter' || e.key === ',' || e.key === ' ') && val.length > 0) {
+                e.preventDefault();
+                // Prevent duplicate tags
+                if (!this.tags.includes(val)) {
+                    this.tags.push(val);
+                    this.updateHiddenInput();
+                    this.render();
+                }
+                this.textInput.value = '';
+            } else if (e.key === 'Backspace' && val.length === 0 && this.tags.length > 0) {
+                // Delete last tag on backspace when input is empty
+                this.tags.pop();
+                this.updateHiddenInput();
+                this.render();
+            }
+        });
+
+        // Focus text input when clicking anywhere on the container
+        this.container.addEventListener('click', (e) => {
+            if (e.target !== this.textInput) {
+                this.textInput.focus();
+            }
+        });
+    }
+
+    render() {
+        // Clear all tags except the text input
+        const pills = this.container.querySelectorAll('.tag-pill');
+        pills.forEach(p => p.remove());
+
+        // Insert new tag pills before the text input
+        this.tags.forEach((tag, idx) => {
+            const pill = document.createElement('div');
+            pill.className = 'tag-pill flex items-center gap-1.5 bg-primary/10 border border-primary/20 text-primary rounded-lg px-2.5 py-1 text-xs font-bold font-mono transition-all';
+            
+            const textSpan = document.createElement('span');
+            textSpan.textContent = tag;
+            pill.appendChild(textSpan);
+
+            const removeBtn = document.createElement('button');
+            removeBtn.type = 'button';
+            removeBtn.className = 'text-primary/70 hover:text-primary font-bold focus:outline-none select-none text-sm leading-none';
+            removeBtn.innerHTML = '&times;';
+            removeBtn.onclick = (e) => {
+                e.stopPropagation();
+                this.removeTag(idx);
+            };
+            pill.appendChild(removeBtn);
+
+            this.container.insertBefore(pill, this.textInput);
+        });
+
+        // Update placeholder
+        if (this.tags.length > 0) {
+            this.textInput.placeholder = '';
+        } else {
+            this.textInput.placeholder = this.placeholder;
+        }
+    }
+
+    removeTag(index) {
+        this.tags.splice(index, 1);
+        this.updateHiddenInput();
+        this.render();
+    }
+
+    updateHiddenInput() {
+        this.hiddenInput.value = this.tags.join(',');
+    }
+}
+
+// Initialize Tag Inputs on load
+new TagInput('ipv4-tags-container', 'office_wifi_prefix', 'ipv4-tag-input', 'Contoh: 192.168.10. (Tekan Enter)');
+new TagInput('ipv6-tags-container', 'office_wifi_ipv6_prefix', 'ipv6-tag-input', 'Contoh: fe80:: (Tekan Enter)');
+
+// Prevent negative numbers and scientific notation in number inputs
+document.querySelectorAll('input[type="number"]').forEach(input => {
+    input.addEventListener('keydown', (e) => {
+        if (['e', 'E', '-', '+'].includes(e.key)) {
+            e.preventDefault();
+        }
+    });
+    input.addEventListener('paste', (e) => {
+        const pasteData = e.clipboardData.getData('text');
+        if (/[eE\-+]/.test(pasteData)) {
+            e.preventDefault();
+        }
+    });
+    input.addEventListener('input', () => {
+        if (input.value < 0) {
+            input.value = 0;
+        }
+    });
+});
+
 // Expose functions globally to prevent ReferenceErrors due to IIFE encapsulation in SPA router
 window.syncRadius = syncRadius;
 window.syncHomeRadius = syncHomeRadius;
@@ -1393,6 +2267,7 @@ window.toggleDay = toggleDay;
 window.toggleWeeklyHoliday = toggleWeeklyHoliday;
 window.openAddHolidayModal = openAddHolidayModal;
 window.deleteHoliday = deleteHoliday;
+window.editHoliday = editHoliday;
 window.updateSchedulePreview = updateSchedulePreview;
 window.saveSettings = saveSettings;
 window.toggleLogoFields = toggleLogoFields;
@@ -1400,4 +2275,5 @@ window.previewLogoFile = previewLogoFile;
 window.prevCalendarMonth = prevCalendarMonth;
 window.nextCalendarMonth = nextCalendarMonth;
 window.handleDayClick = handleDayClick;
+window.showGoogleHolidaysImporter = showGoogleHolidaysImporter;
 </script>

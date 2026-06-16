@@ -169,7 +169,7 @@ if (!empty($resolvedGuestPage)) {
 
     <?php require __DIR__ . '/../parts/guest_footer.php'; ?>
 
-    <!-- PWA Service Worker Registration -->
+    <!-- PWA Service Worker Registration & Offline Handler -->
     <script>
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', function() {
@@ -180,6 +180,60 @@ if (!empty($resolvedGuestPage)) {
                 });
             });
         }
+
+        // Global network status listeners
+        window.addEventListener('offline', function() {
+            Swal.fire({
+                title: 'Koneksi Terputus',
+                text: 'Koneksi internet Anda terputus. Aplikasi siCare akan menggunakan data cache lokal sementara.',
+                icon: 'warning',
+                confirmButtonColor: '#000666',
+                confirmButtonText: 'Mengerti',
+                allowOutsideClick: false,
+                backdrop: 'rgba(0, 6, 102, 0.25)'
+            });
+        });
+
+        window.addEventListener('online', function() {
+            Swal.fire({
+                title: 'Koneksi Terhubung',
+                text: 'Koneksi internet telah aktif kembali. Mensinkronkan data dengan server...',
+                icon: 'success',
+                timer: 2000,
+                showConfirmButton: false,
+                confirmButtonColor: '#000666'
+            });
+        });
+
+        // Global Fetch Interceptor to handle Backend/Server/Database errors
+        const originalFetch = window.fetch;
+        window.fetch = async function(...args) {
+            try {
+                const response = await originalFetch(...args);
+                if (!response.ok && response.status >= 500) {
+                    Swal.fire({
+                        title: 'Gangguan Layanan Server',
+                        text: 'Terjadi kegagalan komunikasi pada server (Error ' + response.status + ') atau database server sedang sibuk. Silakan coba beberapa saat lagi.',
+                        icon: 'error',
+                        confirmButtonColor: '#000666',
+                        confirmButtonText: 'Tutup'
+                    });
+                }
+                return response;
+            } catch (error) {
+                // Only show backend connection error if the client browser itself is online
+                if (navigator.onLine) {
+                    Swal.fire({
+                        title: 'Koneksi Server Gagal',
+                        text: 'Tidak dapat terhubung ke server utama siCare. Layanan backend atau database mungkin sedang dinonaktifkan atau dalam masa pemeliharaan.',
+                        icon: 'error',
+                        confirmButtonColor: '#000666',
+                        confirmButtonText: 'Tutup'
+                    });
+                }
+                throw error;
+            }
+        };
     </script>
 </body>
 </html>
