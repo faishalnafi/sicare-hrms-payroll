@@ -39,70 +39,63 @@ $roleFolder = $sessRole;
 if ($sessRole === 'hiring_manager') $roleFolder = 'manager';
 if ($sessRole === 'hr_ops') $roleFolder = 'hrops';
 
-$menus = [];
-$menus[] = ['title' => 'Beranda', 'icon' => 'dashboard', 'link' => '/' . $roleFolder . '/dashboard'];
-$menus[] = ['title' => 'Changelog Rilis', 'icon' => 'history', 'link' => '/changelogs'];
-$menus[] = ['title' => 'Pedoman Penomoran', 'icon' => 'menu_book', 'link' => '/changelogs/guide'];
+$sessRoleId = $_SESSION['role_id'] ?? null;
+$sessDeptId = $_SESSION['department_id'] ?? null;
+$userId     = $_SESSION['user_id'] ?? '';
 
-switch ($sessRole) {
-    case 'candidate':
-        $menus[] = ['title' => 'Dashboard Lowongan', 'icon' => 'list_alt', 'link' => '/candidate/jobs'];
-        $menus[] = ['title' => 'Jadwal Wawancara', 'icon' => 'event_available', 'link' => '/candidate/interviews'];
-        $menus[] = ['title' => 'Penawaran & Kontrak', 'icon' => 'history_edu', 'link' => '/candidate/offerings'];
-        $menus[] = ['title' => 'Wizard Onboarding', 'icon' => 'rocket_launch', 'link' => '/candidate/onboarding'];
-        break;
-    case 'employee':
-        $menus[] = ['title' => 'Profil Pribadi', 'icon' => 'account_circle', 'link' => '/employee/profile'];
-        $menus[] = ['title' => 'Menu Presensi', 'icon' => 'alarm_on', 'link' => '/employee/attendance'];
-        $menus[] = ['title' => 'Cuti & Izin', 'icon' => 'event_note', 'link' => '/employee/leaves'];
-        $menus[] = ['title' => 'Finansial Mandiri', 'icon' => 'payments', 'link' => '/employee/finance'];
-        $menus[] = ['title' => 'Reimbursement', 'icon' => 'receipt_long', 'link' => '/employee/reimbursements'];
-        $menus[] = ['title' => 'Refleksi Diri', 'icon' => 'psychology', 'link' => '/employee/reflection'];
-        break;
-    case 'recruiter':
-        $menus[] = ['title' => 'Manajemen Lowongan', 'icon' => 'work', 'link' => '/recruiter/jobs'];
-        $menus[] = ['title' => 'Pipeline ATS', 'icon' => 'view_kanban', 'link' => '/recruiter/ats'];
-        $menus[] = ['title' => 'Jadwal Wawancara', 'icon' => 'calendar_month', 'link' => '/recruiter/interviews'];
-        $menus[] = ['title' => 'Kontrak & Offering', 'icon' => 'history_edu', 'link' => '/recruiter/offerings'];
-        break;
-    case 'hiring_manager':
-        $menus[] = ['title' => 'Anggota Tim', 'icon' => 'group', 'link' => '/manager/team'];
-        $menus[] = ['title' => 'Permintaan Tenaga Kerja', 'icon' => 'person_add', 'link' => '/manager/requisitions'];
-        $menus[] = ['title' => 'Review Kandidat', 'icon' => 'preview', 'link' => '/manager/candidates'];
-        $menus[] = ['title' => 'Lembar Wawancara', 'icon' => 'fact_check', 'link' => '/manager/interviews'];
-        $menus[] = ['title' => 'Persetujuan Tim', 'icon' => 'verified', 'link' => '/manager/approvals'];
-        $menus[] = ['title' => 'Refleksi Tim', 'icon' => 'psychology', 'link' => '/manager/reflection'];
-        break;
-    case 'hr_ops':
-        $menus[] = ['title' => 'Verifikasi Onboarding', 'icon' => 'rule', 'link' => '/hrops/onboarding'];
-        $menus[] = ['title' => 'Master Data Karyawan', 'icon' => 'group', 'link' => '/hrops/employees'];
-        $menus[] = ['title' => 'Verifikasi Data', 'icon' => 'verified_user', 'link' => '/hrops/verifications'];
-        $menus[] = ['title' => 'Pemrosesan Penggajian', 'icon' => 'account_balance_wallet', 'link' => '/hrops/payroll'];
-        $menus[] = ['title' => 'Refleksi Karyawan', 'icon' => 'psychology', 'link' => '/hrops/reflection'];
-        break;
-    case 'admin':
-        $menus[] = ['title' => 'Struktur Departemen', 'icon' => 'account_tree', 'link' => '/admin/departments'];
-        $menus[] = ['title' => 'Manajemen Pengguna', 'icon' => 'manage_accounts', 'link' => '/admin/users'];
-        $menus[] = ['title' => 'Pengaturan Sistem', 'icon' => 'settings', 'link' => '/admin/settings'];
-        break;
-    case 'executive':
-        $menus[] = ['title' => 'Dashboard Analitik', 'icon' => 'analytics', 'link' => '/executive/analytics'];
-        $menus[] = ['title' => 'Persetujuan Anggaran', 'icon' => 'request_quote', 'link' => '/executive/budgets'];
-        $menus[] = ['title' => 'Persetujuan Mutasi', 'icon' => 'published_with_changes', 'link' => '/executive/approvals'];
-        $menus[] = ['title' => 'Audit Log & Security', 'icon' => 'security', 'link' => '/superadmin/audit'];
-        $menus[] = ['title' => 'Analitik Refleksi', 'icon' => 'psychology', 'link' => '/executive/reflection'];
-        break;
-    case 'superadmin':
-        $menus[] = ['title' => 'Manajemen Pengguna', 'icon' => 'manage_accounts', 'link' => '/superadmin/users'];
-        $menus[] = ['title' => 'Konfigurasi Global', 'icon' => 'settings', 'link' => '/superadmin/settings'];
-        $menus[] = ['title' => 'Pengaturan Sistem', 'icon' => 'settings_applications', 'link' => '/superadmin/system-settings'];
-        $menus[] = ['title' => 'Audit Log & Security', 'icon' => 'security', 'link' => '/superadmin/audit'];
-        $menus[] = ['title' => 'Pembaruan Sistem', 'icon' => 'system_update', 'link' => '/superadmin/update'];
-        $menus[] = ['title' => 'Refleksi Karyawan', 'icon' => 'psychology', 'link' => '/superadmin/reflection'];
-        break;
+if (empty($sessRoleId) && !empty($userId)) {
+    try {
+        $stmtUser = $db->prepare("SELECT role_id, department_id FROM users WHERE id = :id LIMIT 1");
+        $stmtUser->execute(['id' => $userId]);
+        $dbUser = $stmtUser->fetch();
+        if ($dbUser) {
+            $sessRoleId = $dbUser['role_id'];
+            $sessDeptId = $dbUser['department_id'];
+            $_SESSION['role_id'] = $sessRoleId;
+            $_SESSION['department_id'] = $sessDeptId;
+        }
+    } catch (\Exception $e) {
+        // Fail-safe
+    }
 }
-?>
-<?php
+
+$cache = \App\Config\SimpleCache::getInstance();
+$cacheKey = 'sidebar_menus_' . md5(($sessRoleId ?? '') . '_' . ($sessDeptId ?? 'null'));
+$menus = $cache->get($cacheKey);
+
+if ($menus === null) {
+    try {
+        $stmt = $db->prepare("
+            SELECT DISTINCT sm.title, sm.icon, sm.url_route, sm.sort_order 
+            FROM sys_menus sm
+            INNER JOIN menu_permissions mp ON sm.id = mp.menu_id
+            WHERE mp.role_id = :role_id 
+              AND (mp.department_id = :dept_id OR mp.department_id IS NULL)
+            ORDER BY sm.sort_order ASC, sm.title ASC
+        ");
+        $stmt->execute([
+            'role_id' => $sessRoleId,
+            'dept_id' => $sessDeptId
+        ]);
+        $dbMenus = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+        $menus = array_map(function($m) {
+            $link = $m['url_route'];
+            if (!str_starts_with($link, '/')) {
+                $link = '/' . $link;
+            }
+            return [
+                'title' => $m['title'],
+                'icon' => $m['icon'] ?? 'widgets',
+                'link' => $link
+            ];
+        }, $dbMenus);
+
+        $cache->set($cacheKey, $menus, 3600);
+    } catch (\Exception $e) {
+        $menus = [];
+    }
+}
 $requestUri = parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH);
 $currentUri = '/' . trim($requestUri, '/');
 ?>

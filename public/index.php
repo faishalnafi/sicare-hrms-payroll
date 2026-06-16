@@ -433,6 +433,23 @@ if ($method === 'POST' && $path === 'auth/login') {
 } elseif ($method === 'POST' && $path === 'superadmin/settings/test-email') {
     (new \App\Controllers\AuditLogController())->testEmail();
     exit;
+
+// --- Dynamic Menu Engine Routes (Bab 3) ---
+} elseif ($method === 'GET' && $path === 'superadmin/menu/list') {
+    (new \App\Controllers\MenuController())->getMenus();
+    exit;
+} elseif ($method === 'POST' && $path === 'superadmin/menu/save') {
+    (new \App\Controllers\MenuController())->saveMenu();
+    exit;
+} elseif ($method === 'POST' && $path === 'superadmin/menu/delete') {
+    (new \App\Controllers\MenuController())->deleteMenu();
+    exit;
+} elseif ($method === 'GET' && $path === 'superadmin/menu-permissions/matrix') {
+    (new \App\Controllers\MenuController())->getPermissionMatrix();
+    exit;
+} elseif ($method === 'POST' && $path === 'superadmin/menu-permissions/save') {
+    (new \App\Controllers\MenuController())->savePermissions();
+    exit;
 } elseif ($method === 'GET' && (
     $path === 'changelogs' ||
     $path === 'changelogs/guide' ||
