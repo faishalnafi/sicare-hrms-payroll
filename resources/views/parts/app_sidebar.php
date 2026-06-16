@@ -99,6 +99,36 @@ if ($menus === null) {
 $requestUri = parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH);
 $currentUri = '/' . trim($requestUri, '/');
 ?>
+<style>
+/* Custom thin scrollbar with fade-in effect on hover */
+#appSidebar nav::-webkit-scrollbar {
+    width: 5px;
+    height: 5px;
+}
+#appSidebar nav::-webkit-scrollbar-track {
+    background: transparent;
+}
+#appSidebar nav::-webkit-scrollbar-thumb {
+    background: transparent;
+    border-radius: 999px;
+    transition: background 0.25s ease-in-out;
+}
+#appSidebar nav:hover::-webkit-scrollbar-thumb {
+    background: rgba(0, 6, 102, 0.15);
+}
+#appSidebar nav::-webkit-scrollbar-thumb:hover {
+    background: rgba(0, 6, 102, 0.35);
+}
+
+/* Firefox Support */
+#appSidebar nav {
+    scrollbar-width: none;
+}
+#appSidebar nav:hover {
+    scrollbar-width: thin;
+    scrollbar-color: rgba(0, 6, 102, 0.15) transparent;
+}
+</style>
 <aside id="appSidebar" class="fixed top-0 left-0 h-screen lg:top-4 lg:h-[calc(100vh-2rem)] w-72 lg:w-20 lg:hover:w-72 xl:w-72 bg-surface-container-lowest border-r lg:border border-outline-variant/15 lg:rounded-2xl flex flex-col justify-between py-6 px-4 lg:px-2 lg:hover:px-4 xl:px-4 z-40 -translate-x-full lg:translate-x-0 transition-all duration-300 ease-in-out shadow-[4px_4px_30px_rgba(0,6,102,0.05)] group">
     <!-- Brand Logo, Desktop Toggle and Mobile Close Button -->
     <!-- Brand Logo, Desktop Toggle and Mobile Close Button -->
