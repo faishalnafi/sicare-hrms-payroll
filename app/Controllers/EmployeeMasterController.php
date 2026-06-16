@@ -175,6 +175,14 @@ class EmployeeMasterController {
         $annual_leave_quota = (int)($_POST['annual_leave_quota'] ?? 12);
         $password          = $_POST['password'] ?? '';
 
+        if (!empty($password)) {
+            $pwError = '';
+            if (!validate_password_strength($password, $pwError)) {
+                echo json_encode(['success' => false, 'message' => $pwError]);
+                return;
+            }
+        }
+
         // admin cannot promote to superadmin unless they are superadmin
         $currentRole = $_SESSION['role'];
         if ($role === 'superadmin' && $currentRole !== 'superadmin') {

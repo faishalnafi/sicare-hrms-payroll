@@ -74,3 +74,50 @@ if (!function_exists('db_query')) {
         return $stmt;
     }
 }
+
+if (!function_exists('validate_password_strength')) {
+    /**
+     * Validate password strength based on configured global settings.
+     *
+     * @param string $password
+     * @param string &$errorMsg
+     * @return bool
+     */
+    function validate_password_strength($password, &$errorMsg) {
+        $db = \App\Config\Database::getInstance()->getConnection();
+        
+        // Fetch security settings
+        $stmt = $db->query("SELECT `key`, `value` FROM global_settings WHERE `key` IN ('min_password_length', 'require_uppercase', 'require_number', 'require_special_char')");
+        $rules = [];
+        while ($row = $stmt->fetch(\PDO::FETCH_ASSOC)) {
+            $rules[$row['key']] = $row['value'];
+        }
+
+        $minLen = (int)($rules['min_password_length'] ?? 8);
+        $reqUpper = ($rules['require_uppercase'] ?? 'false') === 'true';
+        $reqNum = ($rules['require_number'] ?? 'false') === 'true';
+        $reqSpecial = ($rules['require_special_char'] ?? 'false') === 'true';
+
+        if (strlen($password) < $minLen) {
+            $errorMsg = "Kata sandi minimal harus {$minLen} karakter.";
+            return false;
+        }
+
+        if ($reqUpper && !preg_match('/[A-Z]/', $password)) {
+            $errorMsg = "Kata sandi wajib mengandung setidaknya satu huruf kapital.";
+            return false;
+        }
+
+        if ($reqNum && !preg_match('/[0-9]/', $password)) {
+            $errorMsg = "Kata sandi wajib mengandung setidaknya satu angka.";
+            return false;
+        }
+
+        if ($reqSpecial && !preg_match('/[^a-zA-Z0-9]/', $password)) {
+            $errorMsg = "Kata sandi wajib mengandung setidaknya satu karakter spesial.";
+            return false;
+        }
+
+        return true;
+    }
+}

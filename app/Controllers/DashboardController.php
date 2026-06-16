@@ -192,7 +192,11 @@ class DashboardController {
                     $allowed = ($role === 'candidate');
                     break;
                 case 'superadmin':
-                    $allowed = ($role === 'superadmin');
+                    if ($path === 'superadmin/audit') {
+                        $allowed = ($role === 'superadmin' || $role === 'executive');
+                    } else {
+                        $allowed = ($role === 'superadmin');
+                    }
                     break;
                 default:
                     // If no matching prefix (e.g. root pages or other views), allow access

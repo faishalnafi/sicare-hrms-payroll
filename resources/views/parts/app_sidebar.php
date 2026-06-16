@@ -89,6 +89,7 @@ switch ($sessRole) {
         $menus[] = ['title' => 'Dashboard Analitik', 'icon' => 'analytics', 'link' => '/executive/analytics'];
         $menus[] = ['title' => 'Persetujuan Anggaran', 'icon' => 'request_quote', 'link' => '/executive/budgets'];
         $menus[] = ['title' => 'Persetujuan Mutasi', 'icon' => 'published_with_changes', 'link' => '/executive/approvals'];
+        $menus[] = ['title' => 'Audit Log & Security', 'icon' => 'security', 'link' => '/superadmin/audit'];
         $menus[] = ['title' => 'Analitik Refleksi', 'icon' => 'psychology', 'link' => '/executive/reflection'];
         break;
     case 'superadmin':

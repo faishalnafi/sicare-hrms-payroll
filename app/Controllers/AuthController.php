@@ -96,6 +96,13 @@ class AuthController {
             return;
         }
 
+        // Validate password strength
+        $pwError = '';
+        if (!validate_password_strength($password, $pwError)) {
+            echo json_encode(['success' => false, 'message' => $pwError]);
+            return;
+        }
+
         $userModel = new User();
         
         // Check if email exists
@@ -328,6 +335,12 @@ class AuthController {
             ];
 
             if (!empty($password)) {
+                // Validate password strength
+                $pwError = '';
+                if (!validate_password_strength($password, $pwError)) {
+                    echo json_encode(['success' => false, 'message' => $pwError]);
+                    return;
+                }
                 $password_hash = password_hash($password, PASSWORD_DEFAULT);
                 $query .= ", password_hash = :password_hash";
                 $params['password_hash'] = $password_hash;
