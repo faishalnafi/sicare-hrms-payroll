@@ -220,8 +220,7 @@ class DashboardController {
                     'manager/requisitions', 'manager/candidates', 'manager/interviews', 'manager/approvals',
                     'hrops/onboarding', 'hrops/employees', 'hrops/verifications', 'hrops/payroll',
                     'admin/departments', 'admin/users', 'admin/settings',
-                    'executive/analytics', 'executive/budgets', 'executive/approvals',
-                    'superadmin/users', 'superadmin/settings', 'superadmin/audit'
+                    'executive/analytics', 'executive/budgets', 'executive/approvals'
                 ];
                 if (in_array($path, $validUnbuilt)) {
                     $viewPath = 'pages/errors/coming_soon';

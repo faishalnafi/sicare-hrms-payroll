@@ -411,6 +411,28 @@ if ($method === 'POST' && $path === 'auth/login') {
 } elseif ($method === 'POST' && $path === 'superadmin/update/execute') {
     (new \App\Controllers\DashboardController())->executeUpdate();
     exit;
+
+// --- Audit Log Routes (Bab 2) ---
+} elseif ($method === 'GET' && $path === 'superadmin/audit/data') {
+    (new \App\Controllers\AuditLogController())->getData();
+    exit;
+} elseif ($method === 'GET' && $path === 'superadmin/audit/stats') {
+    (new \App\Controllers\AuditLogController())->getStats();
+    exit;
+} elseif ($method === 'POST' && $path === 'superadmin/audit/clear') {
+    (new \App\Controllers\AuditLogController())->clear();
+    exit;
+
+// --- Global Settings Routes (Bab 2) ---
+} elseif ($method === 'GET' && $path === 'superadmin/settings/global') {
+    (new \App\Controllers\AuditLogController())->getGlobalSettings();
+    exit;
+} elseif ($method === 'POST' && $path === 'superadmin/settings/global/save') {
+    (new \App\Controllers\AuditLogController())->saveGlobalSettings();
+    exit;
+} elseif ($method === 'POST' && $path === 'superadmin/settings/test-email') {
+    (new \App\Controllers\AuditLogController())->testEmail();
+    exit;
 } elseif ($method === 'GET' && (
     $path === 'changelogs' ||
     $path === 'changelogs/guide' ||
