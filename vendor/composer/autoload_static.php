@@ -10,6 +10,7 @@ class ComposerStaticInitc34d013b99d74af03cdee7cc13058bf7
         '320cde22f66dd4f5d3fd621d3e88b98f' => __DIR__ . '/..' . '/symfony/polyfill-ctype/bootstrap.php',
         '0e6d7bf4a5811bfa5cf40c5ccd6fae6a' => __DIR__ . '/..' . '/symfony/polyfill-mbstring/bootstrap.php',
         'a4a119a56e50fbb293281d9a48007e0e' => __DIR__ . '/..' . '/symfony/polyfill-php80/bootstrap.php',
+        '453d47b23fbcb3d86df98df3fe5b858a' => __DIR__ . '/../..' . '/app/helpers.php',
     );
 
     public static $prefixLengthsPsr4 = array (
@@ -69,6 +70,23 @@ class ComposerStaticInitc34d013b99d74af03cdee7cc13058bf7
     );
 
     public static $classMap = array (
+        'App\\Config\\Database' => __DIR__ . '/../..' . '/app/Config/Database.php',
+        'App\\Config\\Migration' => __DIR__ . '/../..' . '/app/Config/Migration.php',
+        'App\\Config\\Migrator' => __DIR__ . '/../..' . '/app/Config/Migrator.php',
+        'App\\Controllers\\ApprovalController' => __DIR__ . '/../..' . '/app/Controllers/ApprovalController.php',
+        'App\\Controllers\\AttendanceController' => __DIR__ . '/../..' . '/app/Controllers/AttendanceController.php',
+        'App\\Controllers\\AuthController' => __DIR__ . '/../..' . '/app/Controllers/AuthController.php',
+        'App\\Controllers\\CorrectionController' => __DIR__ . '/../..' . '/app/Controllers/CorrectionController.php',
+        'App\\Controllers\\DashboardController' => __DIR__ . '/../..' . '/app/Controllers/DashboardController.php',
+        'App\\Controllers\\DepartmentController' => __DIR__ . '/../..' . '/app/Controllers/DepartmentController.php',
+        'App\\Controllers\\EmployeeMasterController' => __DIR__ . '/../..' . '/app/Controllers/EmployeeMasterController.php',
+        'App\\Controllers\\LeaveController' => __DIR__ . '/../..' . '/app/Controllers/LeaveController.php',
+        'App\\Controllers\\PayrollController' => __DIR__ . '/../..' . '/app/Controllers/PayrollController.php',
+        'App\\Controllers\\ReflectionController' => __DIR__ . '/../..' . '/app/Controllers/ReflectionController.php',
+        'App\\Controllers\\ReimbursementController' => __DIR__ . '/../..' . '/app/Controllers/ReimbursementController.php',
+        'App\\Controllers\\SettingsController' => __DIR__ . '/../..' . '/app/Controllers/SettingsController.php',
+        'App\\Models\\User' => __DIR__ . '/../..' . '/app/Models/User.php',
+        'App\\Session\\UnifiedSessionHandler' => __DIR__ . '/../..' . '/app/Session/UnifiedSessionHandler.php',
         'Attribute' => __DIR__ . '/..' . '/symfony/polyfill-php80/Resources/stubs/Attribute.php',
         'Composer\\InstalledVersions' => __DIR__ . '/..' . '/composer/InstalledVersions.php',
         'Dotenv\\Dotenv' => __DIR__ . '/..' . '/vlucas/phpdotenv/src/Dotenv.php',

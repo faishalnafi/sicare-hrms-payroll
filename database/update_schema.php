@@ -1436,6 +1436,11 @@ try {
     } catch (Exception $ex) {
         // Ignored
     }
+
+    // Run new idempotent migrations (Roadmap Bab 1)
+    echo "Running Migrator...\n";
+    $migrator = new \App\Config\Migrator($db, __DIR__ . '/migrations');
+    $migrator->run();
     
     echo "Table changelogs created successfully.\n";
 

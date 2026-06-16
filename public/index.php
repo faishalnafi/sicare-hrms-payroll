@@ -37,24 +37,7 @@ ini_set('session.cookie_lifetime', $sessionLifetime);
 $sessionHandler = new \App\Session\UnifiedSessionHandler();
 session_set_save_handler($sessionHandler, true);
 
-// CSRF Protection Helpers
-if (!function_exists('csrf_token')) {
-    function csrf_token() {
-        if (session_status() === PHP_SESSION_NONE) {
-            session_start();
-        }
-        if (empty($_SESSION['csrf_token'])) {
-            $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
-        }
-        return $_SESSION['csrf_token'];
-    }
-}
-
-if (!function_exists('csrfField')) {
-    function csrfField() {
-        return '<input type="hidden" name="csrf_token" value="' . htmlspecialchars(csrf_token()) . '">';
-    }
-}
+// CSRF Protection Helpers are now loaded globally via app/helpers.php
 
 // Simple Router
 $requestUri = parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH);
