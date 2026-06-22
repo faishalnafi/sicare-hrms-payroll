@@ -2,8 +2,8 @@
     <!-- Header Section -->
     <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div class="space-y-1">
-            <h1 class="font-headline text-3xl font-extrabold text-primary tracking-tight">Struktur Departemen 5 Level</h1>
-            <p class="text-on-surface-variant font-medium text-sm">Kelola hierarki organisasi perusahaan, sub-divisi, dan unit kerja hingga kedalaman 5 tingkat.</p>
+            <h1 class="font-headline text-3xl font-extrabold text-primary tracking-tight">Struktur Departemen 10 Level</h1>
+            <p class="text-on-surface-variant font-medium text-sm">Kelola hierarki organisasi perusahaan, sub-divisi, dan unit kerja hingga kedalaman 10 tingkat.</p>
         </div>
         <div class="flex items-center gap-3">
             <span class="bg-primary/5 text-primary text-xs font-extrabold px-3.5 py-2 rounded-full border border-primary/10 flex items-center gap-1.5 shadow-sm">
@@ -27,8 +27,14 @@
                 </button>
             </div>
 
+            <!-- Root Drop Zone (visible during drag) -->
+            <div id="rootDropZone" class="hidden border-2 border-dashed border-primary/30 rounded-xl p-4 text-center text-xs font-bold text-primary bg-primary/5 transition-all hover:bg-primary/10 hover:border-primary cursor-pointer flex items-center justify-center gap-2" ondragover="window.onDeptDragOver(event)" ondragenter="this.classList.add('bg-primary/10', 'border-primary')" ondragleave="this.classList.remove('bg-primary/10', 'border-primary')" ondrop="window.onDeptDrop(event, null)">
+                <span class="material-symbols-outlined text-base">arrow_upward</span>
+                Lepaskan di sini untuk menjadikan Divisi Utama (Level 1)
+            </div>
+
             <!-- Tree Content -->
-            <div id="deptTreeContainer" class="space-y-3 pl-1 relative min-h-[300px]">
+            <div id="deptTreeContainer" class="space-y-3 pl-1 relative min-h-[300px]" ondragover="window.onDeptDragOver(event)" ondrop="window.onDeptDrop(event, null)">
                 <!-- Loaded Dynamically -->
                 <div class="text-center py-12 text-on-surface-variant" id="treeLoadingState">
                     <span class="material-symbols-outlined text-3xl animate-spin mb-2 opacity-50 block">autorenew</span>
@@ -192,8 +198,8 @@
         function addOptions(nodes, prefix) {
             prefix = prefix || '';
             nodes.forEach(function(node, index) {
-                // If deep nesting is Level 5, it cannot have children, so don't show as parent choice if level >= 5
-                if (node.level >= 5) return;
+                // If deep nesting is Level 10, it cannot have children, so don't show as parent choice if level >= 10
+                if (node.level >= 10) return;
                 
                 var num = prefix ? (prefix + '.' + (index + 1)) : String(index + 1);
                 var opt = document.createElement('option');
@@ -263,6 +269,11 @@
                 if (node.level === 3) depthColor = 'bg-teal-50 text-teal-700 border-teal-100';
                 if (node.level === 4) depthColor = 'bg-purple-50 text-purple-700 border-purple-100';
                 if (node.level === 5) depthColor = 'bg-red-50 text-red-700 border-red-100';
+                if (node.level === 6) depthColor = 'bg-orange-50 text-orange-700 border-orange-100';
+                if (node.level === 7) depthColor = 'bg-pink-50 text-pink-700 border-pink-100';
+                if (node.level === 8) depthColor = 'bg-yellow-50 text-yellow-700 border-yellow-100';
+                if (node.level === 9) depthColor = 'bg-emerald-50 text-emerald-700 border-emerald-100';
+                if (node.level >= 10) depthColor = 'bg-rose-50 text-rose-700 border-rose-100';
 
                 var limitLabel = '';
                 if (node.reimbursement_limit !== null && node.reimbursement_limit !== undefined && node.reimbursement_limit !== '') {
@@ -272,8 +283,17 @@
 
                 html += 
                     '<div class="' + borderClass + ' py-1">' +
-                        '<div class="flex items-center justify-between group p-3.5 bg-surface-container-low border border-outline-variant/15 rounded-xl hover:bg-surface-container-high/50 hover:border-primary/20 transition-all shadow-inner-sm">' +
+                        '<div class="dept-card flex items-center justify-between group p-3.5 bg-surface-container-low border border-outline-variant/15 rounded-xl hover:bg-surface-container-high/50 hover:border-primary/20 transition-all shadow-inner-sm cursor-grab active:cursor-grabbing" ' +
+                        'data-id="' + node.id + '" ' +
+                        'draggable="true" ' +
+                        'ondragstart="window.onDeptDragStart(event, \'' + node.id + '\')" ' +
+                        'ondragend="window.onDeptDragEnd(event)" ' +
+                        'ondragover="window.onDeptDragOver(event)" ' +
+                        'ondragenter="window.onDeptDragEnter(event)" ' +
+                        'ondragleave="window.onDeptDragLeave(event)" ' +
+                        'ondrop="window.onDeptDrop(event, \'' + node.id + '\')">' +
                             '<div class="flex items-center gap-3 min-w-0 flex-1 flex-wrap">' +
+                                '<span class="material-symbols-outlined text-on-surface-variant/40 group-hover:text-primary cursor-grab select-none flex-shrink-0 drag-handle">drag_indicator</span>' +
                                 '<span class="text-xs font-mono font-bold text-primary bg-primary/10 px-2 py-0.5 rounded">' + num + '</span>' +
                                 '<span class="text-sm font-bold text-on-surface truncate font-headline">' + escHtml(node.name) + '</span>' +
                                 '<span class="text-[9px] font-extrabold uppercase border px-2 py-0.5 rounded-full ' + depthColor + '">' + depthLabel + '</span>' +
@@ -282,7 +302,7 @@
                             
                             '<!-- Controls -->' +
                             '<div class="flex items-center gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0 ml-2">' +
-                                (node.level < 5 
+                                (node.level < 10 
                                     ? '<button onclick="window.startAddChildDept(\'' + node.id + '\', \'' + escHtml(node.name) + '\', ' + node.level + ')" class="p-1 hover:bg-primary/10 text-primary hover:text-primary rounded" title="Tambah Sub-divisi"><span class="material-symbols-outlined text-[16px] font-bold">add_box</span></button>'
                                     : '') +
                                 '<button onclick="window.startEditDept(\'' + node.id + '\')" class="p-1 hover:bg-blue-50 text-blue-600 hover:text-blue-700 rounded" title="Edit Departemen"><span class="material-symbols-outlined text-[16px] font-bold">edit</span></button>' +
@@ -455,6 +475,176 @@
                     Swal.fire('Error', 'Terjadi kesalahan saat menghapus.', 'error');
                 });
             }
+        });
+    };
+
+    var draggedDeptId = null;
+
+    // Helper: Cek apakah childId adalah keturunan dari parentId
+    function isDescendantJs(parentId, childId) {
+        var current = departmentsList.find(function(d) { return d.id === childId; });
+        while (current && current.parent_id) {
+            if (current.parent_id === parentId) return true;
+            current = departmentsList.find(function(d) { return d.id === current.parent_id; });
+        }
+        return false;
+    }
+
+    // Helper: Cari kedalaman (level) maksimum dari sub-tree departemen
+    function getMaxDescendantDepthJs(deptId, currentDepth) {
+        var children = departmentsList.filter(function(d) { return d.parent_id === deptId; });
+        if (children.length === 0) return currentDepth;
+        var max = currentDepth;
+        children.forEach(function(child) {
+            var depth = getMaxDescendantDepthJs(child.id, currentDepth + 1);
+            if (depth > max) max = depth;
+        });
+        return max;
+    }
+
+    // Helper: Cek apakah target valid untuk dijatuhkan
+    function isValidDropJs(draggedId, targetId) {
+        if (!draggedId) return false;
+        if (!targetId) return true; // Drop di root selalu diperbolehkan
+        if (draggedId === targetId) return false; // Tidak boleh di diri sendiri
+        
+        // Tidak boleh drop di salah satu keturunannya sendiri
+        if (isDescendantJs(draggedId, targetId)) return false;
+        
+        // Cek batasan level kedalaman (maksimal 10)
+        var draggedNode = departmentsList.find(function(d) { return d.id === draggedId; });
+        var targetNode = departmentsList.find(function(d) { return d.id === targetId; });
+        if (!draggedNode || !targetNode) return false;
+        
+        var maxDescendantDepth = getMaxDescendantDepthJs(draggedId, draggedNode.level);
+        var height = maxDescendantDepth - draggedNode.level + 1;
+        var newMaxLevel = targetNode.level + height;
+        
+        if (newMaxLevel > 10) return false;
+        
+        return true;
+    }
+
+    window.onDeptDragStart = function(e, id) {
+        // Hanya izinkan seret lewat drag-handle (ikon grab)
+        var isHandle = e.target.classList.contains('drag-handle') || e.target.closest('.drag-handle');
+        if (!isHandle) {
+            e.preventDefault();
+            return false;
+        }
+
+        draggedDeptId = id;
+        e.dataTransfer.setData('text/plain', id);
+        e.dataTransfer.effectAllowed = 'move';
+        e.currentTarget.classList.add('opacity-40');
+        
+        // Tampilkan drop zone root
+        var rootDropZone = document.getElementById('rootDropZone');
+        if (rootDropZone) {
+            rootDropZone.classList.remove('hidden');
+        }
+    };
+
+    window.onDeptDragEnd = function(e) {
+        e.currentTarget.classList.remove('opacity-40');
+        draggedDeptId = null;
+        
+        // Sembunyikan drop zone root
+        var rootDropZone = document.getElementById('rootDropZone');
+        if (rootDropZone) {
+            rootDropZone.classList.add('hidden');
+            rootDropZone.classList.remove('bg-primary/10', 'border-primary');
+        }
+
+        document.querySelectorAll('.dept-card').forEach(function(el) {
+            el.classList.remove('border-primary', 'bg-primary/5', 'scale-[1.01]', 'border-red-500/50', 'bg-red-500/5');
+        });
+    };
+
+    window.onDeptDragOver = function(e) {
+        e.preventDefault();
+        e.dataTransfer.dropEffect = 'move';
+    };
+
+    window.onDeptDragEnter = function(e) {
+        e.preventDefault();
+        var card = e.currentTarget.closest('.dept-card');
+        if (!card) return;
+        
+        var targetId = card.getAttribute('data-id');
+        if (isValidDropJs(draggedDeptId, targetId)) {
+            card.classList.add('border-primary', 'bg-primary/5', 'scale-[1.01]');
+        } else {
+            card.classList.add('border-red-500/50', 'bg-red-500/5');
+        }
+    };
+
+    window.onDeptDragLeave = function(e) {
+        var card = e.currentTarget.closest('.dept-card');
+        if (card) {
+            card.classList.remove('border-primary', 'bg-primary/5', 'scale-[1.01]', 'border-red-500/50', 'bg-red-500/5');
+        }
+    };
+
+    window.onDeptDrop = function(e, targetId) {
+        e.preventDefault();
+        e.stopPropagation();
+        
+        var card = e.currentTarget.closest('.dept-card');
+        if (card) {
+            card.classList.remove('border-primary', 'bg-primary/5', 'scale-[1.01]', 'border-red-500/50', 'bg-red-500/5');
+        }
+
+        var draggedId = e.dataTransfer.getData('text/plain') || draggedDeptId;
+        if (!draggedId || draggedId === targetId) return;
+
+        if (!isValidDropJs(draggedId, targetId)) {
+            if (typeof Swal !== 'undefined') {
+                Swal.fire({
+                    title: 'Tindakan Ditolak',
+                    text: 'Tidak dapat memindahkan departemen ke posisi ini karena melanggar aturan hierarki (kedalaman > 10 level atau referensi berputar).',
+                    icon: 'error',
+                    confirmButtonColor: '#000666'
+                });
+            }
+            return;
+        }
+
+        window.moveDepartment(draggedId, targetId);
+    };
+
+    window.moveDepartment = function(draggedId, targetId) {
+        var fd = new FormData();
+        fd.append('id', draggedId);
+        if (targetId) {
+            fd.append('parent_id', targetId);
+        }
+
+        fetch('/admin/departments/move', {
+            method: 'POST',
+            body: fd
+        })
+        .then(function(res) { return res.json(); })
+        .then(function(data) {
+            if (data.success) {
+                if (typeof Swal !== 'undefined') {
+                    Swal.fire({
+                        title: 'Berhasil',
+                        text: data.message,
+                        icon: 'success',
+                        toast: true,
+                        position: 'top-end',
+                        showConfirmButton: false,
+                        timer: 3000
+                    });
+                }
+                window.loadDepartments();
+            } else {
+                if (typeof Swal !== 'undefined') Swal.fire('Error', data.message, 'error');
+            }
+        })
+        .catch(function(err) {
+            if (typeof Swal !== 'undefined') Swal.fire('Error', 'Terjadi kesalahan saat memindahkan departemen.', 'error');
         });
     };
 

@@ -396,6 +396,9 @@ if ($method === 'POST' && $path === 'auth/login') {
 } elseif ($method === 'POST' && $path === 'admin/departments/save') {
     (new \App\Controllers\DepartmentController())->save();
     exit;
+} elseif ($method === 'POST' && $path === 'admin/departments/move') {
+    (new \App\Controllers\DepartmentController())->move();
+    exit;
 } elseif ($method === 'POST' && $path === 'admin/departments/delete') {
     (new \App\Controllers\DepartmentController())->delete();
     exit;

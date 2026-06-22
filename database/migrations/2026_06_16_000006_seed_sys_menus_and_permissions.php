@@ -87,14 +87,16 @@ class SeedSysMenusAndPermissions extends Migration {
             ],
             'superadmin' => [
                 ['id' => 'e0000000-0000-0000-0000-000000000801', 'title' => 'Beranda', 'url_route' => 'superadmin/dashboard', 'icon' => 'dashboard', 'sort_order' => 1],
-                ['id' => 'e0000000-0000-0000-0000-000000000802', 'title' => 'Manajemen Pengguna', 'url_route' => 'superadmin/users', 'icon' => 'manage_accounts', 'sort_order' => 2],
-                ['id' => 'e0000000-0000-0000-0000-000000000803', 'title' => 'Konfigurasi Global', 'url_route' => 'superadmin/settings', 'icon' => 'settings', 'sort_order' => 3],
-                ['id' => 'e0000000-0000-0000-0000-000000000804', 'title' => 'Pengaturan Sistem', 'url_route' => 'superadmin/system-settings', 'icon' => 'settings_applications', 'sort_order' => 4],
-                ['id' => 'e0000000-0000-0000-0000-000000000805', 'title' => 'Audit Log & Security', 'url_route' => 'superadmin/audit', 'icon' => 'security', 'sort_order' => 5],
-                ['id' => 'e0000000-0000-0000-0000-000000000806', 'title' => 'Pembaruan Sistem', 'url_route' => 'superadmin/update', 'icon' => 'system_update', 'sort_order' => 6],
-                ['id' => 'e0000000-0000-0000-0000-000000000807', 'title' => 'Refleksi Karyawan', 'url_route' => 'superadmin/reflection', 'icon' => 'psychology', 'sort_order' => 7],
-                ['id' => 'e0000000-0000-0000-0000-000000000808', 'title' => 'Menu Builder', 'url_route' => 'superadmin/menu-builder', 'icon' => 'widgets', 'sort_order' => 8],
-                ['id' => 'e0000000-0000-0000-0000-000000000809', 'title' => 'Matriks Akses (ACL)', 'url_route' => 'superadmin/menu-permissions', 'icon' => 'rule_folder', 'sort_order' => 9]
+                ['id' => 'e0000000-0000-0000-0000-000000000602', 'title' => 'Struktur Departemen', 'url_route' => 'admin/departments', 'icon' => 'account_tree', 'sort_order' => 2],
+                ['id' => 'e0000000-0000-0000-0000-000000000802', 'title' => 'Manajemen Pengguna', 'url_route' => 'superadmin/users', 'icon' => 'manage_accounts', 'sort_order' => 3],
+                ['id' => 'e0000000-0000-0000-0000-000000000803', 'title' => 'Konfigurasi Global', 'url_route' => 'superadmin/settings', 'icon' => 'settings', 'sort_order' => 4],
+                ['id' => 'e0000000-0000-0000-0000-000000000804', 'title' => 'Pengaturan Sistem', 'url_route' => 'superadmin/system-settings', 'icon' => 'settings_applications', 'sort_order' => 5],
+                ['id' => 'e0000000-0000-0000-0000-000000000805', 'title' => 'Audit Log & Security', 'url_route' => 'superadmin/audit', 'icon' => 'security', 'sort_order' => 6],
+                ['id' => 'e0000000-0000-0000-0000-000000000806', 'title' => 'Pembaruan Sistem', 'url_route' => 'superadmin/update', 'icon' => 'system_update', 'sort_order' => 7],
+                ['id' => 'e0000000-0000-0000-0000-000000000807', 'title' => 'Refleksi Karyawan', 'url_route' => 'superadmin/reflection', 'icon' => 'psychology', 'sort_order' => 8],
+                ['id' => 'e0000000-0000-0000-0000-000000000808', 'title' => 'Menu Builder', 'url_route' => 'superadmin/menu-builder', 'icon' => 'widgets', 'sort_order' => 9],
+                ['id' => 'e0000000-0000-0000-0000-000000000809', 'title' => 'Matriks Akses (ACL)', 'url_route' => 'superadmin/menu-permissions', 'icon' => 'rule_folder', 'sort_order' => 10],
+                ['id' => 'e0000000-0000-0000-0000-000000000810', 'title' => 'Global Approval', 'url_route' => 'superadmin/global-approval', 'icon' => 'fact_check', 'sort_order' => 11]
             ]
         ];
 

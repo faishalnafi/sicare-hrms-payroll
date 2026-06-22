@@ -18,70 +18,80 @@ content = """# Roadmap Pengembangan Sistem HRIS & ATS (Corporate Edition)
 ---
 
 ## BAB 2: AUTENTIKASI & KENDALI "SUPERADMIN" (GOD MODE)
-*Fokus Utama: Mengamankan gerbang masuk dan membuat role absolut.*
+*Fokus Utama: Mengamankan gerbang masuk, membangun dasbor absolut, dan mewariskan SELURUH fitur aplikasi secara terstruktur agar tidak berantakan.*
 
-- **Menu Terkait:** 
-  - *Login Portal* (Global).
-  - *Global Audit Logs* (Hanya Superadmin & Komite Audit Eksekutif).
-  - *System Configuration* (Hanya Superadmin).
-- **Relasi Menu:** Menu `System Configuration` mengatur parameter yang memengaruhi seluruh sistem (contoh: maksimal *upload* file kandidat/staf).
+- **Menu Terkait (Spesifik Superadmin):**
+  - *Global Audit Logs* (Pusat pemantauan seluruh aktivitas).
+  - *System Configuration* (Pengaturan server, SMTP, batasan ukuran file).
+  - *Menu & Role Builder* (Pembuatan navigasi dan hak akses dinamis).
+- **Menu Terkait (Warisan/Inherited dari Seluruh Role Bawah):**
+  - **Grup Admin:** Manajemen Organisasi 5 Level, Manajemen Pengguna.
+  - **Grup Eksekutif:** Executive Dashboard (Analitik), Matriks Persetujuan (Bypass view), Board Portal.
+  - **Grup HR Ops:** Verifikasi Onboarding, Koreksi Data Karyawan, Payroll Engine.
+  - **Grup Recruiter:** ATS Pipeline, Loker, Penjadwalan, Rubrik Wawancara.
+  - **Grup Karyawan (ESS):** Log Presensi Keseluruhan, Data Cuti Keseluruhan.
+- **Relasi Menu:** `superadmin` tidak terikat oleh UUID Departemen mana pun. Memiliki akses lintas batas (*cross-boundary*) ke semua data secara absolut.
 - **Logika Alur Program:**
-  1. **Flow Login:** *User* memasukkan Email & Password $\rightarrow$ Validasi *Bcrypt* $\rightarrow$ Set Session (Simpan UUID User, UUID Role, dan UUID Department).
-  2. **Flow Global Audit Logs:** *Query SELECT* murni ke tabel `audit_logs` *ORDER BY created_at DESC*.
-  3. **Flow Clear Logs:** Superadmin klik "Clear Logs" $\rightarrow$ Konfirmasi SweetAlert2 $\rightarrow$ Eksekusi `TRUNCATE audit_logs` $\rightarrow$ **Sistem Otomatis** menjalankan `INSERT INTO audit_logs` berisi catatan: *"Superadmin [Nama] telah menghapus seluruh log sistem pada [Timestamp]"*.
+  1. **Flow Login:** *User* memasukkan Email & Password -> Validasi *Bcrypt* -> Set Session.
+  2. **Flow Omni-Render Sidebar (Anti-Berantakan):** 
+     - Jika `role == superadmin`, sistem **MEM-BYPASS** pengecekan tabel `menu_permissions`.
+     - *Query* langsung mengambil seluruh data dari `sys_menus` (`SELECT * FROM sys_menus ORDER BY group, order_num`).
+     - Render UI akan mengelompokkan menu ke dalam kategori yang rapi (Contoh: *Folder* "System Tools", *Folder* "HR Operations", *Folder* "Recruitment", dll) agar *sidebar* superadmin tidak panjang dan berantakan.
+  3. **Flow Bypass Approval:** Jika `superadmin` melakukan CRUD (misal merubah peran/role karyawan), abaikan (*bypass*) alur `approval_requests`. Langsung lakukan `UPDATE` ke tabel utama `users` dan catat ke `audit_logs`.
+  4. **Flow Clear Logs:** Saat superadmin mengeksekusi *Clear Logs*, sistem melakukan `TRUNCATE audit_logs`, lalu otomatis menjalankan `INSERT` log kesaksian (*"Superadmin telah menghapus seluruh log..."*).
 
 ---
 
 ## BAB 3: DYNAMIC MENU ENGINE & MASTER DATA (ANTI-HARDCODE)
-*Fokus Utama: Membuat sistem menu yang skalabel tanpa *hardcode*.*
+*Fokus Utama: Membuat sistem menu yang skalabel untuk pengguna SELAIN superadmin.*
 
 - **Menu Terkait:**
-  - *Menu Builder* (Tambah/Edit Menu Sistem).
-  - *Role Permission Builder* (Matriks ACL).
-- **Relasi Menu:** `superadmin` menentukan menu apa saja yang akan muncul di bilah navigasi (sidebar) milik ke-7 *role* lainnya.
+  - Diwarisi ke Bab 2 (Menu & Role Builder).
+- **Relasi Menu:** *Superadmin* menentukan menu apa yang tampil untuk ke-7 *role* lainnya berdasarkan tabel `menu_permissions`.
 - **Logika Alur Program:**
-  1. **Flow Menu Builder:** Form CRUD biasa yang menyimpan data URL *route* dan Ikon Google Material ke tabel `sys_menus`.
-  2. **Flow ACL:** Menyimpan relasi ke tabel `menu_permissions` (UUID Menu + UUID Role + UUID Dept).
-  3. **Flow Render Sidebar:** Saat *user login*, sistem menjalankan *query*: `SELECT * FROM sys_menus JOIN menu_permissions WHERE role_id = ? AND (department_id = ? OR department_id IS NULL)`.
-  4. **Flow Cache Invalidation:** Saat `superadmin` menyimpan perubahan hak akses, sistem WAJIB menjalankan `$cache->delete('sidebar_menu')` agar *cache* terhapus dan UI langsung diperbarui.
+  1. **Flow Menu Builder:** CRUD ke tabel `sys_menus` (URL *route*, ikon).
+  2. **Flow ACL:** Menyimpan matriks hak akses ke `menu_permissions` (UUID Menu + UUID Role + UUID Dept).
+  3. **Flow Render Sidebar (Non-Superadmin):** Sistem menjalankan *query* filter: `SELECT * FROM sys_menus JOIN menu_permissions WHERE role_id = ? AND (department_id = ? OR department_id IS NULL)`.
+  4. **Flow Cache Invalidation:** Perubahan menu akan memicu `$cache->delete('sidebar_menu')`.
 
 ---
 
 ## BAB 4: MANAJEMEN ORGANISASI & USER (ROLE: ADMIN)
-*Fokus Utama: Membangun struktur departemen dan penempatan karyawan.*
+*Fokus Utama: Membangun struktur departemen dan penempatan karyawan awal.*
 
 - **Menu Terkait:**
   - *Manajemen Organisasi* (Hierarki Divisi 5 Level).
   - *Manajemen Pengguna* (Data internal karyawan).
-- **Relasi Menu:** Data dari *Manajemen Organisasi* akan digunakan sebagai *Dropdown* pilihan oleh `recruiter` (saat buka loker) dan oleh `hr_ops` (saat mutasi).
+- **Relasi Menu:** *Dropdown* yang dihasilkan digunakan di seluruh aplikasi (Filter ATS, filter HR, filter Ess).
 - **Logika Alur Program:**
-  1. **Flow Dept Builder:** Penyimpanan menggunakan konsep *Adjacency List*. Pembuatan sub-divisi wajib mengirimkan UUID `parent_id`. 
-  2. **Flow Edit User (Trigger Approval):** `admin` mengubah UUID *role* seorang staf dari `employee` menjadi `hiring_manager`. Sistem menahan perubahan ini dengan membuat *record* di `approval_requests` berisi *payload* JSON (Role baru). Tabel `users` belum disentuh.
+  1. **Flow Dept Builder:** Penyimpanan menggunakan konsep *Adjacency List*.
+  2. **Flow Edit User (Trigger Approval):** Jika *Admin* yang mengedit role/jabatan, data WAJIB ditahan ke `approval_requests` (Status: PENDING). (Berbeda dengan *Superadmin* yang datanya langsung berubah).
 
 ---
 
 ## BAB 5: MATRIKS PERSETUJUAN & ISOLASI (WORKFLOW ACC)
-*Fokus Utama: Menghubungkan pengajuan Admin dengan eksekusi Eksekutif.*
+*Fokus Utama: Memproses antrean persetujuan dari Admin (oleh Eksekutif) dan mengisolasi akses Kepala Divisi.*
 
 - **Menu Terkait:**
-  - *Matriks Persetujuan / Approval Center* (Dimiliki oleh role `executive`).
-- **Relasi Menu:** Berisi daftar antrean dari aksi yang dilakukan oleh `admin` (Mutasi) dan `hiring_manager` (Penambahan Karyawan Baru).
+  - *Approval Center* (Eksekutif & Superadmin).
+- **Relasi Menu:** Menerima *payload* perubahan dari modul Admin dan Hiring Manager.
 - **Logika Alur Program:**
-  1. **Flow ACC Mutasi/Promosi:** `executive` klik tombol "Approve" $\rightarrow$ Mulai `$db->beginTransaction()` $\rightarrow$ Ekstrak JSON `new_data` dari `approval_requests` $\rightarrow$ `UPDATE users SET role_id = JSON_VAL` $\rightarrow$ `INSERT INTO employment_history` $\rightarrow$ `UPDATE approval_requests SET status = 'APPROVED'` $\rightarrow$ `INSERT INTO audit_logs` $\rightarrow$ `$db->commit()`.
+  1. **Flow ACC Mutasi:** Eksekutif klik "Approve" -> `$db->beginTransaction()` -> `UPDATE users SET role_id = JSON_VAL` -> `INSERT employment_history` -> `UPDATE approval_requests` -> `$db->commit()`.
+  2. **Flow Isolasi Horizontal (Hiring Manager):** Gunakan rekursif (*CTE*) agar manajer hanya bisa melihat data cuti/presensi staf dengan UUID departemen di bawah rantai komandonya (*descendants*).
 
 ---
 
 ## BAB 6: CORE HRIS & ONBOARDING (ROLE: HR OPS)
-*Fokus Utama: Pengelolaan kelengkapan legal profil dan pemrosesan administrasi.*
+*Fokus Utama: Pengelolaan kelengkapan legal profil dan pemrosesan penggajian.*
 
 - **Menu Terkait:**
-  - *Verifikasi Onboarding*.
-  - *Data Correction Queue*.
-  - *Payroll Engine*.
-- **Relasi Menu:** Data KTP/NPWP disuplai oleh `candidate` dari modul Onboarding; *Data Correction* disuplai oleh `employee` dari modul ESS.
+  - *Verifikasi Onboarding* (HR Ops & Superadmin).
+  - *Data Correction Queue* (HR Ops & Superadmin).
+  - *Payroll Engine* (HR Ops, Eksekutif Keuangan, & Superadmin).
+- **Relasi Menu:** Mengonversi data Kandidat menjadi Karyawan.
 - **Logika Alur Program:**
-  1. **Flow Verifikasi Onboarding:** `hr_ops` melihat foto KTP kandidat $\rightarrow$ Klik "Approve" $\rightarrow$ Sistem `UPDATE users SET role_id = [UUID-Employee], employee_id = [Generated ID]` $\rightarrow$ Profil berubah menjadi *Employee* aktif.
-  2. **Flow Payroll Engine:** Sistem menjalankan *query SUM* pada tabel presensi dan lembur selama tanggal *cut-off*, memotong pajak (berdasarkan PTKP di `user_profiles`), dan menghasilkan PDF Slip Gaji ke portal masing-masing *user*.
+  1. **Flow Verifikasi:** Terima KTP -> `UPDATE users SET role_id = Employee, employee_id = [Generated]` -> Profil aktif.
+  2. **Flow Payroll:** Sum presensi bulanan -> potong pajak (PTKP) -> *Generate* PDF Slip Gaji.
 
 ---
 
@@ -89,14 +99,10 @@ content = """# Roadmap Pengembangan Sistem HRIS & ATS (Corporate Edition)
 *Fokus Utama: Membuka gerbang portal publik dan mengelola seleksi pelamar.*
 
 - **Menu Terkait:**
-  - *Manpower Requisition* (Oleh `hiring_manager`).
-  - *Portal Loker* (Oleh `candidate`).
-  - *ATS Pipeline & Jadwal* (Oleh `recruiter`).
-  - *Scoring Rubric* (Oleh `hiring_manager`).
-- **Relasi Menu:** Estafet berantai: Manajer minta kuota $\rightarrow$ Eksekutif ACC $\rightarrow$ Rekruter buat loker $\rightarrow$ Kandidat daftar $\rightarrow$ Rekruter sortir $\rightarrow$ Manajer nilai wawancara.
+  - *Manpower Requisition*, *Portal Loker*, *ATS Pipeline*, *Scoring Rubric*. (Semua terbaca oleh Superadmin).
 - **Logika Alur Program:**
-  1. **Flow Lamaran (Candidate):** Formulir pendaftaran $\rightarrow$ *Upload* CV divalidasi MIME Type-nya dengan `finfo` (Maks 10MB) $\rightarrow$ Simpan URL/path terenkripsi ke database $\rightarrow$ Status: `APPLIED`.
-  2. **Flow ATS Pipeline:** UI Kanban. Saat `recruiter` menarik kartu kandidat ke kolom "Shortlisted", trigger AJAX mengirimkan UUID kandidat dan UUID status baru $\rightarrow$ `UPDATE status`.
+  1. **Flow Lamaran (Candidate):** *Upload* CV (Maks 10MB divalidasi `finfo`) -> Simpan ke direktori `private/` -> Status: `APPLIED`.
+  2. **Flow ATS Pipeline (Recruiter):** Modul visual Kanban Board. Menggeser kartu kandidat akan men- *trigger* eksekusi pembaruan status pelamar.
 
 ---
 
@@ -104,13 +110,10 @@ content = """# Roadmap Pengembangan Sistem HRIS & ATS (Corporate Edition)
 *Fokus Utama: Portal kemandirian untuk seluruh lini karyawan operasional.*
 
 - **Menu Terkait:**
-  - *Presensi Digital* (Clock In/Out).
-  - *Cuti & Klaim*.
-  - *Persetujuan Tim* (Khusus `hiring_manager` dan Direktur).
-- **Relasi Menu:** Menu Cuti dari `employee` akan muncul di menu *Persetujuan Tim* milik atasannya langsung (Berdasarkan *Adjacency List* Departemen).
+  - *Presensi Digital*, *Cuti & Klaim Reimbursement*, *Pengajuan Koreksi Data*.
 - **Logika Alur Program:**
-  1. **Flow Isolasi Vertikal/Horizontal:** Saat `hiring_manager` membuka menu *Persetujuan Tim*, *query* WAJIB menggunakan metode CTE (*Common Table Expression*) atau *Recursive Query* untuk mencari UUID departemen turunan (*descendants*).
-  2. **Flow Anti-Peer-to-Peer:** Apabila `hiring_manager` atau `hr_ops` membuka halaman cuti/presensinya sendiri (dimana `target_user_id == session_user_id`), blok *render* tombol "Approve" via *frontend* dan tolak eksekusi via *backend* middleware.
+  1. **Flow Presensi:** Tombol *Clock-In/Out* yang mengunci UUID Karyawan, menyalin koordinat GPS dan *Timestamp*.
+  2. **Flow Anti-Peer-to-Peer:** Middleware *Backend* wajib menghentikan setiap aksi di mana `target_user_id == session_user_id` pada tombol "Approve" agar HR/Manajer tidak bisa menyetujui cutinya sendiri.
 
 ---
 
@@ -118,11 +121,9 @@ content = """# Roadmap Pengembangan Sistem HRIS & ATS (Corporate Edition)
 *Fokus Utama: Pelaporan makro dan pengawasan level atas.*
 
 - **Menu Terkait:**
-  - *Executive Dashboard* (Khusus C-Level).
-  - *Board Portal*.
-- **Relasi Menu:** Menarik intisari (Data *Aggregate*) dari modul Rekrutmen (ATS) dan Operasional (HRIS).
+  - *Executive Dashboard* & *Board Portal* (Eksekutif & Superadmin).
 - **Logika Alur Program:**
-  1. **Flow Analitik:** *Query SELECT COUNT, SUM, AVG* pada tabel `users`, `employment_history`, dan pengeluaran *Payroll* $\rightarrow$ Ekstraksi menjadi JSON untuk *charting library* (misal: Chart.js). Data wajib berstatus *Read-Only*.
+  1. **Flow Analitik Makro:** Pengumpulan *Aggregate* dari ATS, HRIS, dan Payroll. Ditampilkan secara visual (grafik pie, bar) dengan akses `Read-Only`.
 
 ---
 
@@ -130,18 +131,12 @@ content = """# Roadmap Pengembangan Sistem HRIS & ATS (Corporate Edition)
 *Fokus Utama: Fitur integrasi massal dan penyesuaian visualisasi UI/UX.*
 
 - **Menu Terkait:**
-  - *Import/Export Massal*.
-- **Relasi Menu:** Digunakan oleh `hr_ops` (untuk data presensi/karyawan) dan `admin` (untuk data master).
+  - *Import/Export Data Massal* (Admin, HR Ops, & Superadmin).
 - **Logika Alur Program:**
-  1. **Flow Import Excel (UPSERT):** 
-     - Modul membaca *Spreadsheet*.
-     - Looping baris data: Cek kolom UUID.
-     - `IF UUID exists` $\rightarrow$ Lakukan `UPDATE` data.
-     - `IF UUID is null` $\rightarrow$ Lakukan *Generate UUID v4* $\rightarrow$ Lakukan `INSERT` data baru.
-     - `IF UUID is invalid/fictitious` $\rightarrow$ Lemparkan *Error (Reject row)*.
-  2. **Flow Eksternal API:** *Endpoint* `/api/v1/attendance` menerima *payload* JSON dari mesin sidik jari. Wajib mencocokkan *Header* `X-API-Key` sebelum melakukan `INSERT` presensi ke basis data.
+  1. **Flow Import Excel (UPSERT):** Looping baris data -> Cek kolom UUID -> Lakukan `UPDATE` jika ada -> Lakukan `INSERT` (buat UUID v4 baru) jika kosong -> Lemparkan *Error* jika UUID terisi tapi fiktif.
+  2. **Flow API:** Endpoint `/api/v1/attendance` JSON. Dilindungi validasi `X-API-Key`.
 """
 
 with open("roadmap.md", "w") as f:
     f.write(content)
-print("Updated roadmap.md with menus and flow written successfully")
+print("Updated roadmap.md with tidy Superadmin inheritance written successfully")

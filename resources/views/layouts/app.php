@@ -576,7 +576,7 @@ if (!empty($resolvedPage)) {
     <div id="sidebarBackdrop" class="fixed inset-0 bg-black/40 z-30 hidden transition-opacity duration-300 lg:hidden animate-fade-in"></div>
 
     <!-- Floating Hamburger for Mobile (Always visible since global header is removed) -->
-    <button id="mobileSidebarToggle" class="lg:hidden fixed top-4 left-4 z-30 p-3 bg-surface-container-lowest border border-outline-variant/20 shadow-md rounded-full text-on-surface-variant hover:bg-surface-container-high transition-colors flex items-center justify-center">
+    <button id="mobileSidebarToggle" class="lg:hidden fixed <?= isset($_SESSION['original_user_id']) ? 'top-24 sm:top-20' : 'top-4' ?> left-4 z-40 p-3 bg-surface-container-lowest border border-outline-variant/20 shadow-md rounded-full text-on-surface-variant hover:bg-surface-container-high transition-colors flex items-center justify-center">
         <span class="material-symbols-outlined">menu</span>
     </button>
     

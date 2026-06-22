@@ -206,6 +206,15 @@
 </div>
 
 <script>
+/**
+ * MVC Architecture: View Component
+ * OOP Concept: Client-side controller and logic for User Management & Login Simulation.
+ * 
+ * File Connections:
+ * - Backend endpoints: Fetches data from /hrops/employees/list and submits actions to /auth/impersonate
+ * - Routing: Mapped dynamically in public/index.php
+ * - Layout: Loaded into the master SPA shell resources/views/layouts/app.php
+ */
 (function() {
     // ─── Module State ───────────────────────────────────────────────────────────
     var superAdminUsersData       = [];
@@ -215,44 +224,63 @@
     var currentLoggedInUserId     = <?= json_encode($_SESSION['user_id'] ?? '') ?>;
 
     // ─── Helpers ────────────────────────────────────────────────────────────────
+    /**
+     * Utility Helper: Escapes HTML special characters to prevent Cross-Site Scripting (XSS).
+     * OOP Concept: Pure utility function.
+     * 
+     * @param {string} text
+     * @return {string}
+     */
     function escHtml(text) {
-        if (!text) return '';
+        if (!text) return "";
         return String(text).replace(/[&<>"']/g, function(m) {
-            return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[m];
+            return {"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#039;"}[m];
         });
     }
 
+    /**
+     * Utility Helper: Determines CSS style class based on user role string.
+     * OOP Concept: Role style mapping representation.
+     * 
+     * @param {string} role
+     * @return {string}
+     */
     function getRoleBadgeClass(role) {
         var map = {
-            'superadmin': 'bg-red-100 text-red-700',
-            'admin':      'bg-purple-100 text-purple-700',
-            'executive':  'bg-amber-100 text-amber-700',
-            'hr_ops':     'bg-blue-100 text-blue-700',
-            'hiring_manager': 'bg-teal-100 text-teal-700',
-            'recruiter':  'bg-indigo-100 text-indigo-700',
-            'employee':   'bg-green-100 text-green-700',
-            'candidate':  'bg-gray-100 text-gray-600'
+            "superadmin": "bg-red-100 text-red-700",
+            "admin":      "bg-purple-100 text-purple-700",
+            "executive":  "bg-amber-100 text-amber-700",
+            "hr_ops":     "bg-blue-100 text-blue-700",
+            "hiring_manager": "bg-teal-100 text-teal-700",
+            "recruiter":  "bg-indigo-100 text-indigo-700",
+            "employee":   "bg-green-100 text-green-700",
+            "candidate":  "bg-gray-100 text-gray-600"
         };
-        return map[role] || 'bg-gray-100 text-gray-600';
+        return map[role] || "bg-gray-100 text-gray-600";
     }
 
     // ─── Load Data ──────────────────────────────────────────────────────────────
+    /**
+     * MVC View Logic: Asynchronously fetches employees and departments from database.
+     * OOP Concept: Ajax fetch call with Promise resolution.
+     * connects: App\Controllers\EmployeeMasterController::list via /hrops/employees/list.
+     */
     window.loadSuperAdminUsers = function() {
         // Show loading state
-        var tbody = document.getElementById('superAdminUsersTableBody');
+        var tbody = document.getElementById("superAdminUsersTableBody");
         if (tbody) {
-            var lr = tbody.querySelector('.loading-row');
-            if (lr) lr.classList.remove('hidden');
-            var er = tbody.querySelector('.empty-row');
-            if (er) er.classList.add('hidden');
+            var lr = tbody.querySelector(".loading-row");
+            if (lr) lr.classList.remove("hidden");
+            var er = tbody.querySelector(".empty-row");
+            if (er) er.classList.add("hidden");
             // Remove old data rows
-            var oldRows = tbody.querySelectorAll('tr.user-data-row');
+            var oldRows = tbody.querySelectorAll("tr.user-data-row");
             oldRows.forEach(function(r) { r.remove(); });
         }
 
-        fetch('/hrops/employees/list')
+        fetch("/hrops/employees/list")
             .then(function(response) {
-                if (!response.ok) throw new Error('HTTP ' + response.status);
+                if (!response.ok) throw new Error("HTTP " + response.status);
                 return response.json();
             })
             .then(function(res) {
@@ -262,25 +290,30 @@
                     window.populateSuperAdminDeptDropdown();
                     window.renderSuperAdminUsersTable();
                 } else {
-                    if (typeof Swal !== 'undefined') {
-                        Swal.fire('Error', res.message || 'Gagal memuat data', 'error');
+                    if (typeof Swal !== "undefined") {
+                        Swal.fire("Error", res.message || "Gagal memuat data", "error");
                     }
                 }
             })
             .catch(function(e) {
-                console.error('Super Admin users fetch error:', e);
-                if (typeof Swal !== 'undefined') {
-                    Swal.fire('Error', 'Gagal memuat data pengguna: ' + e.message, 'error');
+                console.error("Super Admin users fetch error:", e);
+                if (typeof Swal !== "undefined") {
+                    Swal.fire("Error", "Gagal memuat data pengguna: " + e.message, "error");
                 }
             });
     };
 
     // ─── Populate Department Dropdown ───────────────────────────────────────────
+    /**
+     * MVC View Helper: Builds hierarchical options for the department mutation select.
+     * OOP Concept: Tree traversal algorithm on child arrays.
+     * connects: #superAdminMutDepartment dropdown selector.
+     */
     window.populateSuperAdminDeptDropdown = function() {
-        var depSelect = document.getElementById('superAdminMutDepartment');
+        var depSelect = document.getElementById("superAdminMutDepartment");
         if (!depSelect) return;
 
-        depSelect.innerHTML = '<option value="">Tanpa Departemen</option>';
+        depSelect.innerHTML = "<option value=\"\">Tanpa Departemen</option>";
 
         var map   = {};
         var roots = [];
@@ -298,14 +331,14 @@
         });
 
         function addOptions(nodes, prefix) {
-            prefix = prefix || '';
+            prefix = prefix || "";
             nodes.forEach(function(node, index) {
-                var num = prefix ? (prefix + '.' + (index + 1)) : String(index + 1);
-                var opt = document.createElement('option');
+                var num = prefix ? (prefix + "." + (index + 1)) : String(index + 1);
+                var opt = document.createElement("option");
                 opt.value = node.id;
-                var indent = '';
-                for (var i = 1; i < node.level; i++) indent += '\u00a0\u00a0';
-                opt.textContent = indent + num + '. ' + node.name;
+                var indent = "";
+                for (var i = 1; i < node.level; i++) indent += "\u00a0\u00a0";
+                opt.textContent = indent + num + ". " + node.name;
                 depSelect.appendChild(opt);
                 if (node.children && node.children.length > 0) {
                     node.children.sort(function(a, b) { return a.name.localeCompare(b.name); });
@@ -319,31 +352,36 @@
     };
 
     // ─── Render Table ───────────────────────────────────────────────────────────
+    /**
+     * MVC View Helper: Renders the paginated user list table with search and role filters.
+     * OOP Concept: State-based UI rendering, pagination partitioning.
+     * connects: #superAdminUsersTableBody, search, and filter elements.
+     */
     window.renderSuperAdminUsersTable = function() {
-        var tbody    = document.getElementById('superAdminUsersTableBody');
+        var tbody    = document.getElementById("superAdminUsersTableBody");
         if (!tbody) return;
 
-        var emptyRow   = tbody.querySelector('.empty-row');
-        var loadingRow = tbody.querySelector('.loading-row');
+        var emptyRow   = tbody.querySelector(".empty-row");
+        var loadingRow = tbody.querySelector(".loading-row");
 
         // Hide loading
-        if (loadingRow) loadingRow.classList.add('hidden');
+        if (loadingRow) loadingRow.classList.add("hidden");
 
         // Remove old data rows
-        var oldRows = tbody.querySelectorAll('tr.user-data-row');
+        var oldRows = tbody.querySelectorAll("tr.user-data-row");
         oldRows.forEach(function(r) { r.remove(); });
 
-        var searchEl     = document.getElementById('superAdminUserSearchInput');
-        var roleFilterEl = document.getElementById('superAdminUserRoleFilter');
-        var search       = searchEl ? searchEl.value.toLowerCase() : '';
-        var roleFilter   = roleFilterEl ? roleFilterEl.value : '';
+        var searchEl     = document.getElementById("superAdminUserSearchInput");
+        var roleFilterEl = document.getElementById("superAdminUserRoleFilter");
+        var search       = searchEl ? searchEl.value.toLowerCase() : "";
+        var roleFilter   = roleFilterEl ? roleFilterEl.value : "";
 
         var filtered = superAdminUsersData.filter(function(user) {
             var textMatch =
-                (user.first_name  || '').toLowerCase().includes(search) ||
-                (user.last_name   || '').toLowerCase().includes(search) ||
-                (user.email       || '').toLowerCase().includes(search) ||
-                (user.employee_id || '').toLowerCase().includes(search);
+                (user.first_name  || "").toLowerCase().includes(search) ||
+                (user.last_name   || "").toLowerCase().includes(search) ||
+                (user.email       || "").toLowerCase().includes(search) ||
+                (user.employee_id || "").toLowerCase().includes(search);
             var roleMatch = !roleFilter || user.role === roleFilter;
             return textMatch && roleMatch;
         });
@@ -357,252 +395,304 @@
         var endIdx   = Math.min(startIdx + itemsPerSuperAdminUserPage, totalItems);
 
         if (totalItems === 0) {
-            if (emptyRow) emptyRow.classList.remove('hidden');
+            if (emptyRow) emptyRow.classList.remove("hidden");
         } else {
-            if (emptyRow) emptyRow.classList.add('hidden');
+            if (emptyRow) emptyRow.classList.add("hidden");
 
             for (var i = startIdx; i < endIdx; i++) {
                 var user = filtered[i];
-                var tr = document.createElement('tr');
-                tr.className = 'user-data-row hover:bg-surface-container-low/30 transition-colors group';
+                var tr = document.createElement("tr");
+                tr.className = "user-data-row hover:bg-surface-container-low/30 transition-colors group";
 
-                var fullName = escHtml(user.first_name + (user.last_name ? ' ' + user.last_name : ''));
+                var fullName = escHtml(user.first_name + (user.last_name ? " " + user.last_name : ""));
                 var empId    = user.employee_id
                     ? escHtml(user.employee_id)
-                    : '<span class="text-[9px] bg-amber-50 text-amber-600 px-1.5 py-0.5 rounded font-bold uppercase">BELUM ADA NIK</span>';
-                var md5Hash = window.md5((user.email || '').trim().toLowerCase());
+                    : "<span class=\"text-[9px] bg-amber-50 text-amber-600 px-1.5 py-0.5 rounded font-bold uppercase\">BELUM ADA NIK</span>";
+                var md5Hash = window.md5((user.email || "").trim().toLowerCase());
                 var pp = user.profile_picture
                     ? escHtml(user.profile_picture)
-                    : 'https://www.gravatar.com/avatar/' + md5Hash + '?d=404&s=120';
+                    : "https://www.gravatar.com/avatar/" + md5Hash + "?d=404&s=120";
                 var badgeClass = getRoleBadgeClass(user.role);
 
-                // Simulasi Login (Impersonation) button, only show if target is not the current logged in user
-                var impersonateButton = '';
+                // Impersonation button mapping using dataset attributes
+                var impersonateButton = "";
                 if (user.id !== currentLoggedInUserId) {
                     impersonateButton = 
-                        '<button onclick="window.startSuperAdminImpersonate(\'' + escHtml(user.id) + '\', \'' + fullName + '\')" class="px-3 py-1.5 bg-amber-500/10 hover:bg-amber-500 text-amber-700 hover:text-white rounded-full text-xs font-bold border border-amber-500/20 shadow-sm transition-all flex items-center gap-1">' +
-                            '<span class="material-symbols-outlined text-[14px]">login</span> Simulasi' +
-                        '</button>';
+                        "<button onclick=\"window.startSuperAdminImpersonate(this)\" data-id=\"" + escHtml(user.id) + "\" data-name=\"" + fullName + "\" class=\"px-3 py-1.5 bg-amber-500/10 hover:bg-amber-500 text-amber-700 hover:text-white rounded-full text-xs font-bold border border-amber-500/20 shadow-sm transition-all flex items-center gap-1\">" +
+                            "<span class=\"material-symbols-outlined text-[14px]\">login</span> Simulasi" +
+                        "</button>";
                 }
 
                 tr.innerHTML =
-                    '<td class="px-6 py-4">' +
-                        '<div class="flex items-center gap-3">' +
-                            '<img src="' + pp + '" class="w-10 h-10 rounded-full object-cover border border-outline-variant/30 flex-shrink-0" alt="Avatar" onerror="window.handleAvatarError(this, \'' + md5Hash + '\')">' +
-                            '<div>' +
-                                '<p class="text-sm font-bold text-on-surface">' + fullName + '</p>' +
-                                '<p class="text-xs text-on-surface-variant font-mono mt-0.5">' + empId + '</p>' +
-                            '</div>' +
-                        '</div>' +
-                    '</td>' +
-                    '<td class="px-6 py-4">' +
-                        '<span class="text-sm font-semibold text-on-surface">' + escHtml(user.email) + '</span>' +
-                    '</td>' +
-                    '<td class="px-6 py-4">' +
-                        '<div class="flex flex-col">' +
-                            '<span class="text-sm font-bold text-on-surface capitalize">' + escHtml(user.job_title || '—') + '</span>' +
-                            '<span class="text-xs text-on-surface-variant mt-0.5">' + escHtml(user.department_name || 'Tanpa Departemen') + '</span>' +
-                        '</div>' +
-                    '</td>' +
-                    '<td class="px-6 py-4">' +
-                        '<span class="text-[10px] font-bold uppercase inline-block px-2.5 py-1 rounded ' + badgeClass + '">' + escHtml(user.role) + '</span>' +
-                    '</td>' +
-                    '<td class="px-6 py-4 text-right">' +
-                        '<div class="flex items-center justify-end gap-2">' +
+                    "<td class=\"px-6 py-4\">" +
+                        "<div class=\"flex items-center gap-3\">" +
+                            "<img src=\"" + pp + "\" class=\"w-10 h-10 rounded-full object-cover border border-outline-variant/30 flex-shrink-0\" alt=\"Avatar\" onerror=\"window.handleAvatarError(this, '" + md5Hash + "')\">" +
+                            "<div>" +
+                                "<p class=\"text-sm font-bold text-on-surface\">" + fullName + "</p>" +
+                                "<p class=\"text-xs text-on-surface-variant font-mono mt-0.5\">" + empId + "</p>" +
+                            "</div>" +
+                        "</div>" +
+                    "</td>" +
+                    "<td class=\"px-6 py-4\">" +
+                        "<span class=\"text-sm font-semibold text-on-surface\">" + escHtml(user.email) + "</span>" +
+                    "</td>" +
+                    "<td class=\"px-6 py-4\">" +
+                        "<div class=\"flex flex-col\">" +
+                            "<span class=\"text-sm font-bold text-on-surface capitalize\">" + escHtml(user.job_title || "—") + "</span>" +
+                            "<span class=\"text-xs text-on-surface-variant mt-0.5\">" + escHtml(user.department_name || "Tanpa Departemen") + "</span>" +
+                        "</div>" +
+                    "</td>" +
+                    "<td class=\"px-6 py-4\">" +
+                        "<span class=\"text-[10px] font-bold uppercase inline-block px-2.5 py-1 rounded " + badgeClass + "\">" + escHtml(user.role) + "</span>" +
+                    "</td>" +
+                    "<td class=\"px-6 py-4 text-right\">" +
+                        "<div class=\"flex items-center justify-end gap-2\">" +
                             impersonateButton +
-                            '<button onclick="window.openSuperAdminMutationModal(\'' + escHtml(user.id) + '\')" class="px-3 py-1.5 bg-primary/5 hover:bg-primary text-primary hover:text-white rounded-full text-xs font-bold border border-primary/10 shadow-sm transition-all flex items-center gap-1">' +
-                                '<span class="material-symbols-outlined text-[14px]">published_with_changes</span> Mutasi' +
-                            '</button>' +
-                            '<button onclick="window.triggerSuperAdminResetProfile(\'' + escHtml(user.id) + '\', \'' + fullName + '\')" class="px-3 py-1.5 bg-red-500/10 hover:bg-red-500 text-red-700 hover:text-white rounded-full text-xs font-bold border border-red-500/20 shadow-sm transition-all flex items-center gap-1" title="Reset Identitas Lengkap Karyawan">' +
-                                '<span class="material-symbols-outlined text-[14px]">restart_alt</span> Reset' +
-                            '</button>' +
-                        '</div>' +
-                    '</td>';
+                            "<button onclick=\"window.openSuperAdminMutationModal('" + escHtml(user.id) + "')\" class=\"px-3 py-1.5 bg-primary/5 hover:bg-primary text-primary hover:text-white rounded-full text-xs font-bold border border-primary/10 shadow-sm transition-all flex items-center gap-1\">" +
+                                "<span class=\"material-symbols-outlined text-[14px]\">published_with_changes</span> Mutasi" +
+                            "</button>" +
+                            "<button onclick=\"window.triggerSuperAdminResetProfile(this)\" data-id=\"" + escHtml(user.id) + "\" data-name=\"" + fullName + "\" class=\"px-3 py-1.5 bg-red-500/10 hover:bg-red-500 text-red-700 hover:text-white rounded-full text-xs font-bold border border-red-500/20 shadow-sm transition-all flex items-center gap-1\" title=\"Reset Identitas Lengkap Karyawan\">" +
+                                "<span class=\"material-symbols-outlined text-[14px]\">restart_alt</span> Reset" +
+                            "</button>" +
+                        "</div>" +
+                    "</td>";
 
                 tbody.appendChild(tr);
             }
         }
 
         // Pagination visibility
-        var pagination = document.getElementById('superAdminUserPagination');
+        var pagination = document.getElementById("superAdminUserPagination");
         if (pagination) {
             if (totalItems === 0 || totalPages <= 1) {
-                pagination.classList.add('hidden');
+                pagination.classList.add("hidden");
             } else {
-                pagination.classList.remove('hidden');
+                pagination.classList.remove("hidden");
             }
         }
 
-        var prevBtn = document.getElementById('superAdminUserPrevBtn');
-        var nextBtn = document.getElementById('superAdminUserNextBtn');
+        var prevBtn = document.getElementById("superAdminUserPrevBtn");
+        var nextBtn = document.getElementById("superAdminUserNextBtn");
         if (prevBtn) prevBtn.disabled = currentSuperAdminUserPage === 1;
         if (nextBtn) nextBtn.disabled = currentSuperAdminUserPage === totalPages || totalPages === 0;
     };
-
-    // ─── Pagination ─────────────────────────────────────────────────────────────
+    /**
+     * MVC View UI Action: Sets the current page to the previous page and updates the table.
+     * OOP Concept: State mutation helper.
+     */
     window.prevSuperAdminUserPage = function() {
         if (currentSuperAdminUserPage > 1) { currentSuperAdminUserPage--; window.renderSuperAdminUsersTable(); }
     };
+
+    /**
+     * MVC View UI Action: Sets the current page to the next page and updates the table.
+     * OOP Concept: State mutation helper.
+     */
     window.nextSuperAdminUserPage = function() {
         currentSuperAdminUserPage++; window.renderSuperAdminUsersTable();
     };
 
     // ─── Impersonation (Simulasi Login) ─────────────────────────────────────────
-    window.startSuperAdminImpersonate = function(id, name) {
-        if (typeof Swal === 'undefined') return;
+    /**
+     * MVC Controller Call: Initiates superadmin login impersonation/simulation for a target user.
+     * OOP Concept: Event receiver with DOM argument type checking.
+     * connects: App\Controllers\AuthController::impersonate via POST /auth/impersonate.
+     * 
+     * @param {string|HTMLElement} idOrEl
+     * @param {string} name
+     */
+    window.startSuperAdminImpersonate = function(idOrEl, name) {
+        if (typeof Swal === "undefined") return;
+        var id = idOrEl;
+        if (idOrEl instanceof HTMLElement) {
+            id = idOrEl.getAttribute("data-id");
+            name = idOrEl.getAttribute("data-name");
+        }
 
         Swal.fire({
-            title: 'Simulasi Login?',
-            text: 'Anda akan masuk ke dalam sistem sebagai "' + name + '". Akses dan navigasi Anda akan menyesuaikan dengan peran mereka.',
-            icon: 'question',
+            title: "Simulasi Login?",
+            text: "Anda akan masuk ke dalam sistem sebagai \"" + name + "\". Akses dan navigasi Anda akan menyesuaikan dengan peran mereka.",
+            icon: "question",
             showCancelButton: true,
-            confirmButtonColor: '#d97706', // Amber-600
-            cancelButtonColor: '#c6c5d4',
-            confirmButtonText: 'Ya, Mulai Simulasi',
-            cancelButtonText: 'Batal'
+            confirmButtonColor: "#d97706", // Amber-600
+            cancelButtonColor: "#c6c5d4",
+            confirmButtonText: "Ya, Mulai Simulasi",
+            cancelButtonText: "Batal"
         }).then(function(result) {
             if (result.isConfirmed) {
                 var formData = new FormData();
-                formData.append('user_id', id);
+                formData.append("user_id", id);
 
-                fetch('/auth/impersonate', { method: 'POST', body: formData })
+                fetch("/auth/impersonate", { method: "POST", body: formData })
                     .then(function(res) { return res.json(); })
                     .then(function(data) {
                         if (data.success) {
                             Swal.fire({
-                                title: 'Memulai Simulasi...',
-                                text: 'Mengalihkan ke dashboard pengguna.',
-                                icon: 'success',
+                                title: "Memulai Simulasi...",
+                                text: "Mengalihkan ke dashboard pengguna.",
+                                icon: "success",
                                 timer: 1500,
                                 showConfirmButton: false
                             });
                             setTimeout(function() {
-                                window.location.href = data.redirect || '/dashboard';
+                                window.location.href = data.redirect || "/dashboard";
                             }, 1200);
                         } else {
-                            Swal.fire('Error', data.message || 'Gagal memulai simulasi', 'error');
+                            Swal.fire("Error", data.message || "Gagal memulai simulasi", "error");
                         }
                     })
                     .catch(function(err) {
-                        console.error('Impersonation error:', err);
-                        Swal.fire('Error', 'Terjadi kesalahan sistem saat mencoba login.', 'error');
+                        console.error("Impersonation error:", err);
+                        Swal.fire("Error", "Terjadi kesalahan sistem saat mencoba login.", "error");
                     });
             }
         });
     };
 
     // ─── Reset Profile ──────────────────────────────────────────────────────────
-    window.triggerSuperAdminResetProfile = function(userId, fullName) {
-        if (typeof Swal === 'undefined') return;
+    /**
+     * MVC Controller Call: Resets full profile identity of an employee and creates a reset token.
+     * OOP Concept: Event receiver with DOM element extraction.
+     * connects: App\Controllers\EmployeeMasterController::resetProfileToken via /superadmin/users/reset-profile.
+     * 
+     * @param {string|HTMLElement} userIdOrEl
+     * @param {string} fullName
+     */
+    window.triggerSuperAdminResetProfile = function(userIdOrEl, fullName) {
+        if (typeof Swal === "undefined") return;
+        var userId = userIdOrEl;
+        if (userIdOrEl instanceof HTMLElement) {
+            userId = userIdOrEl.getAttribute("data-id");
+            fullName = userIdOrEl.getAttribute("data-name");
+        }
 
         Swal.fire({
-            title: 'Reset Identitas Lengkap?',
-            text: 'Tindakan ini akan mengosongkan seluruh data administratif terkunci (NIK, Rekening Bank, NPWP, BPJS, dll.) milik "' + fullName + '" dan membuat tautan baru bagi karyawan untuk mengisinya kembali.',
-            icon: 'warning',
+            title: "Reset Identitas Lengkap?",
+            text: "Tindakan ini akan mengosongkan seluruh data administratif terkunci (NIK, Rekening Bank, NPWP, BPJS, dll.) milik \"" + fullName + "\" dan membuat tautan baru bagi karyawan untuk mengisinya kembali.",
+            icon: "warning",
             showCancelButton: true,
-            confirmButtonColor: '#ef4444', // Red-500
-            cancelButtonColor: '#c6c5d4',
-            confirmButtonText: 'Ya, Reset Data',
-            cancelButtonText: 'Batal'
+            confirmButtonColor: "#ef4444", // Red-500
+            cancelButtonColor: "#c6c5d4",
+            confirmButtonText: "Ya, Reset Data",
+            cancelButtonText: "Batal"
         }).then(function(result) {
             if (result.isConfirmed) {
                 var formData = new FormData();
-                formData.append('user_id', userId);
-                formData.append('csrf_token', <?= json_encode(csrf_token()) ?>);
+                formData.append("user_id", userId);
+                formData.append("csrf_token", <?= json_encode(csrf_token()) ?>);
 
-                fetch('/superadmin/users/reset-profile', { method: 'POST', body: formData })
+                fetch("/superadmin/users/reset-profile", { method: "POST", body: formData })
                     .then(function(res) { return res.json(); })
                     .then(function(data) {
                         if (data.success) {
                             Swal.fire({
-                                title: 'Tautan Berhasil Dibuat!',
-                                html: '<p class="text-sm mb-3">Tautan pengisian identitas untuk <b>' + fullName + '</b>:</p>' +
-                                      '<div class="relative bg-surface-container-low border border-outline-variant/30 rounded-xl p-3 mb-4 font-mono text-xs break-all select-all text-left">' + data.link + '</div>' +
-                                      '<p class="text-xs text-on-surface-variant">Karyawan harus login ke portal siCare terlebih dahulu saat membuka tautan ini.</p>',
-                                icon: 'success',
+                                title: "Tautan Berhasil Dibuat!",
+                                html: "<p class=\"text-sm mb-3\">Tautan pengisian identitas untuk <b>" + fullName + "</b>:</p>" +
+                                      "<div class=\"relative bg-surface-container-low border border-outline-variant/30 rounded-xl p-3 mb-4 font-mono text-xs break-all select-all text-left\">" + data.link + "</div>" +
+                                      "<p class=\"text-xs text-on-surface-variant\">Karyawan harus login ke portal siCare terlebih dahulu saat membuka tautan ini.</p>",
+                                icon: "success",
                                 showCancelButton: true,
-                                confirmButtonText: 'Salin Tautan',
-                                cancelButtonText: 'Tutup',
-                                confirmButtonColor: '#000666'
+                                confirmButtonText: "Salin Tautan",
+                                cancelButtonText: "Tutup",
+                                confirmButtonColor: "#000666"
                             }).then(function(swalResult) {
                                 if (swalResult.isConfirmed) {
                                     navigator.clipboard.writeText(data.link).then(function() {
-                                        Swal.fire({ title: 'Disalin!', text: 'Tautan berhasil disalin ke clipboard.', icon: 'success', timer: 1500, showConfirmButton: false });
+                                        Swal.fire({ title: "Disalin!", text: "Tautan berhasil disalin ke clipboard.", icon: "success", timer: 1500, showConfirmButton: false });
                                     });
                                 }
                             });
                             window.loadSuperAdminUsers();
                         } else {
-                            Swal.fire('Error', data.message || 'Gagal mereset profil', 'error');
+                            Swal.fire("Error", data.message || "Gagal mereset profil", "error");
                         }
                     })
                     .catch(function(err) {
-                        console.error('Reset profile error:', err);
-                        Swal.fire('Error', 'Terjadi kesalahan sistem.', 'error');
+                        console.error("Reset profile error:", err);
+                        Swal.fire("Error", "Terjadi kesalahan sistem.", "error");
                     });
             }
         });
     };
 
     // ─── Mutation Modal ─────────────────────────────────────────────────────────
+    /**
+     * MVC View UI Action: Opens the mutation/settings modal and pre-fills input forms.
+     * OOP Concept: DOM querying and value mapping.
+     * connects: #superAdminMutationModal and individual input elements.
+     * 
+     * @param {string} id
+     */
     window.openSuperAdminMutationModal = function(id) {
         var user = superAdminUsersData.find(function(u) { return u.id === id; });
         if (!user) return;
 
-        var fullName = (user.first_name || '') + (user.last_name ? ' ' + user.last_name : '');
+        var fullName = (user.first_name || "") + (user.last_name ? " " + user.last_name : "");
         var el = function(eid) { return document.getElementById(eid); };
 
-        if (el('superAdminMutFullName'))   el('superAdminMutFullName').textContent  = fullName;
-        if (el('superAdminMutEmail'))      el('superAdminMutEmail').textContent     = user.email;
-        if (el('superAdminMutCurrentRole')) el('superAdminMutCurrentRole').textContent = user.role;
-        if (el('superAdminMutAvatar')) {
-            el('superAdminMutAvatar').src = user.profile_picture || 'https://www.gravatar.com/avatar/' + window.md5((user.email || '').trim().toLowerCase()) + '?d=404&s=120';
-            el('superAdminMutAvatar').onerror = function() {
-                window.handleAvatarError(this, window.md5((user.email || '').trim().toLowerCase()));
+        if (el("superAdminMutFullName"))   el("superAdminMutFullName").textContent  = fullName;
+        if (el("superAdminMutEmail"))      el("superAdminMutEmail").textContent     = user.email;
+        if (el("superAdminMutCurrentRole")) el("superAdminMutCurrentRole").textContent = user.role;
+        if (el("superAdminMutAvatar")) {
+            el("superAdminMutAvatar").src = user.profile_picture || "https://www.gravatar.com/avatar/" + window.md5((user.email || "").trim().toLowerCase()) + "?d=404&s=120";
+            el("superAdminMutAvatar").onerror = function() {
+                window.handleAvatarError(this, window.md5((user.email || "").trim().toLowerCase()));
             };
         }
 
-        if (el('superAdminMutId'))          el('superAdminMutId').value          = user.id          || '';
-        if (el('superAdminMutStaffId'))     el('superAdminMutStaffId').value     = user.employee_id || '';
-        if (el('superAdminMutJobTitle'))    el('superAdminMutJobTitle').value    = user.job_title   || '';
-        if (el('superAdminMutDepartment'))  el('superAdminMutDepartment').value  = user.department_id || '';
-        if (el('superAdminMutRole'))        el('superAdminMutRole').value        = user.role        || 'employee';
-        if (el('superAdminMutPassword'))    el('superAdminMutPassword').value    = '';
+        if (el("superAdminMutId"))          el("superAdminMutId").value          = user.id          || "";
+        if (el("superAdminMutStaffId"))     el("superAdminMutStaffId").value     = user.employee_id || "";
+        if (el("superAdminMutJobTitle"))    el("superAdminMutJobTitle").value    = user.job_title   || "";
+        if (el("superAdminMutDepartment"))  el("superAdminMutDepartment").value  = user.department_id || "";
+        if (el("superAdminMutRole"))        el("superAdminMutRole").value        = user.role        || "employee";
+        if (el("superAdminMutPassword"))    el("superAdminMutPassword").value    = "";
 
-        if (el('superAdminMutFirstName'))   el('superAdminMutFirstName').value   = user.first_name        || '';
-        if (el('superAdminMutLastName'))    el('superAdminMutLastName').value    = user.last_name         || '';
-        if (el('superAdminMutEmailHidden')) el('superAdminMutEmailHidden').value = user.email             || '';
-        if (el('superAdminMutLeaveQuota'))  el('superAdminMutLeaveQuota').value  = user.annual_leave_quota || 12;
-        if (el('superAdminMutBaseSalary'))  el('superAdminMutBaseSalary').value  = user.base_salary       || 0;
+        if (el("superAdminMutFirstName"))   el("superAdminMutFirstName").value   = user.first_name        || "";
+        if (el("superAdminMutLastName"))    el("superAdminMutLastName").value    = user.last_name         || "";
+        if (el("superAdminMutEmailHidden")) el("superAdminMutEmailHidden").value = user.email             || "";
+        if (el("superAdminMutLeaveQuota"))  el("superAdminMutLeaveQuota").value  = user.annual_leave_quota || 12;
+        if (el("superAdminMutBaseSalary"))  el("superAdminMutBaseSalary").value  = user.base_salary       || 0;
 
         // Hide password strength box when opening
-        var pwBox = document.getElementById('superAdminMutPwStrengthBox');
-        if (pwBox) pwBox.classList.add('hidden');
+        var pwBox = document.getElementById("superAdminMutPwStrengthBox");
+        if (pwBox) pwBox.classList.add("hidden");
         window.superAdminMutPasswordValid = true;
 
-        var modal     = document.getElementById('superAdminMutationModal');
-        var container = document.getElementById('superAdminMutationModalContainer');
-        if (modal)     modal.classList.remove('opacity-0', 'pointer-events-none');
-        if (container) container.classList.remove('scale-95');
+        var modal     = document.getElementById("superAdminMutationModal");
+        var container = document.getElementById("superAdminMutationModalContainer");
+        if (modal)     modal.classList.remove("opacity-0", "pointer-events-none");
+        if (container) container.classList.remove("scale-95");
     };
 
+    /**
+     * MVC View UI Action: Closes the mutation/settings modal and hides it.
+     * OOP Concept: DOM state mutation.
+     * connects: #superAdminMutationModal.
+     */
     window.closeSuperAdminMutationModal = function() {
-        var modal     = document.getElementById('superAdminMutationModal');
-        var container = document.getElementById('superAdminMutationModalContainer');
-        if (modal)     modal.classList.add('opacity-0', 'pointer-events-none');
-        if (container) container.classList.add('scale-95');
+        var modal     = document.getElementById("superAdminMutationModal");
+        var container = document.getElementById("superAdminMutationModalContainer");
+        if (modal)     modal.classList.add("opacity-0", "pointer-events-none");
+        if (container) container.classList.add("scale-95");
     };
 
+    /**
+     * MVC Controller Call: Submits the user modification/mutation form data.
+     * OOP Concept: Form data encoding and asynchronously sending to API endpoint.
+     * connects: App\Controllers\EmployeeMasterController::save via /hrops/employees/save.
+     * 
+     * @param {Event} e
+     */
     window.submitSuperAdminMutationForm = function(e) {
         e.preventDefault();
 
-        if (typeof window.superAdminMutPasswordValid !== 'undefined' && !window.superAdminMutPasswordValid) {
-            if (typeof Swal !== 'undefined') {
+        if (typeof window.superAdminMutPasswordValid !== "undefined" && !window.superAdminMutPasswordValid) {
+            if (typeof Swal !== "undefined") {
                 Swal.fire({
-                    title: 'Kata Sandi Kurang Kuat!',
-                    text: 'Penuhi semua kriteria sandi kuat sebelum menyimpan.',
-                    icon: 'error',
-                    confirmButtonColor: '#000666'
+                    title: "Kata Sandi Kurang Kuat!",
+                    text: "Penuhi semua kriteria sandi kuat sebelum menyimpan.",
+                    icon: "error",
+                    confirmButtonColor: "#000666"
                 });
             }
             return;
@@ -610,73 +700,83 @@
 
         var formData = new FormData(e.target);
 
-        fetch('/hrops/employees/save', { method: 'POST', body: formData })
+        fetch("/hrops/employees/save", { method: "POST", body: formData })
             .then(function(res) { return res.json(); })
             .then(function(data) {
                 if (data.success) {
                     window.closeSuperAdminMutationModal();
-                    if (typeof Swal !== 'undefined') {
-                        Swal.fire({ title: 'Berhasil', text: 'Mutasi jabatan berhasil diperbarui.', icon: 'success', confirmButtonColor: '#000666' });
+                    if (typeof Swal !== "undefined") {
+                        Swal.fire({ title: "Berhasil", text: "Mutasi jabatan berhasil diperbarui.", icon: "success", confirmButtonColor: "#000666" });
                     }
                     window.loadSuperAdminUsers();
                 } else {
-                    if (typeof Swal !== 'undefined') Swal.fire('Error', data.message, 'error');
+                    if (typeof Swal !== "undefined") Swal.fire("Error", data.message, "error");
                 }
             })
             .catch(function(err) {
-                if (typeof Swal !== 'undefined') Swal.fire('Error', 'Terjadi kesalahan sistem.', 'error');
+                if (typeof Swal !== "undefined") Swal.fire("Error", "Terjadi kesalahan sistem.", "error");
             });
     };
 
     // ─── Password Strength (for Mutation Modal) ─────────────────────────────────
+    /**
+     * MVC View UI Action: Sets initial validity state for mutation password.
+     */
     window.superAdminMutPasswordValid = true;
 
-    var passwordInput    = document.getElementById('superAdminMutPassword');
-    var togglePasswordBtn = document.getElementById('superAdminToggleMutPassword');
-    var pwStrengthBox    = document.getElementById('superAdminMutPwStrengthBox');
-    var pwLen   = document.getElementById('superAdminMutPwLen');
-    var pwUpper = document.getElementById('superAdminMutPwUpper');
-    var pwLower = document.getElementById('superAdminMutPwLower');
-    var pwNum   = document.getElementById('superAdminMutPwNum');
-    var pwSpec  = document.getElementById('superAdminMutPwSpec');
+    var passwordInput    = document.getElementById("superAdminMutPassword");
+    var togglePasswordBtn = document.getElementById("superAdminToggleMutPassword");
+    var pwStrengthBox    = document.getElementById("superAdminMutPwStrengthBox");
+    var pwLen   = document.getElementById("superAdminMutPwLen");
+    var pwUpper = document.getElementById("superAdminMutPwUpper");
+    var pwLower = document.getElementById("superAdminMutPwLower");
+    var pwNum   = document.getElementById("superAdminMutPwNum");
+    var pwSpec  = document.getElementById("superAdminMutPwSpec");
 
+    /**
+     * MVC View UI Helper: Updates the visual checklist for a password strength criteria.
+     * OOP Concept: Pure UI styling update helper.
+     * 
+     * @param {HTMLElement} elem
+     * @param {boolean} met
+     */
     function updateCrit(elem, met) {
         if (!elem) return;
         if (met) {
-            elem.classList.remove('text-red-500');
-            elem.classList.add('text-green-600');
-            var ico = elem.querySelector('.material-symbols-outlined');
-            if (ico) ico.textContent = 'check_circle';
+            elem.classList.remove("text-red-500");
+            elem.classList.add("text-green-600");
+            var ico = elem.querySelector(".material-symbols-outlined");
+            if (ico) ico.textContent = "check_circle";
         } else {
-            elem.classList.remove('text-green-600');
-            elem.classList.add('text-red-500');
-            var ico = elem.querySelector('.material-symbols-outlined');
-            if (ico) ico.textContent = 'cancel';
+            elem.classList.remove("text-green-600");
+            elem.classList.add("text-red-500");
+            var ico = elem.querySelector(".material-symbols-outlined");
+            if (ico) ico.textContent = "cancel";
         }
     }
 
     if (togglePasswordBtn && passwordInput) {
-        togglePasswordBtn.addEventListener('click', function() {
-            var type = passwordInput.getAttribute('type') === 'password' ? 'text' : 'password';
-            passwordInput.setAttribute('type', type);
-            var ico = this.querySelector('.material-symbols-outlined');
-            if (ico) ico.textContent = type === 'password' ? 'visibility' : 'visibility_off';
+        togglePasswordBtn.addEventListener("click", function() {
+            var type = passwordInput.getAttribute("type") === "password" ? "text" : "password";
+            passwordInput.setAttribute("type", type);
+            var ico = this.querySelector(".material-symbols-outlined");
+            if (ico) ico.textContent = type === "password" ? "visibility" : "visibility_off";
         });
     }
 
     if (passwordInput) {
-        passwordInput.addEventListener('focus', function() {
-            if (pwStrengthBox) pwStrengthBox.classList.remove('hidden');
+        passwordInput.addEventListener("focus", function() {
+            if (pwStrengthBox) pwStrengthBox.classList.remove("hidden");
         });
 
-        passwordInput.addEventListener('input', function() {
+        passwordInput.addEventListener("input", function() {
             var val = this.value;
             if (val.length === 0) {
-                if (pwStrengthBox) pwStrengthBox.classList.add('hidden');
+                if (pwStrengthBox) pwStrengthBox.classList.add("hidden");
                 window.superAdminMutPasswordValid = true;
                 return;
             }
-            if (pwStrengthBox) pwStrengthBox.classList.remove('hidden');
+            if (pwStrengthBox) pwStrengthBox.classList.remove("hidden");
 
             var hasLen   = val.length >= 8;
             var hasUpper = /[A-Z]/.test(val);
@@ -695,10 +795,10 @@
     }
 
     // ─── Search & Filter listeners ───────────────────────────────────────────────
-    var searchEl     = document.getElementById('superAdminUserSearchInput');
-    var roleFilterEl = document.getElementById('superAdminUserRoleFilter');
-    if (searchEl)     searchEl.addEventListener('input', function() { currentSuperAdminUserPage = 1; window.renderSuperAdminUsersTable(); });
-    if (roleFilterEl) roleFilterEl.addEventListener('change', function() { currentSuperAdminUserPage = 1; window.renderSuperAdminUsersTable(); });
+    var searchEl     = document.getElementById("superAdminUserSearchInput");
+    var roleFilterEl = document.getElementById("superAdminUserRoleFilter");
+    if (searchEl)     searchEl.addEventListener("input", function() { currentSuperAdminUserPage = 1; window.renderSuperAdminUsersTable(); });
+    if (roleFilterEl) roleFilterEl.addEventListener("change", function() { currentSuperAdminUserPage = 1; window.renderSuperAdminUsersTable(); });
 
     // ─── Kick off data load ──────────────────────────────────────────────────────
     // Use a slight delay so DOM is fully settled after SPA injection

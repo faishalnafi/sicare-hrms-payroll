@@ -24,3 +24,16 @@ This file archives past compiled/published raw logs.
 | 2026-06-16 | Fixed | Mengatasi double popup error saat SPA page navigation gagal akibat status error server | Muncul popup error bawaan SPA yang menimpa popup detail database error | stg | Antigravity |
 | 2026-06-16 | Added | Penanganan error database (PDOException) pada server-side di Database.php yang mengembalikan respon JSON untuk AJAX dan merender halaman error pangkalan data berdesain premium | Terjadi uncaught PDOException yang memicu PHP Fatal Error mentah pada browser | stg | Antigravity |
 | 2026-06-16 | Security | Menyembunyikan detail log developer (stack trace) pada halaman gangguan database jika environment aplikasi (APP_ENV) diset ke production | Menampilkan rincian kredensial sensitif dalam trace error di semua environment | stg | Antigravity |
+| 2026-06-22 | Added | Pembuatan akun pengguna tingkat C-Level (CEO, CFO, CTO, COO, CBO) dengan kata sandi bawaan "password" | Belum ada akun pengguna tingkat C-Level | local | Antigravity |
+| 2026-06-22 | Added | Pembuatan akun pengguna hiring manager untuk sub-departemen level 2 dan level 3 dengan kata sandi bawaan "password" | Belum ada akun hiring manager sub-departemen | local | Antigravity |
+| 2026-06-22 | Added | Pembuatan akun pengguna HR Operations, Recruiter, dan Candidate | Belum ada akun HR Ops, Recruiter, dan Candidate | local | Antigravity |
+| 2026-06-22 | Improved | Peningkatan batas kedalaman struktur departemen maksimal menjadi 10 level | Struktur departemen dibatasi 5 level | local | Antigravity |
+| 2026-06-22 | Added | Fitur pemindahan departemen interaktif menggunakan drag-and-drop | Pemindahan departemen hanya melalui dropdown form | local | Antigravity |
+| 2026-06-22 | Changed | Menampilkan menu Struktur Departemen juga pada peran Superadmin dan membersihkan cache sidebar | Menu hanya ditampilkan untuk peran Admin | local | Antigravity |
+| 2026-06-22 | Removed | Pembersihan file-file cadangan, log lama, file duplikat, dan skrip pelacakan yang tidak lagi digunakan | Banyak file sampah/tidak terpakai di folder root | local | Antigravity |
+| 2026-06-22 | Fixed | Perbaikan tumpang tindih tombol menu hamburger dengan banner simulasi pada perangkat tablet/mobile | Tombol hamburger tertutup oleh banner simulasi pada layar kecil | local | Antigravity |
+| 2026-06-22 | Fixed | Perbaikan error syntax JavaScript pada tabel manajemen pengguna akibat baris kode pagination terpotong | Tabel terus berputar karena eror sintaks JS | local | Antigravity |
+| 2026-06-22 | Fixed | Perbaikan kegagalan tombol simulasi login bagi pengguna yang memiliki nama bertanda kutip tunggal | Tombol simulasi tidak merespon eror parsing string | local | Antigravity |
+| 2026-06-22 | Improved | Refaktor filter dropdown Global Approval Center agar memuat departemen Level 1 dinamis dari database | Kategori departemen hardcoded | local | Antigravity |
+| 2026-06-22 | Refactored | Refaktorisasi string literal dari kutip satu ke kutip dua di AuthController.php dan DashboardController.php | Menggunakan kutip tunggal | local | Antigravity |
+| 2026-06-22 | Added | Penambahan dokumentasi arsitektur MVC/OOP terperinci pada seluruh method di AuthController dan DashboardController | Metode controller tidak memiliki penjelasan terdokumentasi | local | Antigravity |

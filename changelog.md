@@ -4,6 +4,47 @@ All public releases of the siCare HRMS Payroll system are listed here.
 
 ---
 
+## Version local-26.06.00002 (Enterprise) - Mono
+*Compiled Date: 2026-06-22 | Migration: stg -> production*
+
+### Added
+- Penambahan dokumentasi arsitektur MVC/OOP terperinci pada seluruh method di AuthController dan DashboardController
+
+### Improved
+- Refaktor filter dropdown Global Approval Center agar memuat departemen Level 1 dinamis dari database
+
+### Fixed
+- Perbaikan tumpang tindih tombol menu hamburger dengan banner simulasi pada perangkat tablet/mobile
+- Perbaikan error syntax JavaScript pada tabel manajemen pengguna akibat baris kode pagination terpotong
+- Perbaikan kegagalan tombol simulasi login bagi pengguna yang memiliki nama bertanda kutip tunggal
+
+### Refactored
+- Refaktorisasi string literal dari kutip satu ke kutip dua di AuthController.php dan DashboardController.php
+
+---
+
+
+## Version local-26.06.00001 (Enterprise) - Mono
+*Compiled Date: 2026-06-22 | Migration: stg -> production*
+
+### Added
+- Pembuatan akun pengguna tingkat C-Level (CEO, CFO, CTO, COO, CBO) dengan kata sandi bawaan "password"
+- Pembuatan akun pengguna hiring manager untuk sub-departemen level 2 dan level 3 dengan kata sandi bawaan "password"
+- Pembuatan akun pengguna HR Operations, Recruiter, dan Candidate
+- Fitur pemindahan departemen interaktif menggunakan drag-and-drop
+
+### Improved
+- Peningkatan batas kedalaman struktur departemen maksimal menjadi 10 level
+
+### Removed
+- Pembersihan file-file cadangan, log lama, file duplikat, dan skrip pelacakan yang tidak lagi digunakan
+
+### Changed
+- Menampilkan menu Struktur Departemen juga pada peran Superadmin dan membersihkan cache sidebar
+
+---
+
+
 ## Version 002.000.000 (Enterprise) - Mono
 *Compiled Date: 2026-06-16 | Migration: stg -> production*
 
