@@ -37,7 +37,7 @@ class AuditLogController {
         header('Content-Type: application/json; charset=utf-8');
 
         $page = max(1, (int)($_GET['page'] ?? 1));
-        $perPage = 15;
+        $perPage = 10;
         $offset = ($page - 1) * $perPage;
 
         $search = trim($_GET['search'] ?? '');

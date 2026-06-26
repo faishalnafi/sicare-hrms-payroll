@@ -239,7 +239,7 @@ function formatIndonesianDate($dateStr) {
                                     $profPic = $leave['profile_picture'];
                                     $hash = md5(strtolower(trim($leave['email'])));
                                     if (empty($profPic)) {
-                                        $profPic = "https://www.gravatar.com/avatar/{$hash}?d=404&s=150";
+                                        $profPic = "https://www.gravatar.com/avatar/{$hash}?d=identicon&s=150";
                                     }
                                 ?>
                                 <img src="<?= htmlspecialchars($profPic) ?>" onerror="window.handleAvatarError(this, '<?= $hash ?>')" alt="Avatar" class="w-10 h-10 rounded-full object-cover border border-outline-variant/15" />
@@ -313,17 +313,7 @@ function formatIndonesianDate($dateStr) {
             </table>
         </div>
 
-        <!-- Pagination / Footer Info -->
-        <div class="bg-surface-container-lowest p-6 border-t border-outline-variant/15 flex flex-col md:flex-row justify-between items-center gap-4 text-xs font-bold text-on-surface-variant">
-            <div>
-                Menampilkan <span id="displayedCount"><?= count($leaves) ?></span> dari <?= count($leaves) ?> data pengajuan cuti
-            </div>
-            <div class="flex items-center gap-1">
-                <button class="w-8 h-8 rounded-lg bg-surface border border-outline-variant/30 flex items-center justify-center hover:bg-surface-container-high transition-colors" disabled><span class="material-symbols-outlined text-sm">chevron_left</span></button>
-                <button class="w-8 h-8 rounded-lg bg-primary text-white flex items-center justify-center shadow-sm">1</button>
-                <button class="w-8 h-8 rounded-lg bg-surface border border-outline-variant/30 flex items-center justify-center hover:bg-surface-container-high transition-colors" disabled><span class="material-symbols-outlined text-sm">chevron_right</span></button>
-            </div>
-        </div>
+
     </div>
 </div>
 

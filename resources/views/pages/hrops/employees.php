@@ -341,13 +341,13 @@
                 
                 const fullName = escapeHtml(emp.first_name + (emp.last_name ? ' ' + emp.last_name : ''));
                 const empId = emp.employee_id ? escapeHtml(emp.employee_id) : '<span class="text-[10px] bg-warning/20 text-warning px-1.5 py-0.5 rounded uppercase font-bold">UNASSIGNED</span>';
-                const pp = emp.profile_picture ? escapeHtml(emp.profile_picture) : 'https://www.gravatar.com/avatar/' + window.md5((emp.email || '').trim().toLowerCase()) + '?d=404&s=120';
+                const pp = emp.profile_picture ? escapeHtml(emp.profile_picture) : 'https://www.gravatar.com/avatar/' + window.md5((emp.email || '').trim().toLowerCase()) + '?d=identicon&s=120';
                 const salary = emp.base_salary ? new Intl.NumberFormat('id-ID').format(emp.base_salary) : '0';
 
                 tr.innerHTML = `
                     <td class="px-6 py-4">
                         <div class="flex items-center gap-3">
-                            <img src="${pp}" class="w-10 h-10 rounded-full object-cover border border-outline-variant/30" alt="Avatar" onerror="window.handleAvatarError(this, '${window.md5((emp.email || '').trim().toLowerCase())}')">
+                            <img referrerpolicy="no-referrer" src="${pp}" class="w-10 h-10 rounded-full object-cover border border-outline-variant/30" alt="Avatar" onerror="window.handleAvatarError(this, '${window.md5((emp.email || '').trim().toLowerCase())}')">
                             <div>
                                 <p class="text-sm font-bold text-on-surface">${fullName}</p>
                                 <p class="text-xs text-on-surface-variant font-mono mt-0.5">${empId}</p>

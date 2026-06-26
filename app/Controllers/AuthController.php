@@ -38,70 +38,211 @@ class AuthController {
             return;
         }
 
-        $userModel = new User();
-        $user = $userModel->findByEmail($email);
+        try {
+            $db = \App\Config\Database::getInstance()->getConnection();
+            $ipAddress = $_SERVER["REMOTE_ADDR"] ?? "127.0.0.1";
 
-        if ($user && password_verify($password, $user["password_hash"])) {
-            session_start();
-            $_SESSION["user_id"] = $user["id"];
-            $_SESSION["role"] = $user["role"];
-            $_SESSION["role_id"] = $user["role_id"];
-            $_SESSION["department_id"] = $user["department_id"];
-            $_SESSION["name"] = $user["first_name"] . " " . $user["last_name"];
-            $_SESSION["email"] = $user["email"];
-            $_SESSION["profile_picture"] = $user["profile_picture"];
-            $_SESSION["login_just_occurred"] = true;
-            
-            // Set dynamic database flag for login tracking
-            try {
-                $db = \App\Config\Database::getInstance()->getConnection();
-                $db->prepare("UPDATE users SET login_just_occurred = 1 WHERE id = ?")->execute([$user["id"]]);
-            } catch (\Exception $e) {
-                // Fail-safe
-            }
-            
-            // Set secure and samesite cookie parameters correctly
-            $isSecure = (!empty($_SERVER["HTTPS"]) && $_SERVER["HTTPS"] !== "off") || (isset($_SERVER["HTTP_X_FORWARDED_PROTO"]) && $_SERVER["HTTP_X_FORWARDED_PROTO"] === "https");
-            if (PHP_VERSION_ID >= 70300) {
-                setcookie("login_just_occurred", "1", [
-                    "expires" => time() + 300,
-                    "path" => "/",
-                    "domain" => "",
-                    "secure" => $isSecure,
-                    "httponly" => false,
-                    "samesite" => "Lax"
+            // 1. Check if user exists first. If not, bypass throttle and return early.
+            $userModel = new User();
+            $user = $userModel->findByEmail($email);
+
+            if (!$user) {
+                echo json_encode([
+                    "success" => false,
+                    "message" => "Email tidak terdaftar. Silakan mendaftar terlebih dahulu atau periksa kembali email yang Anda masukkan."
                 ]);
-            } else {
-                setcookie("login_just_occurred", "1", time() + 300, "/; SameSite=Lax", "", $isSecure, false);
+                return;
             }
-            
-            if ($remember) {
-                $_SESSION["remember_me"] = true;
-                $_SESSION["login_time"] = time(); // Store initial login time
+
+            // Check if user is soft deleted
+            if (isset($user["is_deleted"]) && (int)$user["is_deleted"] === 1) {
+                echo json_encode([
+                    "success" => false,
+                    "message" => "Akun Anda telah dihapus. Silakan hubungi administrator."
+                ]);
+                return;
+            }
+
+            // Check if user is suspended
+            if (isset($user["is_suspended"]) && (int)$user["is_suspended"] === 1) {
+                echo json_encode([
+                    "success" => false,
+                    "message" => "Akun Anda ditangguhkan (suspend). Silakan hubungi admin."
+                ]);
+                return;
+            }
+
+            // 2. Check current login attempts and locks
+            $stmtAttempt = $db->prepare("SELECT attempts, locked_until FROM login_attempts WHERE email = ? AND ip_address = ?");
+            $stmtAttempt->execute([$email, $ipAddress]);
+            $record = $stmtAttempt->fetch(\PDO::FETCH_ASSOC);
+
+            if ($record) {
+                $attempts = (int)$record["attempts"];
+                if ($attempts >= 21) {
+                    echo json_encode([
+                        "success" => false,
+                        "message" => "Akun diblokir, silakan hubungi admin.",
+                        "attempts" => $attempts,
+                        "is_blocked" => true
+                    ]);
+                    return;
+                }
+
+                if ($record["locked_until"] !== null) {
+                    $lockedTime = strtotime($record["locked_until"]);
+                    if ($lockedTime > time()) {
+                        $remaining = $lockedTime - time();
+                        echo json_encode([
+                            "success" => false,
+                            "message" => "Terlalu banyak percobaan. Harap tunggu {$remaining} detik sebelum mencoba lagi.",
+                            "attempts" => $attempts,
+                            "lockout_duration" => $remaining
+                        ]);
+                        return;
+                    }
+                }
+            }
+
+            if (password_verify($password, $user["password_hash"])) {
+                // Success: clear login attempts
+                $db->prepare("DELETE FROM login_attempts WHERE email = ? AND ip_address = ?")->execute([$email, $ipAddress]);
+
+                if (session_status() === PHP_SESSION_NONE) session_start();
+                $_SESSION["user_id"] = $user["id"];
+                $_SESSION["role"] = $user["role"];
+                $_SESSION["role_id"] = $user["role_id"];
+                $_SESSION["department_id"] = $user["department_id"];
+                $_SESSION["name"] = $user["first_name"] . " " . $user["last_name"];
+                $_SESSION["email"] = $user["email"];
+                $_SESSION["profile_picture"] = $user["profile_picture"];
+                $_SESSION["login_just_occurred"] = true;
+
+                // Generate JWT Token for CRUD authorization
+                $jwtPayload = [
+                    "user_id" => $user["id"],
+                    "name" => $user["first_name"] . " " . $user["last_name"],
+                    "email" => $user["email"],
+                    "role" => $user["role"]
+                ];
+                $jwtToken = \App\Config\JwtHelper::createToken($jwtPayload);
+                $_SESSION["jwt_token"] = $jwtToken;
                 
-                // Explicitly send a persistent cookie (7 days) to override the default session-only cookie
-                $params = session_get_cookie_params();
-                setcookie(
-                    session_name(),
-                    session_id(),
-                    time() + 7 * 86400,
-                    $params["path"],
-                    $params["domain"] ?? "",
-                    $params["secure"] ?? false,
-                    $params["httponly"] ?? true
-                );
+                // Set dynamic database flag for login tracking
+                try {
+                    $db->prepare("UPDATE users SET login_just_occurred = 1 WHERE id = ?")->execute([$user["id"]]);
+                } catch (\Exception $e) {
+                    // Fail-safe
+                }
+                
+                // Set secure and samesite cookie parameters correctly
+                $isSecure = (!empty($_SERVER["HTTPS"]) && $_SERVER["HTTPS"] !== "off") || (isset($_SERVER["HTTP_X_FORWARDED_PROTO"]) && $_SERVER["HTTP_X_FORWARDED_PROTO"] === "https");
+                
+                // Set JWT token cookie
+                if (PHP_VERSION_ID >= 70300) {
+                    setcookie("jwt_token", $jwtToken, [
+                        "expires" => time() + 604800,
+                        "path" => "/",
+                        "domain" => "",
+                        "secure" => $isSecure,
+                        "httponly" => false,
+                        "samesite" => "Lax"
+                    ]);
+                    setcookie("login_just_occurred", "1", [
+                        "expires" => time() + 300,
+                        "path" => "/",
+                        "domain" => "",
+                        "secure" => $isSecure,
+                        "httponly" => false,
+                        "samesite" => "Lax"
+                    ]);
+                } else {
+                    setcookie("jwt_token", $jwtToken, time() + 604800, "/; SameSite=Lax", "", $isSecure, false);
+                    setcookie("login_just_occurred", "1", time() + 300, "/; SameSite=Lax", "", $isSecure, false);
+                }
+                
+                if ($remember) {
+                    $_SESSION["remember_me"] = true;
+                    $_SESSION["login_time"] = time();
+                    
+                    // Generate remember token
+                    $rememberToken = bin2hex(random_bytes(32));
+                    
+                    // Save to database
+                    $db->prepare("UPDATE users SET remember_token = ? WHERE id = ?")->execute([$rememberToken, $user["id"]]);
+                    
+                    // Set cookie remember_me_token (30 days)
+                    $isSecure = (!empty($_SERVER["HTTPS"]) && $_SERVER["HTTPS"] !== "off") || (isset($_SERVER["HTTP_X_FORWARDED_PROTO"]) && $_SERVER["HTTP_X_FORWARDED_PROTO"] === "https");
+                    if (PHP_VERSION_ID >= 70300) {
+                        setcookie("remember_me_token", $rememberToken, [
+                            "expires" => time() + 30 * 86400,
+                            "path" => "/",
+                            "domain" => "",
+                            "secure" => $isSecure,
+                            "httponly" => true,
+                            "samesite" => "Lax"
+                        ]);
+                    } else {
+                        setcookie("remember_me_token", $rememberToken, time() + 30 * 86400, "/; SameSite=Lax", "", $isSecure, true);
+                    }
+                }
+                
+                session_write_close();
+                
+                $redirect = $_POST["redirect"] ?? "";
+                if (empty($redirect) || !str_starts_with($redirect, "/")) {
+                    $redirect = "/dashboard";
+                }
+                
+                echo json_encode(["success" => true, "message" => "Berhasil masuk!", "redirect" => $redirect]);
+            } else {
+                // Failure: increment login attempts
+                $newAttempts = $record ? (int)$record["attempts"] + 1 : 1;
+                $duration = $this->getLockoutDuration($newAttempts);
+                
+                if ($duration == -1) {
+                    $lockedUntil = null;
+                } elseif ($duration > 0) {
+                    $lockedUntil = date("Y-m-d H:i:s", time() + $duration);
+                } else {
+                    $lockedUntil = null;
+                }
+                
+                if ($record) {
+                    $upStmt = $db->prepare("UPDATE login_attempts SET attempts = ?, locked_until = ? WHERE email = ? AND ip_address = ?");
+                    $upStmt->execute([$newAttempts, $lockedUntil, $email, $ipAddress]);
+                } else {
+                    $insStmt = $db->prepare("INSERT INTO login_attempts (email, ip_address, attempts, locked_until) VALUES (?, ?, ?, ?)");
+                    $insStmt->execute([$email, $ipAddress, $newAttempts, $lockedUntil]);
+                }
+                
+                if ($newAttempts >= 21) {
+                    echo json_encode([
+                        "success" => false,
+                        "message" => "Akun diblokir, silakan hubungi admin.",
+                        "attempts" => $newAttempts,
+                        "is_blocked" => true
+                    ]);
+                } elseif ($duration > 0) {
+                    echo json_encode([
+                        "success" => false,
+                        "message" => "Terlalu banyak percobaan. Harap tunggu {$duration} detik sebelum mencoba lagi.",
+                        "attempts" => $newAttempts,
+                        "lockout_duration" => $duration
+                    ]);
+                } else {
+                    $errorDetail = "Kata sandi salah.";
+                    $remaining = 9 - $newAttempts;
+                    echo json_encode([
+                        "success" => false,
+                        "message" => "{$errorDetail} Percobaan ke-{$newAttempts}. Tersisa {$remaining} kali percobaan sebelum dikunci.",
+                        "attempts" => $newAttempts,
+                        "remaining_attempts" => $remaining
+                    ]);
+                }
             }
-            
-            session_write_close();
-            
-            $redirect = $_POST["redirect"] ?? "";
-            if (empty($redirect) || !str_starts_with($redirect, "/")) {
-                $redirect = "/dashboard";
-            }
-            
-            echo json_encode(["success" => true, "message" => "Berhasil masuk!", "redirect" => $redirect]);
-        } else {
-            echo json_encode(["success" => false, "message" => "Email atau kata sandi salah."]);
+        } catch (\Exception $e) {
+            echo json_encode(["success" => false, "message" => "Koneksi database bermasalah: " . $e->getMessage()]);
         }
     }
 
@@ -285,13 +426,14 @@ class AuthController {
                     $infoMsg = "Akun dengan email " . $profile["email"] . " tidak ditemukan. Silakan mendaftar terlebih dahulu untuk menggunakan layanan siCare.";
                     header("Location: /signup?info=" . urlencode($infoMsg));
                     exit;
-                } else if ($googlePic && empty($user["profile_picture"])) {
-                    $userModel->updateProfilePicture($user["id"], $googlePic);
-                    $user["profile_picture"] = $googlePic;
+                } else {
+                    $resolvedPic = resolveProfilePicture($profile["email"], $googlePic);
+                    $userModel->updateProfilePicture($user["id"], $resolvedPic);
+                    $user["profile_picture"] = $resolvedPic;
                 }
 
                 if ($user) {
-                    session_start();
+                    if (session_status() === PHP_SESSION_NONE) session_start();
                     $_SESSION["user_id"] = $user["id"];
                     $_SESSION["role"] = $user["role"];
                     $_SESSION["role_id"] = $user["role_id"];
@@ -301,6 +443,16 @@ class AuthController {
                     $_SESSION["profile_picture"] = $user["profile_picture"];
                     $_SESSION["login_just_occurred"] = true;
                     
+                    // Generate JWT Token for CRUD authorization
+                    $jwtPayload = [
+                        "user_id" => $user["id"],
+                        "name" => $user["first_name"] . " " . $user["last_name"],
+                        "email" => $user["email"],
+                        "role" => $user["role"]
+                    ];
+                    $jwtToken = \App\Config\JwtHelper::createToken($jwtPayload);
+                    $_SESSION["jwt_token"] = $jwtToken;
+
                     // Set dynamic database flag for login tracking
                     try {
                         $db = \App\Config\Database::getInstance()->getConnection();
@@ -311,7 +463,17 @@ class AuthController {
                     
                     // Set secure and samesite cookie parameters correctly
                     $isSecure = (!empty($_SERVER["HTTPS"]) && $_SERVER["HTTPS"] !== "off") || (isset($_SERVER["HTTP_X_FORWARDED_PROTO"]) && $_SERVER["HTTP_X_FORWARDED_PROTO"] === "https");
+                    
+                    // Set JWT token cookie
                     if (PHP_VERSION_ID >= 70300) {
+                        setcookie("jwt_token", $jwtToken, [
+                            "expires" => time() + 604800,
+                            "path" => "/",
+                            "domain" => "",
+                            "secure" => $isSecure,
+                            "httponly" => false,
+                            "samesite" => "Lax"
+                        ]);
                         setcookie("login_just_occurred", "1", [
                             "expires" => time() + 300,
                             "path" => "/",
@@ -321,6 +483,7 @@ class AuthController {
                             "samesite" => "Lax"
                         ]);
                     } else {
+                        setcookie("jwt_token", $jwtToken, time() + 604800, "/; SameSite=Lax", "", $isSecure, false);
                         setcookie("login_just_occurred", "1", time() + 300, "/; SameSite=Lax", "", $isSecure, false);
                     }
                     
@@ -343,8 +506,7 @@ class AuthController {
                             $params["httponly"] ?? true
                         );
                     }
-                    
-                    session_write_close();
+    
                     header("Location: /dashboard");
                     exit;
                 }
@@ -446,7 +608,35 @@ class AuthController {
      * @return void
      */
     public function logout() {
-        session_start();
+        if (session_status() === PHP_SESSION_NONE) {
+            session_start();
+        }
+        
+        $userId = $_SESSION["user_id"] ?? null;
+        if ($userId) {
+            try {
+                $db = \App\Config\Database::getInstance()->getConnection();
+                $db->prepare("UPDATE users SET remember_token = NULL WHERE id = ?")->execute([$userId]);
+            } catch (\Exception $e) {
+                // Fail-safe
+            }
+        }
+        
+        // Hapus cookie remember_me_token
+        setcookie("remember_me_token", "", time() - 3600, "/");
+        
+        // Hapus cookie jwt_token
+        setcookie("jwt_token", "", time() - 3600, "/");
+        
+        // Hapus session
+        $_SESSION = [];
+        if (ini_get("session.use_cookies")) {
+            $params = session_get_cookie_params();
+            setcookie(session_name(), '', time() - 42000,
+                $params["path"], $params["domain"],
+                $params["secure"], $params["httponly"]
+            );
+        }
         session_destroy();
         header("Location: /");
         exit;
@@ -516,7 +706,7 @@ class AuthController {
             $pp = $targetUser["profile_picture"];
             if (empty($pp)) {
                 $hash = md5(strtolower(trim($targetUser["email"])));
-                $pp = "https://www.gravatar.com/avatar/{$hash}?d=404&s=200";
+                $pp = "https://www.gravatar.com/avatar/{$hash}?d=identicon&s=200";
             }
             $_SESSION["profile_picture"] = $pp;
 
@@ -667,5 +857,33 @@ class AuthController {
         } catch (\Exception $e) {
             echo json_encode(["success" => false, "message" => "Gagal merekam aktivitas akses: " . $e->getMessage()]);
         }
+    }
+
+    /**
+     * Calculates the lockout duration in seconds based on failed login attempts.
+     * 
+     * - 1-9 attempts: 0 seconds (no lockout)
+     * - 10-12 attempts: 15s to 150s (10th: 15s, 11th: 60s, 12th: 150s)
+     * - 13-16 attempts: 2x duration of previous attempt (13th: 300s, 14th: 600s, 15th: 1200s, 16th: 2400s)
+     * - 17-20 attempts: 2x duration of previous attempt (17th: 4800s, 18th: 9600s, 19th: 19200s, 20th: 38400s)
+     * - >=21 attempts: blocked (-1)
+     * 
+     * @param int $attempts Number of failed attempts
+     * @return int Lockout duration in seconds, or -1 for permanent block
+     */
+    private function getLockoutDuration($attempts) {
+        if ($attempts < 10) {
+            return 0;
+        }
+        if ($attempts == 10) return 15;
+        if ($attempts == 11) return 60;
+        if ($attempts == 12) return 150;
+        if ($attempts >= 13 && $attempts <= 16) {
+            return 150 * pow(2, $attempts - 12);
+        }
+        if ($attempts >= 17 && $attempts <= 20) {
+            return 2400 * pow(2, $attempts - 16);
+        }
+        return -1; // -1 represents blocked
     }
 }

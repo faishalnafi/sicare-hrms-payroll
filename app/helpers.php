@@ -121,3 +121,41 @@ if (!function_exists('validate_password_strength')) {
         return true;
     }
 }
+
+if (!function_exists('resolveProfilePicture')) {
+    /**
+     * Menentukan URL gambar profil pengguna dengan cascade:
+     * 1. Google profile picture (jika ada/diberikan)
+     * 2. Gravatar custom profile picture (jika diset untuk email tersebut)
+     * 3. Fallback MD5 Gravatar biasa (Mystery Person)
+     *
+     * @param string $email
+     * @param string|null $googlePic
+     * @return string
+     */
+    function resolveProfilePicture($email, $googlePic = null) {
+        if (!empty($googlePic)) {
+            return $googlePic;
+        }
+        
+        $h = md5(strtolower(trim($email)));
+        $gravatarUrl = "https://www.gravatar.com/avatar/{$h}?d=404";
+        
+        // Lakukan HEAD request cepat ke Gravatar
+        $ch = curl_init($gravatarUrl);
+        curl_setopt($ch, CURLOPT_NOBODY, true);
+        curl_setopt($ch, CURLOPT_TIMEOUT, 2);
+        curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 2);
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+        curl_exec($ch);
+        $statusCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        curl_close($ch);
+        
+        if ($statusCode === 200) {
+            return "https://www.gravatar.com/avatar/{$h}";
+        }
+        
+        // Kembalikan null jika tidak ada kustom Gravatar maupun Google profile
+        return null;
+    }
+}

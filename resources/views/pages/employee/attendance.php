@@ -295,11 +295,7 @@ function clockOutStatusLabel($status) {
                         <span id="locationTagText">Mendeteksi lokasi...</span>
                     </div>
                     
-                    <!-- Audio alarm status toggle -->
-                    <button id="btnAudioToggle" onclick="window.toggleAudioPermission()" type="button" class="inline-flex items-center gap-2 px-3 py-1.5 rounded-xl text-xs font-bold bg-white/10 hover:bg-white/20 active:scale-95 text-white/80 border border-white/15 transition-all cursor-pointer">
-                        <span id="iconAudioToggle" class="material-symbols-outlined text-sm">volume_off</span>
-                        <span id="textAudioToggle">Alarm Nonaktif (Ketuk untuk Aktifkan)</span>
-                    </button>
+
                 </div>
             </div>
 
@@ -488,31 +484,104 @@ function clockOutStatusLabel($status) {
         </div>
 
         <div class="overflow-x-auto">
-            <table class="w-full text-left border-collapse">
+            <table class="w-full text-left border-collapse table-standardized">
                 <thead>
                     <tr class="bg-surface text-on-surface-variant border-b border-outline-variant/10">
-                        <th class="py-3 px-6 text-[10px] font-bold uppercase tracking-wider">Tanggal</th>
-                        <th class="py-3 px-6 text-[10px] font-bold uppercase tracking-wider">Clock-In</th>
-                        <th class="py-3 px-6 text-[10px] font-bold uppercase tracking-wider">Status Clock-In</th>
-                        <th class="py-3 px-6 text-[10px] font-bold uppercase tracking-wider">Clock-Out</th>
-                        <th class="py-3 px-6 text-[10px] font-bold uppercase tracking-wider">Status Clock-Out</th>
-                        <th class="py-3 px-6 text-[10px] font-bold uppercase tracking-wider">Jam Kerja</th>
-                        <th class="py-3 px-6 text-[10px] font-bold uppercase tracking-wider">Mode Masuk</th>
-                        <th class="py-3 px-6 text-[10px] font-bold uppercase tracking-wider">Mode Pulang</th>
-                        <th class="py-3 px-6 text-[10px] font-bold uppercase tracking-wider">Metode</th>
+                        <th class="no-col w-12 text-center py-3 px-6 text-[10px] font-bold uppercase tracking-wider">No</th>
+                        <th onclick="window.sortDomTable(this, 1, 'date')" class="py-3 px-6 text-[10px] font-bold uppercase tracking-wider">
+                            <div class="flex items-center gap-1">
+                                Tanggal
+                                <span class="sort-icon-container">
+                                    <span class="material-symbols-outlined sort-up">arrow_drop_up</span>
+                                    <span class="material-symbols-outlined sort-down">arrow_drop_down</span>
+                                </span>
+                            </div>
+                        </th>
+                        <th onclick="window.sortDomTable(this, 2, 'string')" class="py-3 px-6 text-[10px] font-bold uppercase tracking-wider">
+                            <div class="flex items-center gap-1">
+                                Clock-In
+                                <span class="sort-icon-container">
+                                    <span class="material-symbols-outlined sort-up">arrow_drop_up</span>
+                                    <span class="material-symbols-outlined sort-down">arrow_drop_down</span>
+                                </span>
+                            </div>
+                        </th>
+                        <th onclick="window.sortDomTable(this, 3, 'string')" class="py-3 px-6 text-[10px] font-bold uppercase tracking-wider">
+                            <div class="flex items-center gap-1">
+                                Status Clock-In
+                                <span class="sort-icon-container">
+                                    <span class="material-symbols-outlined sort-up">arrow_drop_up</span>
+                                    <span class="material-symbols-outlined sort-down">arrow_drop_down</span>
+                                </span>
+                            </div>
+                        </th>
+                        <th onclick="window.sortDomTable(this, 4, 'string')" class="py-3 px-6 text-[10px] font-bold uppercase tracking-wider">
+                            <div class="flex items-center gap-1">
+                                Clock-Out
+                                <span class="sort-icon-container">
+                                    <span class="material-symbols-outlined sort-up">arrow_drop_up</span>
+                                    <span class="material-symbols-outlined sort-down">arrow_drop_down</span>
+                                </span>
+                            </div>
+                        </th>
+                        <th onclick="window.sortDomTable(this, 5, 'string')" class="py-3 px-6 text-[10px] font-bold uppercase tracking-wider">
+                            <div class="flex items-center gap-1">
+                                Status Clock-Out
+                                <span class="sort-icon-container">
+                                    <span class="material-symbols-outlined sort-up">arrow_drop_up</span>
+                                    <span class="material-symbols-outlined sort-down">arrow_drop_down</span>
+                                </span>
+                            </div>
+                        </th>
+                        <th onclick="window.sortDomTable(this, 6, 'string')" class="py-3 px-6 text-[10px] font-bold uppercase tracking-wider">
+                            <div class="flex items-center gap-1">
+                                Jam Kerja
+                                <span class="sort-icon-container">
+                                    <span class="material-symbols-outlined sort-up">arrow_drop_up</span>
+                                    <span class="material-symbols-outlined sort-down">arrow_drop_down</span>
+                                </span>
+                            </div>
+                        </th>
+                        <th onclick="window.sortDomTable(this, 7, 'string')" class="py-3 px-6 text-[10px] font-bold uppercase tracking-wider">
+                            <div class="flex items-center gap-1">
+                                Mode Masuk
+                                <span class="sort-icon-container">
+                                    <span class="material-symbols-outlined sort-up">arrow_drop_up</span>
+                                    <span class="material-symbols-outlined sort-down">arrow_drop_down</span>
+                                </span>
+                            </div>
+                        </th>
+                        <th onclick="window.sortDomTable(this, 8, 'string')" class="py-3 px-6 text-[10px] font-bold uppercase tracking-wider">
+                            <div class="flex items-center gap-1">
+                                Mode Pulang
+                                <span class="sort-icon-container">
+                                    <span class="material-symbols-outlined sort-up">arrow_drop_up</span>
+                                    <span class="material-symbols-outlined sort-down">arrow_drop_down</span>
+                                </span>
+                            </div>
+                        </th>
+                        <th onclick="window.sortDomTable(this, 9, 'string')" class="py-3 px-6 text-[10px] font-bold uppercase tracking-wider">
+                            <div class="flex items-center gap-1">
+                                Metode
+                                <span class="sort-icon-container">
+                                    <span class="material-symbols-outlined sort-up">arrow_drop_up</span>
+                                    <span class="material-symbols-outlined sort-down">arrow_drop_down</span>
+                                </span>
+                            </div>
+                        </th>
                     </tr>
                 </thead>
                 <tbody class="divide-y divide-outline-variant/8">
                     <?php if (empty($attData['monthly'])): ?>
                     <tr>
-                        <td colspan="9" class="py-16 px-6 text-center">
+                        <td colspan="10" class="py-16 px-6 text-center">
                             <span class="material-symbols-outlined text-4xl text-outline-variant block mb-3">event_busy</span>
                             <p class="text-on-surface-variant font-semibold text-sm">Belum ada riwayat presensi bulan ini.</p>
                             <p class="text-on-surface-variant/60 text-xs mt-1">Lakukan Clock-In pertama Anda hari ini!</p>
                         </td>
                     </tr>
                     <?php else: ?>
-                    <?php foreach ($attData['monthly'] as $rec): ?>
+                    <?php $rowNo = 1; foreach ($attData['monthly'] as $rec): ?>
                     <?php
                         $cin  = $rec['clock_in']  ? date('H:i', strtotime($rec['clock_in']))  : '--:--';
                         $cout = $rec['clock_out'] ? date('H:i', strtotime($rec['clock_out'])) : '--:--';
@@ -529,7 +598,8 @@ function clockOutStatusLabel($status) {
                         $dateMonthEng = date('M', strtotime($rec['attendance_date']));
                         $recDateLabel = $dateDay . ' ' . ($monthsIndo[$dateMonthEng] ?? $dateMonthEng);
                     ?>
-                    <tr class="att-table-row">
+                    <tr class="att-table-row hover:bg-surface-container-low/20 transition-colors">
+                        <td class="py-3.5 px-6 text-center font-bold text-xs text-on-surface-variant"><?= $rowNo++ ?></td>
                         <td class="py-3.5 px-6">
                             <div class="font-bold text-sm text-on-surface"><?= $recDateLabel ?></div>
                             <div class="text-[10px] font-medium text-on-surface-variant"><?= $recDayLabel ?></div>
@@ -624,8 +694,8 @@ function clockOutStatusLabel($status) {
                         <td class="py-3.5 px-6">
                             <?php if ($rec['location_method']): ?>
                             <div class="flex items-center gap-1.5">
-                                <span class="material-symbols-outlined text-sm <?= $rec['location_method'] === 'WIFI' ? 'text-primary' : 'text-amber-600' ?>">
-                                    <?= $rec['location_method'] === 'WIFI' ? 'wifi' : 'location_on' ?>
+                                <span class="material-symbols-outlined text-sm <?= $rec['location_method'] === 'WIFI' ? 'text-primary' : ($rec['location_method'] === 'POP' ? 'text-blue-600' : 'text-amber-600') ?>">
+                                    <?= $rec['location_method'] === 'WIFI' ? 'wifi' : ($rec['location_method'] === 'POP' ? 'laptop' : 'location_on') ?>
                                 </span>
                                 <span class="att-location-tag font-semibold text-on-surface-variant"><?= htmlspecialchars($rec['location_method']) ?></span>
                             </div>
@@ -712,9 +782,7 @@ const ATT_CFG = {
         el.textContent = [now.getHours(), now.getMinutes(), now.getSeconds()]
             .map(n => String(n).padStart(2, '0')).join(':');
     }
-    if (typeof checkAlarmScheduler === 'function') {
-        checkAlarmScheduler();
-    }
+
     setTimeout(updateClock, 1000);
 })();
 
@@ -1095,222 +1163,5 @@ function playSuccessSound() {
 }
 window.playSuccessSound = playSuccessSound;
 
-// ── Audio & Alarm reminder logic ───────────────────────────────
-let audioContextUnlocked = false;
-let attendanceAlarmAudio = null;
-window.alarmDismissed = false;
-window.alarmPlaying = false;
 
-// Register Service Worker for background notifications
-if ('serviceWorker' in navigator) {
-    navigator.serviceWorker.register('/sw.js')
-        .then(reg => {
-            console.log('Service Worker registered successfully:', reg.scope);
-        })
-        .catch(err => {
-            console.error('Service Worker registration failed:', err);
-        });
-        
-    // Listen to messages from Service Worker (like when a notification is clicked)
-    navigator.serviceWorker.addEventListener('message', event => {
-        if (event.data && event.data.action === 'notification-clicked') {
-            stopAlarm();
-        }
-    });
-}
-
-function initAudio() {
-    if (!attendanceAlarmAudio) {
-        attendanceAlarmAudio = new Audio('/ringtones/samsung_s25.mp3');
-        attendanceAlarmAudio.loop = false; // Play only once!
-    }
-}
-
-function toggleAudioPermission() {
-    initAudio();
-    
-    // Request notification permission first
-    if ('Notification' in window) {
-        Notification.requestPermission().then(permission => {
-            if (permission === 'granted') {
-                // Play audio once to unlock
-                attendanceAlarmAudio.play().then(() => {
-                    attendanceAlarmAudio.pause();
-                    attendanceAlarmAudio.currentTime = 0;
-                    
-                    localStorage.setItem('attendance-audio-enabled', 'true');
-                    audioContextUnlocked = true;
-                    updateAudioToggleUI();
-                    
-                    Swal.fire({
-                        title: '🔊 Alarm & Notifikasi Aktif',
-                        text: 'Izin suara dan notifikasi berhasil diaktifkan. Anda akan menerima peringatan suara sekali pada jam masuk dan pulang.',
-                        icon: 'success',
-                        confirmButtonColor: '#000666'
-                    });
-                }).catch(err => {
-                    console.error('Audio unlock failed:', err);
-                });
-            } else {
-                Swal.fire({
-                    title: '⚠️ Izin Notifikasi Ditolak',
-                    text: 'Anda harus mengizinkan notifikasi browser agar alarm pengingat dapat berbunyi.',
-                    icon: 'warning',
-                    confirmButtonColor: '#ba1a1a'
-                });
-            }
-        });
-    } else {
-        Swal.fire({
-            title: '⚠️ Browser Tidak Mendukung',
-            text: 'Browser Anda tidak mendukung fitur notifikasi sistem.',
-            icon: 'error',
-            confirmButtonColor: '#ba1a1a'
-        });
-    }
-}
-window.toggleAudioPermission = toggleAudioPermission;
-
-function updateAudioToggleUI() {
-    const btn = document.getElementById('btnAudioToggle');
-    const icon = document.getElementById('iconAudioToggle');
-    const text = document.getElementById('textAudioToggle');
-    if (!btn || !icon || !text) return;
-    
-    const isEnabled = localStorage.getItem('attendance-audio-enabled') === 'true' && 
-                      ('Notification' in window && Notification.permission === 'granted');
-                      
-    if (isEnabled) {
-        btn.className = 'inline-flex items-center gap-2 px-3 py-1.5 rounded-xl text-xs font-bold bg-emerald-500/20 text-emerald-200 border border-emerald-400/30 hover:bg-emerald-500/30 active:scale-95 transition-all cursor-pointer';
-        icon.textContent = 'volume_up';
-        text.textContent = 'Alarm Aktif';
-    } else {
-        btn.className = 'inline-flex items-center gap-2 px-3 py-1.5 rounded-xl text-xs font-bold bg-white/10 hover:bg-white/20 active:scale-95 text-white/80 border border-white/15 transition-all cursor-pointer';
-        icon.textContent = 'volume_off';
-        text.textContent = 'Alarm Nonaktif (Ketuk untuk Aktifkan)';
-    }
-}
-window.updateAudioToggleUI = updateAudioToggleUI;
-
-function showSystemNotification(title, body) {
-    const options = {
-        body: body,
-        icon: '/favicon.ico',
-        tag: 'attendance-reminder',
-        renotify: true,
-        requireInteraction: true,
-        sound: '/ringtones/samsung_s25.mp3'
-    };
-    
-    if ('serviceWorker' in navigator && navigator.serviceWorker.controller) {
-        navigator.serviceWorker.ready.then(reg => {
-            reg.showNotification(title, options);
-        });
-    } else if ('Notification' in window && Notification.permission === 'granted') {
-        new Notification(title, options);
-    }
-}
-
-function triggerAlarm(type) {
-    if (window.alarmPlaying) return;
-    window.alarmPlaying = true;
-    
-    initAudio();
-    if (attendanceAlarmAudio) {
-        attendanceAlarmAudio.currentTime = 0;
-        attendanceAlarmAudio.play().catch(e => console.error('Audio play failed:', e));
-    }
-    
-    const title = type === 'clockin' ? '⏰ Waktunya Clock-In!' : '⏰ Waktunya Clock-Out!';
-    const message = type === 'clockin' 
-        ? 'Jam kerja telah dimulai. Silakan lakukan Clock-In agar kehadiran Anda tercatat tepat waktu.' 
-        : 'Jam kerja telah berakhir. Silakan lakukan Clock-Out sebelum meninggalkan pekerjaan.';
-        
-    // Send system background notification
-    showSystemNotification(title, message);
-    
-    // Also show standard Swal alert
-    const btnText = type === 'clockin' ? 'Clock-In Sekarang' : 'Clock-Out Sekarang';
-    Swal.fire({
-        title: title,
-        text: message,
-        icon: 'warning',
-        showCancelButton: true,
-        confirmButtonColor: '#000666',
-        cancelButtonColor: '#ba1a1a',
-        confirmButtonText: btnText,
-        cancelButtonText: 'Tutup',
-        allowOutsideClick: true
-    }).then(result => {
-        stopAlarm();
-        if (result.isConfirmed) {
-            if (type === 'clockin') {
-                window.doClockIn();
-            } else {
-                window.doClockOut();
-            }
-        }
-    });
-}
-window.triggerAlarm = triggerAlarm;
-
-function stopAlarm() {
-    window.alarmPlaying = false;
-    window.alarmDismissed = true;
-    if (attendanceAlarmAudio) {
-        attendanceAlarmAudio.pause();
-        attendanceAlarmAudio.currentTime = 0;
-    }
-}
-window.stopAlarm = stopAlarm;
-
-function checkAlarmScheduler() {
-    if (localStorage.getItem('attendance-audio-enabled') !== 'true') return;
-    if (window.alarmDismissed) return;
-    
-    const now = new Date();
-    const currentHM = [now.getHours(), now.getMinutes()]
-        .map(n => String(n).padStart(2, '0')).join(':');
-    const todayStr = now.getFullYear() + '-' + String(now.getMonth() + 1).padStart(2, '0') + '-' + String(now.getDate()).padStart(2, '0');
-        
-    // Clock-In alarm
-    if (!ATT_CFG.hasClockIn) {
-        if (currentHM >= ATT_CFG.workStart) {
-            if (localStorage.getItem('last-clockin-alarm') !== todayStr) {
-                localStorage.setItem('last-clockin-alarm', todayStr);
-                triggerAlarm('clockin');
-            }
-        }
-    }
-    
-    // Clock-Out alarm
-    if (ATT_CFG.hasClockIn && !ATT_CFG.hasClockOut) {
-        if (currentHM >= ATT_CFG.workEnd) {
-            if (localStorage.getItem('last-clockout-alarm') !== todayStr) {
-                localStorage.setItem('last-clockout-alarm', todayStr);
-                triggerAlarm('clockout');
-            }
-        }
-    }
-}
-window.checkAlarmScheduler = checkAlarmScheduler;
-
-// Unlock on first page interaction if enabled
-document.addEventListener('click', function unlockOnInteraction() {
-    if (localStorage.getItem('attendance-audio-enabled') === 'true' && !audioContextUnlocked) {
-        initAudio();
-        attendanceAlarmAudio.play().then(() => {
-            attendanceAlarmAudio.pause();
-            attendanceAlarmAudio.currentTime = 0;
-            audioContextUnlocked = true;
-            updateAudioToggleUI();
-            document.removeEventListener('click', unlockOnInteraction);
-        }).catch(err => {
-            console.log('Autoplay unlock deferred', err);
-        });
-    }
-}, { once: false });
-
-// Immediate execution to sync UI state
-updateAudioToggleUI();
 </script>

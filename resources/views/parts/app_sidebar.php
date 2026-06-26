@@ -20,7 +20,7 @@ if (isset($_SESSION['user_id'])) {
 
 if (empty($profilePic)) {
     $hash = md5(strtolower(trim($sessEmail)));
-    $profilePic = "https://www.gravatar.com/avatar/{$hash}?d=404&s=200";
+    $profilePic = "https://www.gravatar.com/avatar/{$hash}?d=identicon&s=200";
 }
 
 $isReflectionIncomplete = false;
@@ -96,6 +96,17 @@ if ($menus === null) {
         $menus = [];
     }
 }
+
+// Filter out 'Pedoman Penomoran' menu if user is not admin or superadmin
+if (isset($menus) && is_array($menus)) {
+    $menus = array_filter($menus, function($m) use ($sessRole) {
+        if (isset($m['title']) && strtolower($m['title']) === 'pedoman penomoran') {
+            return in_array($sessRole, ['admin', 'superadmin']);
+        }
+        return true;
+    });
+}
+
 $requestUri = parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH);
 $currentUri = '/' . trim($requestUri, '/');
 ?>
@@ -196,7 +207,7 @@ $currentUri = '/' . trim($requestUri, '/');
             <div class="profile-widget-container flex items-center gap-3 p-2 rounded-xl hover:bg-surface-container-low transition-all duration-200 group/profile cursor-pointer">
                 <div class="relative flex-shrink-0">
                     <?php $sessEmailHash = md5(strtolower(trim($sessEmail))); ?>
-                    <img src="<?= htmlspecialchars($profilePic) ?>" onerror="window.handleAvatarError(this, '<?= $sessEmailHash ?>')" alt="Avatar" class="w-10 h-10 rounded-full object-cover border border-outline-variant/20 shadow-sm" />
+                    <img referrerpolicy="no-referrer" src="<?= htmlspecialchars($profilePic) ?>" onerror="window.handleAvatarError(this, '<?= $sessEmailHash ?>')" alt="Avatar" class="w-10 h-10 rounded-full object-cover border border-outline-variant/20 shadow-sm" />
                     <span class="absolute bottom-0 right-0 w-3 h-3 bg-green-500 border-2 border-surface-container-lowest rounded-full"></span>
                 </div>
                 <div class="profile-details flex-grow min-w-0 whitespace-nowrap">

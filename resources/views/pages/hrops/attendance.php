@@ -246,7 +246,7 @@ function initials($fn, $ln) {
                                     $profPic = $row['profile_picture'];
                                     $hash = md5(strtolower(trim($row['email'])));
                                     if (empty($profPic)) {
-                                        $profPic = "https://www.gravatar.com/avatar/{$hash}?d=404&s=150";
+                                        $profPic = "https://www.gravatar.com/avatar/{$hash}?d=identicon&s=150";
                                     }
                                 ?>
                                 <img src="<?= htmlspecialchars($profPic) ?>" onerror="window.handleAvatarError(this, '<?= $hash ?>')" alt="<?= $empName ?>" class="w-10 h-10 rounded-full object-cover shadow-sm flex-shrink-0 bg-white border border-outline-variant/10" />
@@ -351,8 +351,8 @@ function initials($fn, $ln) {
                             </div>
                             <?php if ($row['location_method']): ?>
                             <div class="text-xs font-semibold text-on-surface-variant flex items-center gap-1">
-                                <span class="material-symbols-outlined text-sm <?= $row['location_method'] === 'WIFI' ? 'text-primary' : 'text-amber-600' ?>">
-                                    <?= $row['location_method'] === 'WIFI' ? 'wifi' : 'location_on' ?>
+                                <span class="material-symbols-outlined text-sm <?= $row['location_method'] === 'WIFI' ? 'text-primary' : ($row['location_method'] === 'POP' ? 'text-blue-600' : 'text-amber-600') ?>">
+                                    <?= $row['location_method'] === 'WIFI' ? 'wifi' : ($row['location_method'] === 'POP' ? 'laptop' : 'location_on') ?>
                                 </span>
                                 <?= htmlspecialchars($row['location_method']) ?>
                             </div>

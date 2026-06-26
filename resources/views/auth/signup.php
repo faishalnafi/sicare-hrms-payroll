@@ -5,20 +5,6 @@
     .custom-shadow {
         box-shadow: 0 20px 40px rgba(0, 7, 103, 0.06);
     }
-    /* Kustomisasi scrollbar untuk form yang panjang */
-    .custom-scrollbar::-webkit-scrollbar {
-        width: 6px;
-    }
-    .custom-scrollbar::-webkit-scrollbar-track {
-        background: transparent;
-    }
-    .custom-scrollbar::-webkit-scrollbar-thumb {
-        background-color: rgba(0, 0, 0, 0.1);
-        border-radius: 10px;
-    }
-    .custom-scrollbar:hover::-webkit-scrollbar-thumb {
-        background-color: rgba(0, 0, 0, 0.2);
-    }
 </style>
 
 <div class="flex-grow flex flex-col lg:flex-row items-center justify-center px-6 py-2 gap-8 lg:gap-12 max-w-7xl mx-auto w-full">

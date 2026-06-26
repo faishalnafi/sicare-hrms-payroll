@@ -37,12 +37,96 @@ ini_set('session.cookie_lifetime', $sessionLifetime);
 $sessionHandler = new \App\Session\UnifiedSessionHandler();
 session_set_save_handler($sessionHandler, true);
 
+// Start session early to process remember-me
+if (session_status() === PHP_SESSION_NONE) {
+    session_start();
+}
+
+// Auto-login via remember_me_token cookie
+if (!isset($_SESSION['user_id']) && isset($_COOKIE['remember_me_token'])) {
+    $token = $_COOKIE['remember_me_token'];
+    try {
+        $db = \App\Config\Database::getInstance()->getConnection();
+        $stmt = $db->prepare("SELECT * FROM users WHERE remember_token = ? AND is_deleted = 0 AND is_suspended = 0 LIMIT 1");
+        $stmt->execute([$token]);
+        $user = $stmt->fetch(\PDO::FETCH_ASSOC);
+        if ($user) {
+            $_SESSION["user_id"] = $user["id"];
+            $_SESSION["role"] = $user["role"];
+            $_SESSION["role_id"] = $user["role_id"];
+            $_SESSION["department_id"] = $user["department_id"];
+            $_SESSION["name"] = $user["first_name"] . " " . $user["last_name"];
+            $_SESSION["email"] = $user["email"];
+            $_SESSION["profile_picture"] = $user["profile_picture"];
+            $_SESSION["remember_me"] = true;
+            
+            // Generate JWT Token for CRUD authorization
+            $jwtPayload = [
+                "user_id" => $user["id"],
+                "name" => $user["first_name"] . " " . $user["last_name"],
+                "email" => $user["email"],
+                "role" => $user["role"]
+            ];
+            $jwtToken = \App\Config\JwtHelper::createToken($jwtPayload);
+            $_SESSION["jwt_token"] = $jwtToken;
+            
+            // Set secure and samesite cookie parameters correctly
+            $isSecure = (!empty($_SERVER["HTTPS"]) && $_SERVER["HTTPS"] !== "off") || (isset($_SERVER["HTTP_X_FORWARDED_PROTO"]) && $_SERVER["HTTP_X_FORWARDED_PROTO"] === "https");
+            if (PHP_VERSION_ID >= 70300) {
+                setcookie("jwt_token", $jwtToken, [
+                    "expires" => time() + 604800,
+                    "path" => "/",
+                    "domain" => "",
+                    "secure" => $isSecure,
+                    "httponly" => false,
+                    "samesite" => "Lax"
+                ]);
+            } else {
+                setcookie("jwt_token", $jwtToken, time() + 604800, "/; SameSite=Lax", "", $isSecure, false);
+            }
+        } else {
+            // Hapus cookie token yang tidak valid
+            setcookie("remember_me_token", "", time() - 3600, "/");
+        }
+    } catch (\Exception $e) {
+        // Fail-safe
+    }
+}
+
 // CSRF Protection Helpers are now loaded globally via app/helpers.php
 
 // Simple Router
 $requestUri = parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH);
 $path = trim($requestUri, '/');
 $method = $_SERVER['REQUEST_METHOD'];
+
+// Central JWT Token verification for all CRUD write operations (POST) when logged in
+if ($method === 'POST') {
+    $excludedRoutes = ['auth/login', 'auth/register', 'auth/record-login-location'];
+    if (session_status() === PHP_SESSION_NONE) {
+        session_start();
+    }
+    if (isset($_SESSION['user_id']) && !in_array($path, $excludedRoutes)) {
+        $token = '';
+        if (function_exists('getallheaders')) {
+            $headers = getallheaders();
+            $token = $headers['X-JWT-Token'] ?? $headers['x-jwt-token'] ?? '';
+        }
+        if (empty($token)) {
+            $token = $_SERVER['HTTP_X_JWT_TOKEN'] ?? $_POST['jwt_token'] ?? $_COOKIE['jwt_token'] ?? '';
+        }
+        
+        if (empty($token) || !\App\Config\JwtHelper::validateToken($token)) {
+            header('HTTP/1.1 401 Unauthorized');
+            header('Content-Type: application/json; charset=utf-8');
+            echo json_encode([
+                'success' => false,
+                'message' => 'Token JWT tidak valid atau kedaluwarsa. Silakan muat ulang halaman dan coba lagi.'
+            ]);
+            exit;
+        }
+    }
+}
 
 // Base helper to render views
 function renderView($viewPath, $data = []) {
@@ -369,8 +453,23 @@ if ($method === 'POST' && $path === 'auth/login') {
 } elseif ($method === 'POST' && $path === 'hrops/employees/delete') {
     (new \App\Controllers\EmployeeMasterController())->delete();
     exit;
+} elseif ($method === 'POST' && $path === 'hrops/employees/toggle-suspend') {
+    (new \App\Controllers\EmployeeMasterController())->toggleSuspend();
+    exit;
+} elseif ($method === 'POST' && $path === 'hrops/employees/empty-trash') {
+    (new \App\Controllers\EmployeeMasterController())->emptyTrash();
+    exit;
+} elseif ($method === 'POST' && $path === 'hrops/employees/delete-permanent') {
+    (new \App\Controllers\EmployeeMasterController())->deletePermanent();
+    exit;
+} elseif ($method === 'POST' && $path === 'hrops/employees/restore') {
+    (new \App\Controllers\EmployeeMasterController())->restore();
+    exit;
 } elseif ($method === 'POST' && $path === 'superadmin/users/reset-profile') {
     (new \App\Controllers\EmployeeMasterController())->resetProfileToken();
+    exit;
+} elseif ($method === 'POST' && ($path === 'superadmin/users/reset-lockout' || $path === 'admin/users/reset-lockout')) {
+    (new \App\Controllers\EmployeeMasterController())->resetLockout();
     exit;
 } elseif ($method === 'POST' && $path === 'hrops/payroll/generate') {
     (new \App\Controllers\PayrollController())->generate();
@@ -437,22 +536,7 @@ if ($method === 'POST' && $path === 'auth/login') {
     (new \App\Controllers\AuditLogController())->testEmail();
     exit;
 
-// --- Dynamic Menu Engine Routes (Bab 3) ---
-} elseif ($method === 'GET' && $path === 'superadmin/menu/list') {
-    (new \App\Controllers\MenuController())->getMenus();
-    exit;
-} elseif ($method === 'POST' && $path === 'superadmin/menu/save') {
-    (new \App\Controllers\MenuController())->saveMenu();
-    exit;
-} elseif ($method === 'POST' && $path === 'superadmin/menu/delete') {
-    (new \App\Controllers\MenuController())->deleteMenu();
-    exit;
-} elseif ($method === 'GET' && $path === 'superadmin/menu-permissions/matrix') {
-    (new \App\Controllers\MenuController())->getPermissionMatrix();
-    exit;
-} elseif ($method === 'POST' && $path === 'superadmin/menu-permissions/save') {
-    (new \App\Controllers\MenuController())->savePermissions();
-    exit;
+
 } elseif ($method === 'GET' && (
     $path === 'changelogs' ||
     $path === 'changelogs/guide' ||

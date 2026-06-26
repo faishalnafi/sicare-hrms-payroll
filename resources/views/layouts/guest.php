@@ -156,6 +156,48 @@ if (!empty($resolvedGuestPage)) {
         border: 1px solid rgba(255, 255, 255, 0.5);
         box-shadow: 0 4px 30px rgba(0, 0, 0, 0.05);
       }
+
+      /* Premium Custom Scrollbars */
+      ::-webkit-scrollbar {
+          width: 6px !important;
+          height: 6px !important;
+      }
+      ::-webkit-scrollbar-track {
+          background: transparent !important;
+      }
+      ::-webkit-scrollbar-thumb {
+          background-color: transparent !important;
+          border-radius: 10px !important;
+          border: 1px solid transparent !important;
+          background-clip: padding-box !important;
+          transition: background-color 0.3s ease !important;
+      }
+      /* Show on hover or scroll activity */
+      *:hover::-webkit-scrollbar-thumb,
+      html:hover::-webkit-scrollbar-thumb,
+      body:hover::-webkit-scrollbar-thumb,
+      .is-scrolling::-webkit-scrollbar-thumb,
+      html.is-scrolling::-webkit-scrollbar-thumb,
+      body.is-scrolling::-webkit-scrollbar-thumb {
+          background-color: rgba(0, 6, 102, 0.15) !important;
+      }
+      /* Darker on thumb hover */
+      ::-webkit-scrollbar-thumb:hover {
+          background-color: rgba(0, 6, 102, 0.45) !important;
+      }
+      ::-webkit-scrollbar-thumb:active {
+          background-color: rgba(0, 6, 102, 0.6) !important;
+      }
+
+      /* Firefox Support */
+      * {
+          scrollbar-width: thin;
+          scrollbar-color: transparent transparent;
+      }
+      *:hover,
+      .is-scrolling {
+          scrollbar-color: rgba(0, 6, 102, 0.15) transparent;
+      }
     </style>
 </head>
 <body class="bg-surface font-body text-on-surface antialiased flex flex-col min-h-screen">
@@ -234,6 +276,27 @@ if (!empty($resolvedGuestPage)) {
                 throw error;
             }
         };
+
+        // Dynamic scrolling indicator for premium scrollbar visibility
+        (function() {
+            var scrollTimeout;
+            window.addEventListener('scroll', function(e) {
+                var target = e.target;
+                if (target === document) {
+                    document.documentElement.classList.add('is-scrolling');
+                } else if (target && target.classList) {
+                    target.classList.add('is-scrolling');
+                }
+                
+                clearTimeout(scrollTimeout);
+                scrollTimeout = setTimeout(function() {
+                    document.documentElement.classList.remove('is-scrolling');
+                    document.querySelectorAll('.is-scrolling').forEach(function(el) {
+                        el.classList.remove('is-scrolling');
+                    });
+                }, 1000);
+            }, { capture: true, passive: true });
+        })();
     </script>
 </body>
 </html>

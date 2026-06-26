@@ -386,7 +386,7 @@ class PayrollController {
             $stmtUsers = $this->db->query("
                 SELECT id, base_salary 
                 FROM users 
-                WHERE role = 'employee'
+                WHERE role = 'employee' AND is_deleted = 0
             ");
             $employees = $stmtUsers->fetchAll(PDO::FETCH_ASSOC);
 

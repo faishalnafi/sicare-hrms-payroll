@@ -20,7 +20,7 @@ $dbRepoType = 'monorepo';
 try {
     $tableCheck = $db->query("SHOW TABLES LIKE 'changelogs'")->fetch();
     if ($tableCheck) {
-        $stmt = $db->query("SELECT version, edition, repo_type, compiled_date FROM changelogs ORDER BY compiled_date DESC, created_at DESC LIMIT 1");
+        $stmt = $db->query("SELECT version, edition, repo_type, compiled_date FROM changelogs ORDER BY compiled_date DESC, version DESC LIMIT 1");
         $latestDb = $stmt->fetch(PDO::FETCH_ASSOC);
         if ($latestDb) {
             $dbVersion = $latestDb['version'];

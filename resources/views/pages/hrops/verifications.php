@@ -222,7 +222,7 @@ function getCategoryColor($category) {
                                             $profPic = $r['profile_picture'];
                                             $hash = md5(strtolower(trim($r['email'])));
                                             if (empty($profPic)) {
-                                                $profPic = "https://www.gravatar.com/avatar/{$hash}?d=404&s=150";
+                                                $profPic = "https://www.gravatar.com/avatar/{$hash}?d=identicon&s=150";
                                             }
                                         ?>
                                         <img src="<?= htmlspecialchars($profPic) ?>" onerror="window.handleAvatarError(this, '<?= $hash ?>')" alt="<?= htmlspecialchars($fullName) ?>" class="w-10 h-10 rounded-full object-cover shadow-sm flex-shrink-0 bg-white border border-outline-variant/10" />
@@ -300,17 +300,7 @@ function getCategoryColor($category) {
             </table>
         </div>
 
-        <!-- Footer Pagination Info -->
-        <div class="bg-surface-container-lowest p-6 border-t border-outline-variant/15 flex flex-col md:flex-row justify-between items-center gap-4 text-xs font-semibold text-on-surface-variant">
-            <div>
-                Menampilkan <span id="verificationDisplayedCount"><?= count($requests) ?></span> dari <?= count($requests) ?> data antrean verifikasi
-            </div>
-            <div class="flex items-center gap-1">
-                <button class="w-8 h-8 rounded-lg bg-surface border border-outline-variant/30 flex items-center justify-center hover:bg-surface-container-high transition-colors" disabled><span class="material-symbols-outlined text-sm">chevron_left</span></button>
-                <button class="w-8 h-8 rounded-lg bg-primary text-white flex items-center justify-center shadow-sm">1</button>
-                <button class="w-8 h-8 rounded-lg bg-surface border border-outline-variant/30 flex items-center justify-center hover:bg-surface-container-high transition-colors" disabled><span class="material-symbols-outlined text-sm">chevron_right</span></button>
-            </div>
-        </div>
+
     </div>
 </div>
 

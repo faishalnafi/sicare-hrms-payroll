@@ -2,8 +2,8 @@
     <!-- Header Section -->
     <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div class="space-y-1">
-            <h1 class="font-headline text-3xl font-extrabold text-primary tracking-tight">Manajemen Pengguna &amp; Simulasi Login</h1>
-            <p class="text-on-surface-variant font-medium text-sm font-body">Kelola hak akses sistem, posisi jabatan, mutasi departemen, dan lakukan simulasi login sebagai pengguna.</p>
+            <h1 class="font-headline text-3xl font-extrabold text-primary tracking-tight">Manajemen Pengguna</h1>
+            <p class="text-on-surface-variant font-medium text-sm font-body">Kelola hak akses sistem, posisi jabatan, mutasi departemen, status aktif, dan lakukan pembaruan data pengguna.</p>
         </div>
         <div class="flex items-center gap-3">
             <span class="bg-primary/5 text-primary text-xs font-extrabold px-3.5 py-2 rounded-full border border-primary/10 flex items-center gap-1.5 shadow-sm">
@@ -17,30 +17,46 @@
     <div class="bg-surface-container-lowest rounded-2xl border border-outline-variant/15 overflow-hidden shadow-sm flex flex-col">
         <!-- Search and Filter Header -->
         <div class="p-6 border-b border-outline-variant/15 bg-surface-container-lowest">
-            <div class="flex flex-col md:flex-row gap-4 items-end">
-                <div class="flex-1 w-full relative">
+            <div class="flex flex-col lg:flex-row gap-4 items-end">
+                <div class="flex-grow w-full relative">
                     <label class="block text-xs font-bold text-on-surface-variant mb-2">Cari Pengguna</label>
                     <div class="relative">
                         <span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant/50">search</span>
                         <input type="text" id="superAdminUserSearchInput" placeholder="Cari nama, NIK, atau email..." class="w-full bg-surface-container-low border border-outline-variant/30 text-on-surface text-sm rounded-xl pl-10 pr-4 py-2.5 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all">
                     </div>
                 </div>
-                <div class="w-full md:w-64">
-                    <label class="block text-xs font-bold text-on-surface-variant mb-2">Filter Role Sistem</label>
-                    <div class="relative">
-                        <span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant/50">badge</span>
-                        <select id="superAdminUserRoleFilter" class="w-full bg-surface-container-low border border-outline-variant/30 text-on-surface text-sm rounded-xl pl-10 pr-4 py-2.5 appearance-none focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all">
-                            <option value="">Semua Role</option>
-                            <option value="employee">Employee</option>
-                            <option value="hr_ops">HR Ops</option>
-                            <option value="hiring_manager">Hiring Manager</option>
-                            <option value="recruiter">Recruiter</option>
-                            <option value="executive">Executive</option>
-                            <option value="admin">Admin</option>
-                            <option value="superadmin">Superadmin</option>
-                            <option value="candidate">Candidate</option>
-                        </select>
-                        <span class="material-symbols-outlined absolute right-3 top-1/2 -translate-y-1/2 text-on-surface-variant/50 pointer-events-none">expand_more</span>
+                <div class="flex flex-wrap md:flex-nowrap items-end gap-3 w-full lg:w-auto">
+                    <!-- Filter Role -->
+                    <div class="w-full md:w-56">
+                        <label class="block text-xs font-bold text-on-surface-variant mb-2">Filter Role Sistem</label>
+                        <div class="relative">
+                            <span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant/50">badge</span>
+                            <select id="superAdminUserRoleFilter" class="w-full bg-surface-container-low border border-outline-variant/30 text-on-surface text-sm rounded-xl pl-10 pr-4 py-2.5 appearance-none focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all">
+                                <option value="">Semua Role</option>
+                                <option value="employee">Employee</option>
+                                <option value="hr_ops">HR Ops</option>
+                                <option value="hiring_manager">Hiring Manager</option>
+                                <option value="recruiter">Recruiter</option>
+                                <option value="executive">Executive</option>
+                                <option value="admin">Admin</option>
+                                <option value="superadmin">Superadmin</option>
+                                <option value="candidate">Candidate</option>
+                            </select>
+                            <span class="material-symbols-outlined absolute right-3 top-1/2 -translate-y-1/2 text-on-surface-variant/50 pointer-events-none">expand_more</span>
+                        </div>
+                    </div>
+                    <!-- Tambah Pengguna Button -->
+                    <div class="w-full md:w-auto flex-shrink-0">
+                        <button id="superAdminAddUserBtn" onclick="window.openSuperAdminMutationModal()" class="w-full px-4 py-2.5 bg-primary hover:bg-primary/95 text-white rounded-xl text-sm font-bold shadow-sm transition-all flex items-center justify-center gap-2 hover:scale-[1.02] active:scale-[0.98]">
+                            <span class="material-symbols-outlined text-lg">person_add</span>
+                            <span>Tambah Pengguna</span>
+                        </button>
+                    </div>
+                    <!-- Trash Button -->
+                    <div class="flex-shrink-0">
+                        <button id="superAdminTrashBtn" onclick="window.toggleSuperAdminTrashFilter()" class="p-2.5 bg-surface-container-low hover:bg-surface-container-high text-on-surface-variant rounded-xl border border-outline-variant/30 transition-all flex items-center justify-center hover:scale-[1.02] active:scale-[0.98] shadow-sm" title="Tampilkan Akun Ditangguhkan (Trash)">
+                            <span class="material-symbols-outlined text-xl">delete</span>
+                        </button>
                     </div>
                 </div>
             </div>
@@ -48,25 +64,26 @@
 
         <!-- Table Container -->
         <div class="overflow-x-auto">
-            <table class="w-full text-left border-collapse">
+            <table class="w-full text-left border-collapse table-standardized" data-has-custom-pagination="true">
                 <thead>
                     <tr class="bg-surface text-on-surface-variant border-b border-outline-variant/15">
-                        <th class="py-4 px-6 text-[11px] font-extrabold uppercase tracking-wider">Pengguna</th>
-                        <th class="py-4 px-6 text-[11px] font-extrabold uppercase tracking-wider">Email</th>
-                        <th class="py-4 px-6 text-[11px] font-extrabold uppercase tracking-wider">Struktur Organisasi (Posisi &amp; Divisi)</th>
-                        <th class="py-4 px-6 text-[11px] font-extrabold uppercase tracking-wider">Akses Sistem</th>
-                        <th class="py-4 px-6 text-[11px] font-extrabold uppercase tracking-wider text-right">Aksi</th>
+                        <th class="no-col w-12 text-center py-4 px-6 text-[10px] font-extrabold uppercase tracking-wider">No</th>
+                        <th id="saColPengguna" onclick="window.toggleSuperAdminUserSort('nama')" class="py-4 px-6 text-[11px] font-extrabold uppercase tracking-wider">Pengguna</th>
+                        <th id="saColEmail" onclick="window.toggleSuperAdminUserSort('email')" class="py-4 px-6 text-[11px] font-extrabold uppercase tracking-wider">Email</th>
+                        <th id="saColStruktur" onclick="window.toggleSuperAdminUserSort('struktur')" class="py-4 px-6 text-[11px] font-extrabold uppercase tracking-wider">Struktur Organisasi (Posisi & Divisi)</th>
+                        <th id="saColAkses" onclick="window.toggleSuperAdminUserSort('akses')" class="py-4 px-6 text-[11px] font-extrabold uppercase tracking-wider">Akses Sistem</th>
+                        <th id="saColAksi" onclick="window.toggleSuperAdminUserSort('aksi')" class="py-4 px-6 text-[11px] font-extrabold uppercase tracking-wider text-right">Aksi</th>
                     </tr>
                 </thead>
                 <tbody id="superAdminUsersTableBody" class="divide-y divide-outline-variant/10 font-body">
                     <tr class="empty-row hidden">
-                        <td colspan="5" class="px-6 py-12 text-center text-on-surface-variant">
+                        <td colspan="6" class="px-6 py-12 text-center text-on-surface-variant">
                             <span class="material-symbols-outlined text-4xl mb-2 opacity-50 block">manage_accounts</span>
                             <p class="font-bold">Data pengguna tidak ditemukan</p>
                         </td>
                     </tr>
                     <tr class="loading-row">
-                        <td colspan="5" class="px-6 py-12 text-center text-on-surface-variant">
+                        <td colspan="6" class="px-6 py-12 text-center text-on-surface-variant">
                             <span class="material-symbols-outlined text-3xl mb-2 opacity-50 block animate-spin">autorenew</span>
                             <p class="text-sm font-semibold">Memuat data...</p>
                         </td>
@@ -76,13 +93,34 @@
         </div>
 
         <!-- Pagination -->
-        <div id="superAdminUserPagination" class="px-6 py-4 border-t border-outline-variant/15 flex items-center justify-end bg-surface-container-low/30 hidden">
-            <div class="flex items-center gap-2">
-                <button id="superAdminUserPrevBtn" onclick="window.prevSuperAdminUserPage()" class="p-2 flex items-center justify-center rounded-full hover:bg-surface-container-high text-on-surface-variant disabled:opacity-30 disabled:cursor-not-allowed transition-colors border border-transparent disabled:hover:bg-transparent">
+        <div id="superAdminUserPagination" class="px-6 py-4 border-t border-outline-variant/15 flex items-center justify-between bg-surface-container-low/30 hidden">
+            <!-- Left Info -->
+            <div id="superAdminUserPaginationInfo" class="text-sm text-on-surface-variant font-medium">
+                Menampilkan data 0 sampai 0 dari 0
+            </div>
+            <!-- Right Buttons -->
+            <div class="flex items-center gap-1.5" id="superAdminUserPaginationBtns">
+                <!-- First Page -->
+                <button id="superAdminUserFirstBtn" onclick="window.firstSuperAdminUserPage()" class="p-2 flex items-center justify-center rounded-full hover:bg-surface-container-high text-on-surface-variant disabled:opacity-30 disabled:cursor-not-allowed transition-colors border border-transparent disabled:hover:bg-transparent" title="Halaman Pertama">
+                    <span class="material-symbols-outlined text-sm">first_page</span>
+                </button>
+                <!-- Prev Page -->
+                <button id="superAdminUserPrevBtn" onclick="window.prevSuperAdminUserPage()" class="p-2 flex items-center justify-center rounded-full hover:bg-surface-container-high text-on-surface-variant disabled:opacity-30 disabled:cursor-not-allowed transition-colors border border-transparent disabled:hover:bg-transparent" title="Halaman Sebelumnya">
                     <span class="material-symbols-outlined text-sm">chevron_left</span>
                 </button>
-                <button id="superAdminUserNextBtn" onclick="window.nextSuperAdminUserPage()" class="p-2 flex items-center justify-center rounded-full hover:bg-surface-container-high text-on-surface-variant disabled:opacity-30 disabled:cursor-not-allowed transition-colors border border-transparent disabled:hover:bg-transparent">
+                
+                <!-- Page numbers container -->
+                <div id="superAdminUserPageNumbers" class="flex items-center gap-1">
+                    <!-- Dynamic Page Numbers -->
+                </div>
+
+                <!-- Next Page -->
+                <button id="superAdminUserNextBtn" onclick="window.nextSuperAdminUserPage()" class="p-2 flex items-center justify-center rounded-full hover:bg-surface-container-high text-on-surface-variant disabled:opacity-30 disabled:cursor-not-allowed transition-colors border border-transparent disabled:hover:bg-transparent" title="Halaman Berikutnya">
                     <span class="material-symbols-outlined text-sm">chevron_right</span>
+                </button>
+                <!-- Last Page -->
+                <button id="superAdminUserLastBtn" onclick="window.lastSuperAdminUserPage()" class="p-2 flex items-center justify-center rounded-full hover:bg-surface-container-high text-on-surface-variant disabled:opacity-30 disabled:cursor-not-allowed transition-colors border border-transparent disabled:hover:bg-transparent" title="Halaman Terakhir">
+                    <span class="material-symbols-outlined text-sm">last_page</span>
                 </button>
             </div>
         </div>
@@ -96,8 +134,8 @@
         <!-- Header -->
         <div class="px-6 py-4 border-b border-outline-variant/15 flex justify-between items-center bg-surface-container-low/30">
             <h3 class="font-headline text-xl font-bold text-on-surface flex items-center gap-2">
-                <span class="material-symbols-outlined text-primary">published_with_changes</span>
-                Mutasi Jabatan &amp; Akses Sistem (Super Admin)
+                <span class="material-symbols-outlined text-primary">edit</span>
+                Edit Data User Lengkap (Super Admin)
             </h3>
             <button onclick="window.closeSuperAdminMutationModal()" class="text-on-surface-variant hover:text-on-surface hover:bg-surface-container-high p-2 rounded-full transition-colors flex items-center justify-center">
                 <span class="material-symbols-outlined">close</span>
@@ -118,79 +156,258 @@
                 </div>
             </div>
 
-            <!-- Edit Fields -->
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <!-- Employee ID (Staff ID) -->
-                <div>
-                    <label class="block text-xs font-bold text-on-surface-variant mb-2">Employee ID (NIK Perusahaan)</label>
-                    <input type="text" id="superAdminMutStaffId" name="employee_id" placeholder="Cth: EM-2026-001" class="w-full bg-surface-container-low border border-outline-variant/30 text-on-surface text-sm rounded-xl px-4 py-2.5 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all uppercase">
-                </div>
+            <!-- Tab Headers -->
+            <div class="flex border-b border-outline-variant/15 font-headline font-semibold text-xs gap-1 overflow-x-auto pb-1 custom-scrollbar">
+                <button type="button" onclick="window.switchSuperAdminMutTab('kepegawaian')" id="tab-sa-mut-kepegawaian" class="px-3 py-2 text-primary border-b-2 border-primary transition-all whitespace-nowrap">Kepegawaian</button>
+                <button type="button" onclick="window.switchSuperAdminMutTab('profil')" id="tab-sa-mut-profil" class="px-3 py-2 text-on-surface-variant hover:text-on-surface border-b-2 border-transparent transition-all whitespace-nowrap">Profil & Kependudukan</button>
+                <button type="button" onclick="window.switchSuperAdminMutTab('finansial')" id="tab-sa-mut-finansial" class="px-3 py-2 text-on-surface-variant hover:text-on-surface border-b-2 border-transparent transition-all whitespace-nowrap">Finansial</button>
+                <button type="button" onclick="window.switchSuperAdminMutTab('lainnya')" id="tab-sa-mut-lainnya" class="px-3 py-2 text-on-surface-variant hover:text-on-surface border-b-2 border-transparent transition-all whitespace-nowrap">Plafon & Fisik</button>
+            </div>
 
-                <!-- Job Title -->
-                <div>
-                    <label class="block text-xs font-bold text-on-surface-variant mb-2">Posisi / Jabatan (Job Title)</label>
-                    <input type="text" id="superAdminMutJobTitle" name="job_title" placeholder="Cth: Frontend Lead" class="w-full bg-surface-container-low border border-outline-variant/30 text-on-surface text-sm rounded-xl px-4 py-2.5 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all">
-                </div>
-
-                <!-- Department Selector -->
-                <div>
-                    <label class="block text-xs font-bold text-on-surface-variant mb-2">Departemen (Divisi)</label>
-                    <div class="relative">
-                        <select id="superAdminMutDepartment" name="department_id" class="w-full bg-surface-container-low border border-outline-variant/30 text-on-surface text-sm rounded-xl pl-4 pr-10 py-2.5 appearance-none focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all">
-                            <option value="">Tanpa Departemen</option>
-                            <!-- Populated dynamically -->
-                        </select>
-                        <span class="material-symbols-outlined absolute right-3 top-1/2 -translate-y-1/2 text-on-surface-variant/50 pointer-events-none">expand_more</span>
+            <!-- Tab 1: Kepegawaian & Akses -->
+            <div id="content-sa-mut-kepegawaian" class="space-y-6">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <!-- Employee ID (Staff ID) -->
+                    <div>
+                        <label class="block text-xs font-bold text-on-surface-variant mb-2 font-headline">Employee ID (NIK Perusahaan)</label>
+                        <input type="text" id="superAdminMutStaffId" name="employee_id" placeholder="Cth: EM-2026-001" class="w-full bg-surface-container-low border border-outline-variant/30 text-on-surface text-sm rounded-xl px-4 py-2.5 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all uppercase">
                     </div>
-                </div>
-
-                <!-- System Role -->
-                <div>
-                    <label class="block text-xs font-bold text-on-surface-variant mb-2">Role Sistem *</label>
-                    <div class="relative">
-                        <select id="superAdminMutRole" name="role" required class="w-full bg-surface-container-low border border-outline-variant/30 text-on-surface text-sm rounded-xl pl-4 pr-10 py-2.5 appearance-none focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all">
-                            <option value="employee">Employee</option>
-                            <option value="hr_ops">HR Ops</option>
-                            <option value="hiring_manager">Hiring Manager</option>
-                            <option value="recruiter">Recruiter</option>
-                            <option value="executive">Executive</option>
-                            <option value="admin">Admin</option>
-                            <option value="superadmin">Superadmin</option>
-                            <option value="candidate">Candidate</option>
-                        </select>
-                        <span class="material-symbols-outlined absolute right-3 top-1/2 -translate-y-1/2 text-on-surface-variant/50 pointer-events-none">expand_more</span>
+                    <!-- Job Title -->
+                    <div>
+                        <label class="block text-xs font-bold text-on-surface-variant mb-2 font-headline">Posisi / Jabatan (Job Title)</label>
+                        <input type="text" id="superAdminMutJobTitle" name="job_title" placeholder="Cth: Frontend Lead" class="w-full bg-surface-container-low border border-outline-variant/30 text-on-surface text-sm rounded-xl px-4 py-2.5 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all">
                     </div>
-                </div>
-
-                <!-- Reset Password (optional for admin safety) -->
-                <div class="md:col-span-2">
-                    <label class="block text-xs font-bold text-on-surface-variant mb-2">Reset Sandi Pengguna <span class="text-[10px] font-normal lowercase text-on-surface-variant/75">(kosongkan jika tidak ingin mengubah sandi)</span></label>
-                    <div class="relative group">
-                        <input type="password" id="superAdminMutPassword" name="password" placeholder="Masukkan sandi baru jika diperlukan..." class="w-full bg-surface-container-low border border-outline-variant/30 text-on-surface text-sm rounded-xl pl-4 pr-12 py-2.5 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all">
-                        <button type="button" id="superAdminToggleMutPassword" class="absolute right-3 top-3 text-on-surface-variant/40 hover:text-primary transition-colors flex items-center justify-center">
-                            <span class="material-symbols-outlined text-lg">visibility</span>
-                        </button>
+                    <!-- Department Selector -->
+                    <div>
+                        <label class="block text-xs font-bold text-on-surface-variant mb-2 font-headline">Departemen (Divisi)</label>
+                        <div class="relative">
+                            <select id="superAdminMutDepartment" name="department_id" class="w-full bg-surface-container-low border border-outline-variant/30 text-on-surface text-sm rounded-xl pl-4 pr-10 py-2.5 appearance-none focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all">
+                                <option value="">Tanpa Departemen</option>
+                                <!-- Populated dynamically -->
+                            </select>
+                            <span class="material-symbols-outlined absolute right-3 top-1/2 -translate-y-1/2 text-on-surface-variant/50 pointer-events-none">expand_more</span>
+                        </div>
                     </div>
-                    <!-- Strength Indicators -->
-                    <div id="superAdminMutPwStrengthBox" class="hidden p-4 bg-surface-container-low rounded-xl border border-outline-variant/15 text-xs space-y-2 mt-2">
-                        <p class="font-bold text-on-surface-variant mb-1.5">Kriteria Kata Sandi Kuat:</p>
-                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 font-medium">
-                            <div id="superAdminMutPwLen" class="flex items-center gap-1.5 text-red-500 transition-colors"><span class="material-symbols-outlined text-[16px] font-bold">cancel</span> Minimal 8 Karakter</div>
-                            <div id="superAdminMutPwUpper" class="flex items-center gap-1.5 text-red-500 transition-colors"><span class="material-symbols-outlined text-[16px] font-bold">cancel</span> Huruf Kapital (A-Z)</div>
-                            <div id="superAdminMutPwLower" class="flex items-center gap-1.5 text-red-500 transition-colors"><span class="material-symbols-outlined text-[16px] font-bold">cancel</span> Huruf Kecil (a-z)</div>
-                            <div id="superAdminMutPwNum" class="flex items-center gap-1.5 text-red-500 transition-colors"><span class="material-symbols-outlined text-[16px] font-bold">cancel</span> Angka (0-9)</div>
-                            <div id="superAdminMutPwSpec" class="flex items-center gap-1.5 text-red-500 transition-colors"><span class="material-symbols-outlined text-[16px] font-bold">cancel</span> Karakter Simbol (@$!%*?&amp;...)</div>
+                    <!-- System Role -->
+                    <div>
+                        <label class="block text-xs font-bold text-on-surface-variant mb-2 font-headline">Role Sistem *</label>
+                        <div class="relative">
+                            <select id="superAdminMutRole" name="role" required class="w-full bg-surface-container-low border border-outline-variant/30 text-on-surface text-sm rounded-xl pl-4 pr-10 py-2.5 appearance-none focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all">
+                                <option value="employee">Employee</option>
+                                <option value="hr_ops">HR Ops</option>
+                                <option value="hiring_manager">Hiring Manager</option>
+                                <option value="recruiter">Recruiter</option>
+                                <option value="executive">Executive</option>
+                                <option value="admin">Admin</option>
+                                <option value="superadmin">Superadmin</option>
+                                <option value="candidate">Candidate</option>
+                            </select>
+                            <span class="material-symbols-outlined absolute right-3 top-1/2 -translate-y-1/2 text-on-surface-variant/50 pointer-events-none">expand_more</span>
+                        </div>
+                    </div>
+                    <!-- Kuota Cuti Tahunan -->
+                    <div>
+                        <label class="block text-xs font-bold text-on-surface-variant mb-2 font-headline">Kuota Cuti Tahunan</label>
+                        <input type="number" id="superAdminMutLeaveQuota" name="annual_leave_quota" placeholder="Cth: 12" class="w-full bg-surface-container-low border border-outline-variant/30 text-on-surface text-sm rounded-xl px-4 py-2.5 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all">
+                    </div>
+                    <!-- Gaji Pokok -->
+                    <div>
+                        <label class="block text-xs font-bold text-on-surface-variant mb-2 font-headline">Gaji Pokok</label>
+                        <input type="text" id="superAdminMutBaseSalary" name="base_salary" placeholder="Cth: Rp 10.000.000" class="w-full bg-surface-container-low border border-outline-variant/30 text-on-surface text-sm rounded-xl px-4 py-2.5 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all">
+                    </div>
+                    <!-- Reset Password (optional for admin safety) -->
+                    <div class="md:col-span-2">
+                        <label class="block text-xs font-bold text-on-surface-variant mb-2 font-headline">Reset Sandi Pengguna <span class="text-[10px] font-normal lowercase text-on-surface-variant/75">(kosongkan jika tidak ingin mengubah sandi)</span></label>
+                        <div class="relative group">
+                            <input type="password" id="superAdminMutPassword" name="password" placeholder="Masukkan sandi baru jika diperlukan..." class="w-full bg-surface-container-low border border-outline-variant/30 text-on-surface text-sm rounded-xl pl-4 pr-12 py-2.5 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all">
+                            <button type="button" id="superAdminToggleMutPassword" class="absolute right-3 top-3 text-on-surface-variant/40 hover:text-primary transition-colors flex items-center justify-center">
+                                <span class="material-symbols-outlined text-lg">visibility</span>
+                            </button>
+                        </div>
+                        <!-- Strength Indicators -->
+                        <div id="superAdminMutPwStrengthBox" class="hidden p-4 bg-surface-container-low rounded-xl border border-outline-variant/15 text-xs space-y-2 mt-2">
+                            <p class="font-bold text-on-surface-variant mb-1.5">Kriteria Kata Sandi Kuat:</p>
+                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 font-medium">
+                                <div id="superAdminMutPwLen" class="flex items-center gap-1.5 text-red-500 transition-colors"><span class="material-symbols-outlined text-[16px] font-bold">cancel</span> Minimal 8 Karakter</div>
+                                <div id="superAdminMutPwUpper" class="flex items-center gap-1.5 text-red-500 transition-colors"><span class="material-symbols-outlined text-[16px] font-bold">cancel</span> Huruf Kapital (A-Z)</div>
+                                <div id="superAdminMutPwLower" class="flex items-center gap-1.5 text-red-500 transition-colors"><span class="material-symbols-outlined text-[16px] font-bold">cancel</span> Huruf Kecil (a-z)</div>
+                                <div id="superAdminMutPwNum" class="flex items-center gap-1.5 text-red-500 transition-colors"><span class="material-symbols-outlined text-[16px] font-bold">cancel</span> Angka (0-9)</div>
+                                <div id="superAdminMutPwSpec" class="flex items-center gap-1.5 text-red-500 transition-colors"><span class="material-symbols-outlined text-[16px] font-bold">cancel</span> Karakter Simbol (@$!%*?&amp;...)</div>
+                            </div>
                         </div>
                     </div>
                 </div>
             </div>
 
-            <!-- Hidden values from original record to avoid loss -->
-            <input type="hidden" id="superAdminMutFirstName" name="first_name">
-            <input type="hidden" id="superAdminMutLastName" name="last_name">
-            <input type="hidden" id="superAdminMutEmailHidden" name="email">
-            <input type="hidden" id="superAdminMutLeaveQuota" name="annual_leave_quota">
-            <input type="hidden" id="superAdminMutBaseSalary" name="base_salary">
+            <!-- Tab 2: Profil & Kependudukan -->
+            <div id="content-sa-mut-profil" class="space-y-6 hidden">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <!-- First Name -->
+                    <div>
+                        <label class="block text-xs font-bold text-on-surface-variant mb-2 font-headline">Nama Depan *</label>
+                        <input type="text" id="superAdminMutFirstName" name="first_name" required placeholder="Nama Depan" class="w-full bg-surface-container-low border border-outline-variant/30 text-on-surface text-sm rounded-xl px-4 py-2.5 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all">
+                    </div>
+                    <!-- Last Name -->
+                    <div>
+                        <label class="block text-xs font-bold text-on-surface-variant mb-2 font-headline">Nama Belakang</label>
+                        <input type="text" id="superAdminMutLastName" name="last_name" placeholder="Nama Belakang" class="w-full bg-surface-container-low border border-outline-variant/30 text-on-surface text-sm rounded-xl px-4 py-2.5 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all">
+                    </div>
+                    <!-- Email -->
+                    <div>
+                        <label class="block text-xs font-bold text-on-surface-variant mb-2 font-headline">Email *</label>
+                        <input type="email" id="superAdminMutEmailHidden" name="email" required placeholder="email@domain.com" class="w-full bg-surface-container-low border border-outline-variant/30 text-on-surface text-sm rounded-xl px-4 py-2.5 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all">
+                    </div>
+                    <!-- Phone Number -->
+                    <div>
+                        <label class="block text-xs font-bold text-on-surface-variant mb-2 font-headline">Nomor Telepon</label>
+                        <input type="text" id="superAdminMutPhone" name="no_telepon" placeholder="Cth: 08123456789" class="w-full bg-surface-container-low border border-outline-variant/30 text-on-surface text-sm rounded-xl px-4 py-2.5 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all">
+                    </div>
+                    <!-- Nama Sesuai KTP -->
+                    <div>
+                        <label class="block text-xs font-bold text-on-surface-variant mb-2 font-headline">Nama Sesuai KTP</label>
+                        <input type="text" id="superAdminMutKtpName" name="nama_sesuai_ktp" placeholder="Cth: JONATHAN DOE" class="w-full bg-surface-container-low border border-outline-variant/30 text-on-surface text-sm rounded-xl px-4 py-2.5 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all">
+                    </div>
+                    <!-- NIK KTP -->
+                    <div>
+                        <label class="block text-xs font-bold text-on-surface-variant mb-2 font-headline">NIK KTP (16 Digit)</label>
+                        <input type="text" id="superAdminMutKtpNik" name="ktp_nik" placeholder="Cth: 317101XXXXXXXXXX" class="w-full bg-surface-container-low border border-outline-variant/30 text-on-surface text-sm rounded-xl px-4 py-2.5 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all">
+                    </div>
+                    <!-- Tanggal Lahir -->
+                    <div>
+                        <label class="block text-xs font-bold text-on-surface-variant mb-2 font-headline">Tanggal Lahir</label>
+                        <input type="date" id="superAdminMutBirthDate" name="tanggal_lahir" class="w-full bg-surface-container-low border border-outline-variant/30 text-on-surface text-sm rounded-xl px-4 py-2.5 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all font-body">
+                    </div>
+                    <!-- Gender -->
+                    <div>
+                        <label class="block text-xs font-bold text-on-surface-variant mb-2 font-headline">Jenis Kelamin</label>
+                        <div class="relative">
+                            <select id="superAdminMutGender" name="jenis_kelamin" class="w-full bg-surface-container-low border border-outline-variant/30 text-on-surface text-sm rounded-xl pl-4 pr-10 py-2.5 appearance-none focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all">
+                                <option value="">Pilih Jenis Kelamin</option>
+                                <option value="Laki-laki">Laki-laki</option>
+                                <option value="Perempuan">Perempuan</option>
+                            </select>
+                            <span class="material-symbols-outlined absolute right-3 top-1/2 -translate-y-1/2 text-on-surface-variant/50 pointer-events-none">expand_more</span>
+                        </div>
+                    </div>
+                    <!-- Status Pernikahan -->
+                    <div>
+                        <label class="block text-xs font-bold text-on-surface-variant mb-2 font-headline">Status Pernikahan</label>
+                        <div class="relative">
+                            <select id="superAdminMutMaritalStatus" name="status_pernikahan" class="w-full bg-surface-container-low border border-outline-variant/30 text-on-surface text-sm rounded-xl pl-4 pr-10 py-2.5 appearance-none focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all">
+                                <option value="">Pilih Status</option>
+                                <option value="Belum Kawin">Belum Kawin</option>
+                                <option value="Kawin">Kawin</option>
+                                <option value="Cerai Hidup">Cerai Hidup</option>
+                                <option value="Cerai Mati">Cerai Mati</option>
+                            </select>
+                            <span class="material-symbols-outlined absolute right-3 top-1/2 -translate-y-1/2 text-on-surface-variant/50 pointer-events-none">expand_more</span>
+                        </div>
+                    </div>
+                    <div></div>
+                    <!-- Alamat KTP -->
+                    <div class="md:col-span-2">
+                        <label class="block text-xs font-bold text-on-surface-variant mb-2 font-headline">Alamat Sesuai KTP</label>
+                        <textarea id="superAdminMutKtpAddress" name="alamat_ktp" rows="2" placeholder="Masukkan alamat lengkap sesuai KTP..." class="w-full bg-surface-container-low border border-outline-variant/30 text-on-surface text-sm rounded-xl px-4 py-2.5 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all resize-none"></textarea>
+                    </div>
+                    <!-- Alamat Domisili -->
+                    <div class="md:col-span-2">
+                        <label class="block text-xs font-bold text-on-surface-variant mb-2 font-headline">Alamat Domisili</label>
+                        <textarea id="superAdminMutDomisiliAddress" name="alamat_domisili" rows="2" placeholder="Masukkan alamat domisili saat ini..." class="w-full bg-surface-container-low border border-outline-variant/30 text-on-surface text-sm rounded-xl px-4 py-2.5 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all resize-none"></textarea>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Tab 3: Finansial & BPJS -->
+            <div id="content-sa-mut-finansial" class="space-y-6 hidden">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <!-- Bank Name -->
+                    <div>
+                        <label class="block text-xs font-bold text-on-surface-variant mb-2 font-headline">Nama Bank</label>
+                        <input type="text" id="superAdminMutBankName" name="bank_name" placeholder="Cth: BCA, Mandiri, BNI" class="w-full bg-surface-container-low border border-outline-variant/30 text-on-surface text-sm rounded-xl px-4 py-2.5 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all font-body">
+                    </div>
+                    <!-- Bank Account Number -->
+                    <div>
+                        <label class="block text-xs font-bold text-on-surface-variant mb-2 font-headline">Nomor Rekening Bank</label>
+                        <input type="text" id="superAdminMutBankAccountNumber" name="bank_account_number" placeholder="Cth: 5220391823" class="w-full bg-surface-container-low border border-outline-variant/30 text-on-surface text-sm rounded-xl px-4 py-2.5 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all">
+                    </div>
+                    <!-- NPWP Number -->
+                    <div>
+                        <label class="block text-xs font-bold text-on-surface-variant mb-2 font-headline">Nomor NPWP</label>
+                        <input type="text" id="superAdminMutNpwpNumber" name="npwp_number" placeholder="Cth: 09.254.223.1-015.000" class="w-full bg-surface-container-low border border-outline-variant/30 text-on-surface text-sm rounded-xl px-4 py-2.5 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all font-body">
+                    </div>
+                    <!-- BPJS TK -->
+                    <div>
+                        <label class="block text-xs font-bold text-on-surface-variant mb-2 font-headline">Nomor BPJS Ketenagakerjaan</label>
+                        <input type="text" id="superAdminMutBpjsTk" name="bpjs_tk" placeholder="Cth: 19028391823" class="w-full bg-surface-container-low border border-outline-variant/30 text-on-surface text-sm rounded-xl px-4 py-2.5 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all font-body">
+                    </div>
+                    <!-- BPJS Kes -->
+                    <div>
+                        <label class="block text-xs font-bold text-on-surface-variant mb-2 font-headline">Nomor BPJS Kesehatan</label>
+                        <input type="text" id="superAdminMutBpjsKes" name="bpjs_kes" placeholder="Cth: 00012938123" class="w-full bg-surface-container-low border border-outline-variant/30 text-on-surface text-sm rounded-xl px-4 py-2.5 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all font-body">
+                    </div>
+                </div>
+            </div>
+
+            <!-- Tab 4: Plafon & Fisik -->
+            <div id="content-sa-mut-lainnya" class="space-y-6 hidden">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <!-- Plafon Medis -->
+                    <div>
+                        <label class="block text-xs font-bold text-on-surface-variant mb-2 font-headline">Plafon Medis (Bulanan)</label>
+                        <input type="text" id="superAdminMutPlafonMedis" name="reimburse_plafon_medis" placeholder="Cth: Rp 500.000" class="w-full bg-surface-container-low border border-outline-variant/30 text-on-surface text-sm rounded-xl px-4 py-2.5 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all">
+                    </div>
+                    <!-- Plafon Transport -->
+                    <div>
+                        <label class="block text-xs font-bold text-on-surface-variant mb-2 font-headline">Plafon Transport (Bulanan)</label>
+                        <input type="text" id="superAdminMutPlafonTransport" name="reimburse_plafon_transport" placeholder="Cth: Rp 1.000.000" class="w-full bg-surface-container-low border border-outline-variant/30 text-on-surface text-sm rounded-xl px-4 py-2.5 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all">
+                    </div>
+                    <!-- Plafon Operasional -->
+                    <div>
+                        <label class="block text-xs font-bold text-on-surface-variant mb-2 font-headline">Plafon Operasional (Bulanan)</label>
+                        <input type="text" id="superAdminMutPlafonOperasional" name="reimburse_plafon_operasional" placeholder="Cth: Rp 2.000.000" class="w-full bg-surface-container-low border border-outline-variant/30 text-on-surface text-sm rounded-xl px-4 py-2.5 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all">
+                    </div>
+                    <!-- Plafon Makan -->
+                    <div>
+                        <label class="block text-xs font-bold text-on-surface-variant mb-2 font-headline">Plafon Makan (Bulanan)</label>
+                        <input type="text" id="superAdminMutPlafonMakan" name="reimburse_plafon_makan" placeholder="Cth: Rp 300.000" class="w-full bg-surface-container-low border border-outline-variant/30 text-on-surface text-sm rounded-xl px-4 py-2.5 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all font-body">
+                    </div>
+                    <!-- Uniform Size -->
+                    <div>
+                        <label class="block text-xs font-bold text-on-surface-variant mb-2 font-headline">Ukuran Seragam</label>
+                        <input type="text" id="superAdminMutUniformSize" name="uniform_size" placeholder="Cth: L, XL, XXL" class="w-full bg-surface-container-low border border-outline-variant/30 text-on-surface text-sm rounded-xl px-4 py-2.5 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all uppercase">
+                    </div>
+                    <!-- Access Card ID -->
+                    <div>
+                        <label class="block text-xs font-bold text-on-surface-variant mb-2 font-headline">ID Kartu Akses</label>
+                        <input type="text" id="superAdminMutCardId" name="id_kartu" placeholder="Cth: AC-829381" class="w-full bg-surface-container-low border border-outline-variant/30 text-on-surface text-sm rounded-xl px-4 py-2.5 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all">
+                    </div>
+                    <!-- QR Code ID -->
+                    <div>
+                        <label class="block text-xs font-bold text-on-surface-variant mb-2 font-headline">ID QR Code</label>
+                        <input type="text" id="superAdminMutQrId" name="id_qrcode" placeholder="Cth: QR-839283" class="w-full bg-surface-container-low border border-outline-variant/30 text-on-surface text-sm rounded-xl px-4 py-2.5 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all">
+                    </div>
+                    <div></div>
+                    <!-- Emergency Contact Header -->
+                    <div class="md:col-span-2 border-t border-outline-variant/15 pt-4">
+                        <h5 class="text-xs font-bold text-primary font-headline uppercase tracking-wider mb-2">Kontak Darurat</h5>
+                    </div>
+                    <!-- Emergency Name -->
+                    <div>
+                        <label class="block text-xs font-bold text-on-surface-variant mb-2 font-headline">Nama Kontak Darurat</label>
+                        <input type="text" id="superAdminMutEmergencyName" name="emergency_name" placeholder="Nama lengkap kontak..." class="w-full bg-surface-container-low border border-outline-variant/30 text-on-surface text-sm rounded-xl px-4 py-2.5 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all">
+                    </div>
+                    <!-- Emergency Relation -->
+                    <div>
+                        <label class="block text-xs font-bold text-on-surface-variant mb-2 font-headline">Hubungan Kontak Darurat</label>
+                        <input type="text" id="superAdminMutEmergencyRelation" name="emergency_relation" placeholder="Cth: Orang Tua, Suami, Istri" class="w-full bg-surface-container-low border border-outline-variant/30 text-on-surface text-sm rounded-xl px-4 py-2.5 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all">
+                    </div>
+                    <!-- Emergency Phone -->
+                    <div>
+                        <label class="block text-xs font-bold text-on-surface-variant mb-2 font-headline">No. Telepon Darurat</label>
+                        <input type="text" id="superAdminMutEmergencyPhone" name="emergency_phone" placeholder="No. telepon aktif..." class="w-full bg-surface-container-low border border-outline-variant/30 text-on-surface text-sm rounded-xl px-4 py-2.5 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all font-body">
+                    </div>
+                </div>
+            </div>
         </form>
 
         <!-- Footer -->
@@ -220,8 +437,118 @@
     var superAdminUsersData       = [];
     var superAdminDepsData        = [];
     var currentSuperAdminUserPage = 1;
+    var totalSuperAdminUserPages = 1;
     var itemsPerSuperAdminUserPage = 10;
     var currentLoggedInUserId     = <?= json_encode($_SESSION['user_id'] ?? '') ?>;
+    var currentSuperAdminSortCol  = 'nama';
+    var currentSuperAdminSortDir  = 'asc';
+    
+    window.superAdminShowSuspendedOnly = false;
+    window.toggleSuperAdminTrashFilter = function() {
+        window.superAdminShowSuspendedOnly = !window.superAdminShowSuspendedOnly;
+        var btn = document.getElementById("superAdminTrashBtn");
+        var addBtn = document.getElementById("superAdminAddUserBtn");
+        if (btn) {
+            if (window.superAdminShowSuspendedOnly) {
+                btn.className = "p-2.5 bg-red-100 text-red-700 rounded-xl border border-red-300 transition-all flex items-center justify-center hover:scale-[1.02] active:scale-[0.98] shadow-sm";
+                btn.innerHTML = '<span class="material-symbols-outlined text-xl">group</span>';
+                btn.title = "Kembali ke Daftar Pengguna";
+            } else {
+                btn.className = "p-2.5 bg-surface-container-low hover:bg-surface-container-high text-on-surface-variant rounded-xl border border-outline-variant/30 transition-all flex items-center justify-center hover:scale-[1.02] active:scale-[0.98] shadow-sm";
+                btn.innerHTML = '<span class="material-symbols-outlined text-xl">delete</span>';
+                btn.title = "Tampilkan Tempat Sampah (Trash)";
+            }
+        }
+        if (addBtn) {
+            if (window.superAdminShowSuspendedOnly) {
+                addBtn.className = "w-full px-4 py-2.5 bg-red-600 hover:bg-red-700 text-white rounded-xl text-sm font-bold shadow-sm transition-all flex items-center justify-center gap-2 hover:scale-[1.02] active:scale-[0.98]";
+                addBtn.innerHTML = '<span class="material-symbols-outlined text-lg">delete_forever</span><span>Kosongkan Sampah</span>';
+                addBtn.setAttribute("onclick", "window.emptySuperAdminTrash()");
+            } else {
+                addBtn.className = "w-full px-4 py-2.5 bg-primary hover:bg-primary/95 text-white rounded-xl text-sm font-bold shadow-sm transition-all flex items-center justify-center gap-2 hover:scale-[1.02] active:scale-[0.98]";
+                addBtn.innerHTML = '<span class="material-symbols-outlined text-lg">person_add</span><span>Tambah Pengguna</span>';
+                addBtn.setAttribute("onclick", "window.openSuperAdminMutationModal()");
+            }
+        }
+        currentSuperAdminUserPage = 1;
+        window.renderSuperAdminUsersTable();
+    };
+
+    window.emptySuperAdminTrash = function() {
+        if (typeof Swal !== 'undefined') {
+            Swal.fire({
+                title: 'Kosongkan Tempat Sampah?',
+                text: 'Semua akun pengguna di tempat sampah akan dihapus secara permanen dari sistem. Tindakan ini tidak dapat dibatalkan!',
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonColor: '#d33',
+                cancelButtonColor: '#3085d6',
+                confirmButtonText: 'Ya, Hapus Permanen!',
+                cancelButtonText: 'Batal'
+            }).then(function(result) {
+                if (result.isConfirmed) {
+                    fetch('/hrops/employees/empty-trash', { method: 'POST' })
+                        .then(function(res) { return res.json(); })
+                        .then(function(data) {
+                            if (data.success) {
+                                Swal.fire({
+                                    title: 'Berhasil',
+                                    text: data.message,
+                                    icon: 'success',
+                                    confirmButtonColor: '#000666'
+                                });
+                                window.loadSuperAdminUsers();
+                            } else {
+                                Swal.fire('Gagal', data.message, 'error');
+                            }
+                        })
+                        .catch(function() {
+                            Swal.fire('Error', 'Terjadi kesalahan sistem.', 'error');
+                        });
+                }
+            });
+        }
+    };
+
+    function sortSuperAdminUsersData() {
+        superAdminUsersData.sort(function(a, b) {
+            var valA = getSuperAdminSortValue(a, currentSuperAdminSortCol);
+            var valB = getSuperAdminSortValue(b, currentSuperAdminSortCol);
+            if (typeof valA === 'string') {
+                return currentSuperAdminSortDir === 'asc' ? valA.localeCompare(valB) : valB.localeCompare(valA);
+            } else {
+                return currentSuperAdminSortDir === 'asc' ? (valA - valB) : (valB - valA);
+            }
+        });
+    }
+
+    function getSuperAdminSortValue(user, col) {
+        switch (col) {
+            case 'nama':
+                return (user.first_name + ' ' + (user.last_name || '')).trim().toLowerCase();
+            case 'email':
+                return (user.email || '').trim().toLowerCase();
+            case 'struktur':
+                return ((user.job_title || '') + ' ' + (user.department_name || '')).trim().toLowerCase();
+            case 'akses':
+                return (user.role || '').trim().toLowerCase();
+            case 'aksi':
+                return parseInt(user.is_suspended || 0);
+            default:
+                return '';
+        }
+    }
+
+    window.toggleSuperAdminUserSort = function(column) {
+        if (currentSuperAdminSortCol === column) {
+            currentSuperAdminSortDir = currentSuperAdminSortDir === 'asc' ? 'desc' : 'asc';
+        } else {
+            currentSuperAdminSortCol = column;
+            currentSuperAdminSortDir = 'asc';
+        }
+        sortSuperAdminUsersData();
+        window.renderSuperAdminUsersTable();
+    };
 
     // ─── Helpers ────────────────────────────────────────────────────────────────
     /**
@@ -287,6 +614,7 @@
                 if (res.success) {
                     superAdminUsersData = res.data || [];
                     superAdminDepsData  = res.departments || [];
+                    sortSuperAdminUsersData();
                     window.populateSuperAdminDeptDropdown();
                     window.renderSuperAdminUsersTable();
                 } else {
@@ -361,6 +689,24 @@
         var tbody    = document.getElementById("superAdminUsersTableBody");
         if (!tbody) return;
 
+        // Update header classes for sorting visual representation
+        var cols = {
+            'nama': 'saColPengguna',
+            'email': 'saColEmail',
+            'struktur': 'saColStruktur',
+            'akses': 'saColAkses',
+            'aksi': 'saColAksi'
+        };
+        Object.keys(cols).forEach(function(col) {
+            var el = document.getElementById(cols[col]);
+            if (el) {
+                el.classList.remove('sort-active-asc', 'sort-active-desc');
+                if (col === currentSuperAdminSortCol) {
+                    el.classList.add(currentSuperAdminSortDir === 'asc' ? 'sort-active-asc' : 'sort-active-desc');
+                }
+            }
+        });
+
         var emptyRow   = tbody.querySelector(".empty-row");
         var loadingRow = tbody.querySelector(".loading-row");
 
@@ -377,6 +723,12 @@
         var roleFilter   = roleFilterEl ? roleFilterEl.value : "";
 
         var filtered = superAdminUsersData.filter(function(user) {
+            if (window.superAdminShowSuspendedOnly) {
+                if (parseInt(user.is_deleted || 0) !== 1) return false;
+            } else {
+                if (parseInt(user.is_deleted || 0) === 1) return false;
+            }
+
             var textMatch =
                 (user.first_name  || "").toLowerCase().includes(search) ||
                 (user.last_name   || "").toLowerCase().includes(search) ||
@@ -411,26 +763,95 @@
                 var md5Hash = window.md5((user.email || "").trim().toLowerCase());
                 var pp = user.profile_picture
                     ? escHtml(user.profile_picture)
-                    : "https://www.gravatar.com/avatar/" + md5Hash + "?d=404&s=120";
+                    : "https://www.gravatar.com/avatar/" + md5Hash + "?d=identicon&s=120";
                 var badgeClass = getRoleBadgeClass(user.role);
 
                 // Impersonation button mapping using dataset attributes
                 var impersonateButton = "";
-                if (user.id !== currentLoggedInUserId) {
+                if (user.id !== currentLoggedInUserId && parseInt(user.is_deleted || 0) !== 1) {
                     impersonateButton = 
                         "<button onclick=\"window.startSuperAdminImpersonate(this)\" data-id=\"" + escHtml(user.id) + "\" data-name=\"" + fullName + "\" class=\"px-3 py-1.5 bg-amber-500/10 hover:bg-amber-500 text-amber-700 hover:text-white rounded-full text-xs font-bold border border-amber-500/20 shadow-sm transition-all flex items-center gap-1\">" +
                             "<span class=\"material-symbols-outlined text-[14px]\">login</span> Simulasi" +
                         "</button>";
                 }
 
+                // Reset lockout button if user has failed attempts
+                var resetLockoutButton = "";
+                if (user.failed_attempts && parseInt(user.failed_attempts) > 0 && parseInt(user.is_deleted || 0) !== 1) {
+                    var isBlocked = parseInt(user.failed_attempts) >= 21;
+                    var btnColor = isBlocked
+                        ? "bg-red-600 hover:bg-red-700 text-white border-red-700"
+                        : "bg-orange-500/10 hover:bg-orange-500 text-orange-700 hover:text-white border-orange-500/20";
+                    var btnText = isBlocked ? "Reset Blokir" : "Reset Percobaan";
+                    var btnTitle = isBlocked
+                        ? "Akun ini diblokir (gagal login " + user.failed_attempts + " kali). Klik untuk membuka blokir."
+                        : "Gagal login " + user.failed_attempts + " kali. Klik untuk mereset.";
+                    resetLockoutButton = 
+                        "<button onclick=\"window.triggerSuperAdminResetLockout(this)\" data-id=\"" + escHtml(user.id) + "\" data-name=\"" + fullName + "\" class=\"px-3 py-1.5 rounded-full text-xs font-bold border shadow-sm transition-all flex items-center gap-1 " + btnColor + "\" title=\"" + btnTitle + "\">" +
+                            "<span class=\"material-symbols-outlined text-[14px]\">lock_open</span> " + btnText +
+                        "</button>";
+                }
+
+                // Edit Button
+                var editButton = "";
+                if (parseInt(user.is_deleted || 0) !== 1) {
+                    editButton = 
+                        "<button onclick=\"window.openSuperAdminMutationModal('" + escHtml(user.id) + "')\" class=\"px-3 py-1.5 bg-primary/5 hover:bg-primary text-primary hover:text-white rounded-full text-xs font-bold border border-primary/10 shadow-sm transition-all flex items-center gap-1\" title=\"Edit data user lengkap\">" +
+                            "<span class=\"material-symbols-outlined text-[14px]\">edit</span> Edit" +
+                        "</button>";
+                }
+
+                // Suspend/Aktifkan / Restore Button
+                var suspendButton = "";
+                if (user.id !== currentLoggedInUserId) {
+                    if (parseInt(user.is_deleted || 0) === 1) {
+                        suspendButton = 
+                            "<button onclick=\"window.triggerSuperAdminRestore(this)\" data-id=\"" + escHtml(user.id) + "\" data-name=\"" + fullName + "\" class=\"px-3 py-1.5 bg-green-500/10 hover:bg-green-500 text-green-700 hover:text-white rounded-full text-xs font-bold border border-green-500/20 shadow-sm transition-all flex items-center gap-1\" title=\"Pulihkan akun\">" +
+                                "<span class=\"material-symbols-outlined text-[14px]\">restore</span> Pulihkan" +
+                            "</button>";
+                    } else {
+                        if (parseInt(user.is_suspended) === 1) {
+                            suspendButton = 
+                                "<button onclick=\"window.triggerSuperAdminToggleSuspend(this)\" data-id=\"" + escHtml(user.id) + "\" data-name=\"" + fullName + "\" class=\"px-3 py-1.5 bg-green-500/10 hover:bg-green-500 text-green-700 hover:text-white rounded-full text-xs font-bold border border-green-500/20 shadow-sm transition-all flex items-center gap-1\" title=\"Aktifkan akun\">" +
+                                    "<span class=\"material-symbols-outlined text-[14px]\">check_circle</span> Aktifkan" +
+                                "</button>";
+                        } else {
+                            suspendButton = 
+                                "<button onclick=\"window.triggerSuperAdminToggleSuspend(this)\" data-id=\"" + escHtml(user.id) + "\" data-name=\"" + fullName + "\" class=\"px-3 py-1.5 bg-slate-500/10 hover:bg-slate-500 text-slate-700 hover:text-white rounded-full text-xs font-bold border border-slate-500/20 shadow-sm transition-all flex items-center gap-1\" title=\"Tangguhkan (suspend) akun\">" +
+                                    "<span class=\"material-symbols-outlined text-[14px]\">block</span> Suspend" +
+                                "</button>";
+                        }
+                    }
+                }
+
+                // Hapus/Delete / Hapus Permanen Button
+                var deleteButton = "";
+                if (user.id !== currentLoggedInUserId && user.role !== 'superadmin') {
+                    if (parseInt(user.is_deleted || 0) === 1) {
+                        deleteButton = 
+                            "<button onclick=\"window.triggerSuperAdminDeletePermanent(this)\" data-id=\"" + escHtml(user.id) + "\" data-name=\"" + fullName + "\" class=\"px-3 py-1.5 bg-red-500/10 hover:bg-red-500 text-red-700 hover:text-white rounded-full text-xs font-bold border border-red-500/20 shadow-sm transition-all flex items-center gap-1\" title=\"Hapus akun secara permanen\">" +
+                                "<span class=\"material-symbols-outlined text-[14px]\">delete_forever</span> Hapus Permanen" +
+                            "</button>";
+                    } else {
+                        deleteButton = 
+                            "<button onclick=\"window.triggerSuperAdminDelete(this)\" data-id=\"" + escHtml(user.id) + "\" data-name=\"" + fullName + "\" class=\"px-3 py-1.5 bg-red-500/10 hover:bg-red-500 text-red-700 hover:text-white rounded-full text-xs font-bold border border-red-500/20 shadow-sm transition-all flex items-center gap-1\" title=\"Hapus akun\">" +
+                                "<span class=\"material-symbols-outlined text-[14px]\">delete</span> Hapus" +
+                            "</button>";
+                    }
+                }
+
+                var rowNum = i + 1;
                 tr.innerHTML =
+                    "<td class=\"no-col-cell px-6 py-4 text-center font-bold text-xs text-on-surface-variant\">" + rowNum + "</td>" +
                     "<td class=\"px-6 py-4\">" +
                         "<div class=\"flex items-center gap-3\">" +
-                            "<img src=\"" + pp + "\" class=\"w-10 h-10 rounded-full object-cover border border-outline-variant/30 flex-shrink-0\" alt=\"Avatar\" onerror=\"window.handleAvatarError(this, '" + md5Hash + "')\">" +
+                            "<img referrerpolicy=\"no-referrer\" src=\"" + pp + "\" class=\"w-10 h-10 rounded-full object-cover border border-outline-variant/30 flex-shrink-0\" alt=\"Avatar\" onerror=\"window.handleAvatarError(this, '" + md5Hash + "')\">" +
                             "<div>" +
-                                "<p class=\"text-sm font-bold text-on-surface\">" + fullName + "</p>" +
+                                "<p class=\"text-sm font-bold text-on-surface\">" + fullName + 
+                                    (parseInt(user.is_deleted || 0) === 1 ? " <span class=\"text-[10px] font-bold text-red-600 bg-red-50 px-1.5 py-0.5 rounded border border-red-200 ml-1.5\">TERHAPUS (TRASH)</span>" : (parseInt(user.is_suspended) === 1 ? " <span class=\"text-[10px] font-bold text-red-600 bg-red-50 px-1.5 py-0.5 rounded border border-red-200 ml-1.5\">DITANGGUHKAN</span>" : "")) + 
+                                "</p>" +
                                 "<p class=\"text-xs text-on-surface-variant font-mono mt-0.5\">" + empId + "</p>" +
-                            "</div>" +
+                                "</div>" +
                         "</div>" +
                     "</td>" +
                     "<td class=\"px-6 py-4\">" +
@@ -446,20 +867,25 @@
                         "<span class=\"text-[10px] font-bold uppercase inline-block px-2.5 py-1 rounded " + badgeClass + "\">" + escHtml(user.role) + "</span>" +
                     "</td>" +
                     "<td class=\"px-6 py-4 text-right\">" +
-                        "<div class=\"flex items-center justify-end gap-2\">" +
+                        "<div class=\"flex items-center justify-end gap-1.5 flex-nowrap\">" +
                             impersonateButton +
-                            "<button onclick=\"window.openSuperAdminMutationModal('" + escHtml(user.id) + "')\" class=\"px-3 py-1.5 bg-primary/5 hover:bg-primary text-primary hover:text-white rounded-full text-xs font-bold border border-primary/10 shadow-sm transition-all flex items-center gap-1\">" +
-                                "<span class=\"material-symbols-outlined text-[14px]\">published_with_changes</span> Mutasi" +
-                            "</button>" +
+                            resetLockoutButton +
+                            editButton +
+                            suspendButton +
+                            deleteButton +
+                            (parseInt(user.is_deleted || 0) === 1 ? "" : 
                             "<button onclick=\"window.triggerSuperAdminResetProfile(this)\" data-id=\"" + escHtml(user.id) + "\" data-name=\"" + fullName + "\" class=\"px-3 py-1.5 bg-red-500/10 hover:bg-red-500 text-red-700 hover:text-white rounded-full text-xs font-bold border border-red-500/20 shadow-sm transition-all flex items-center gap-1\" title=\"Reset Identitas Lengkap Karyawan\">" +
                                 "<span class=\"material-symbols-outlined text-[14px]\">restart_alt</span> Reset" +
-                            "</button>" +
+                            "</button>") +
                         "</div>" +
                     "</td>";
 
                 tbody.appendChild(tr);
             }
         }
+
+        // Save totalPages globally
+        totalSuperAdminUserPages = totalPages;
 
         // Pagination visibility
         var pagination = document.getElementById("superAdminUserPagination");
@@ -471,25 +897,95 @@
             }
         }
 
+        // Update Info Text (showing X to Y of Z)
+        var infoEl = document.getElementById("superAdminUserPaginationInfo");
+        if (infoEl) {
+            var startShow = totalItems === 0 ? 0 : startIdx + 1;
+            var endShow = endIdx;
+            infoEl.textContent = "Menampilkan data " + startShow + " sampai " + endShow + " dari " + totalItems;
+        }
+
+        // Update Buttons Disabled States
+        var firstBtn = document.getElementById("superAdminUserFirstBtn");
         var prevBtn = document.getElementById("superAdminUserPrevBtn");
         var nextBtn = document.getElementById("superAdminUserNextBtn");
+        var lastBtn = document.getElementById("superAdminUserLastBtn");
+
+        if (firstBtn) firstBtn.disabled = currentSuperAdminUserPage === 1;
         if (prevBtn) prevBtn.disabled = currentSuperAdminUserPage === 1;
         if (nextBtn) nextBtn.disabled = currentSuperAdminUserPage === totalPages || totalPages === 0;
-    };
-    /**
-     * MVC View UI Action: Sets the current page to the previous page and updates the table.
-     * OOP Concept: State mutation helper.
-     */
-    window.prevSuperAdminUserPage = function() {
-        if (currentSuperAdminUserPage > 1) { currentSuperAdminUserPage--; window.renderSuperAdminUsersTable(); }
+        if (lastBtn) lastBtn.disabled = currentSuperAdminUserPage === totalPages || totalPages === 0;
+
+        // Render Page Numbers
+        var pageNumbersContainer = document.getElementById("superAdminUserPageNumbers");
+        if (pageNumbersContainer) {
+            pageNumbersContainer.innerHTML = "";
+            
+            var startPage = 1;
+            var endPage = totalPages;
+            
+            if (totalPages > 3) {
+                if (currentSuperAdminUserPage === 1) {
+                    startPage = 1;
+                    endPage = 3;
+                } else if (currentSuperAdminUserPage === totalPages) {
+                    startPage = totalPages - 2;
+                    endPage = totalPages;
+                } else {
+                    startPage = currentSuperAdminUserPage - 1;
+                    endPage = currentSuperAdminUserPage + 1;
+                }
+            }
+            
+            for (var p = startPage; p <= endPage; p++) {
+                (function(pageNum) {
+                    var btn = document.createElement("button");
+                    btn.className = "w-8 h-8 flex items-center justify-center rounded-full text-xs font-semibold transition-all border ";
+                    if (pageNum === currentSuperAdminUserPage) {
+                        btn.className += "bg-primary text-white border-primary shadow-sm";
+                    } else {
+                        btn.className += "hover:bg-surface-container-high text-on-surface border-transparent";
+                    }
+                    btn.textContent = pageNum;
+                    btn.onclick = function() {
+                        currentSuperAdminUserPage = pageNum;
+                        window.renderSuperAdminUsersTable();
+                    };
+                    pageNumbersContainer.appendChild(btn);
+                })(p);
+            }
+        }
     };
 
     /**
-     * MVC View UI Action: Sets the current page to the next page and updates the table.
-     * OOP Concept: State mutation helper.
+     * MVC View UI Actions: Pagination Navigation helpers.
      */
+    window.firstSuperAdminUserPage = function() {
+        if (currentSuperAdminUserPage > 1) {
+            currentSuperAdminUserPage = 1;
+            window.renderSuperAdminUsersTable();
+        }
+    };
+
+    window.prevSuperAdminUserPage = function() {
+        if (currentSuperAdminUserPage > 1) {
+            currentSuperAdminUserPage--;
+            window.renderSuperAdminUsersTable();
+        }
+    };
+
     window.nextSuperAdminUserPage = function() {
-        currentSuperAdminUserPage++; window.renderSuperAdminUsersTable();
+        if (currentSuperAdminUserPage < totalSuperAdminUserPages) {
+            currentSuperAdminUserPage++;
+            window.renderSuperAdminUsersTable();
+        }
+    };
+
+    window.lastSuperAdminUserPage = function() {
+        if (currentSuperAdminUserPage < totalSuperAdminUserPages) {
+            currentSuperAdminUserPage = totalSuperAdminUserPages;
+            window.renderSuperAdminUsersTable();
+        }
     };
 
     // ─── Impersonation (Simulasi Login) ─────────────────────────────────────────
@@ -615,7 +1111,258 @@
         });
     };
 
+    // ─── Reset Lockout / Blokir ──────────────────────────────────────────────────
+    /**
+     * Resets failed login attempts and lockouts for a user.
+     * connects: App\Controllers\EmployeeMasterController::resetLockout via /superadmin/users/reset-lockout.
+     * 
+     * @param {string|HTMLElement} userIdOrEl
+     * @param {string} fullName
+     */
+    window.triggerSuperAdminResetLockout = function(userIdOrEl, fullName) {
+        if (typeof Swal === "undefined") return;
+        var userId = userIdOrEl;
+        if (userIdOrEl instanceof HTMLElement) {
+            userId = userIdOrEl.getAttribute("data-id");
+            fullName = userIdOrEl.getAttribute("data-name");
+        }
+
+        Swal.fire({
+            title: "Reset Blokir Login?",
+            text: "Tindakan ini akan menghapus seluruh data percobaan login yang gagal untuk \"" + fullName + "\" sehingga pengguna dapat mencoba masuk kembali.",
+            icon: "warning",
+            showCancelButton: true,
+            confirmButtonColor: "#f97316", // Orange-500
+            cancelButtonColor: "#c6c5d4",
+            confirmButtonText: "Ya, Reset Blokir",
+            cancelButtonText: "Batal"
+        }).then(function(result) {
+            if (result.isConfirmed) {
+                var formData = new FormData();
+                formData.append("user_id", userId);
+
+                fetch("/superadmin/users/reset-lockout", { method: "POST", body: formData })
+                    .then(function(res) { return res.json(); })
+                    .then(function(data) {
+                        if (data.success) {
+                            Swal.fire({ title: "Berhasil!", text: data.message, icon: "success", timer: 1500, showConfirmButton: false });
+                            window.loadSuperAdminUsers();
+                        } else {
+                            Swal.fire("Error", data.message || "Gagal mereset blokir", "error");
+                        }
+                    })
+                    .catch(function(err) {
+                        console.error("Reset lockout error:", err);
+                        Swal.fire("Error", "Terjadi kesalahan sistem.", "error");
+                    });
+            }
+        });
+    };
+
+    // ─── Toggle Suspend ──────────────────────────────────────────────────────────
+    /**
+     * Toggles the suspension status (is_suspended) of a user.
+     * connects: App\Controllers\EmployeeMasterController::toggleSuspend via /hrops/employees/toggle-suspend.
+     * 
+     * @param {HTMLElement} btn
+     */
+    window.triggerSuperAdminToggleSuspend = function(btn) {
+        if (typeof Swal === "undefined") return;
+        var userId = btn.getAttribute("data-id");
+        var fullName = btn.getAttribute("data-name");
+        var isSuspended = btn.innerHTML.indexOf("Aktifkan") !== -1;
+        var actionText = isSuspended ? "Mengaktifkan kembali" : "Menangguhkan (suspend)";
+        var confirmText = isSuspended ? "Ya, Aktifkan" : "Ya, Suspend";
+
+        Swal.fire({
+            title: isSuspended ? "Aktifkan Akun?" : "Suspend Akun?",
+            text: "Apakah Anda yakin ingin " + actionText.toLowerCase() + " akun untuk \"" + fullName + "\"? " + 
+                  (isSuspended ? "Pengguna akan dapat masuk kembali ke sistem." : "Pengguna tidak akan bisa masuk ke sistem sampai diaktifkan kembali."),
+            icon: "warning",
+            showCancelButton: true,
+            confirmButtonColor: isSuspended ? "#10b981" : "#64748b", // Green or Slate
+            cancelButtonColor: "#c6c5d4",
+            confirmButtonText: confirmText,
+            cancelButtonText: "Batal"
+        }).then(function(result) {
+            if (result.isConfirmed) {
+                var formData = new FormData();
+                formData.append("id", userId);
+
+                fetch("/hrops/employees/toggle-suspend", { method: "POST", body: formData })
+                    .then(function(res) { return res.json(); })
+                    .then(function(data) {
+                        if (data.success) {
+                            Swal.fire({ title: "Berhasil!", text: data.message, icon: "success", timer: 1500, showConfirmButton: false });
+                            window.loadSuperAdminUsers();
+                        } else {
+                            Swal.fire("Error", data.message || "Gagal mengubah status akses", "error");
+                        }
+                    })
+                    .catch(function(err) {
+                        console.error("Toggle suspend error:", err);
+                        Swal.fire("Error", "Terjadi kesalahan sistem.", "error");
+                    });
+            }
+        });
+    };
+
+    // ─── Hapus / Delete User ──────────────────────────────────────────────────────
+    /**
+     * Deletes a user account.
+     * connects: App\Controllers\EmployeeMasterController::delete via /hrops/employees/delete.
+     * 
+     * @param {HTMLElement} btn
+     */
+    window.triggerSuperAdminDelete = function(btn) {
+        if (typeof Swal === "undefined") return;
+        var userId = btn.getAttribute("data-id");
+        var fullName = btn.getAttribute("data-name");
+
+        Swal.fire({
+            title: "Pindahkan ke Tempat Sampah?",
+            text: "Akun untuk \"" + fullName + "\" akan dipindahkan ke tempat sampah. Karyawan ini tidak akan bisa login sampai akunnya dipulihkan.",
+            icon: "warning",
+            showCancelButton: true,
+            confirmButtonColor: "#ef4444", // Red-500
+            cancelButtonColor: "#c6c5d4",
+            confirmButtonText: "Ya, Pindahkan ke Sampah",
+            cancelButtonText: "Batal"
+        }).then(function(result) {
+            if (result.isConfirmed) {
+                var formData = new FormData();
+                formData.append("id", userId);
+
+                fetch("/hrops/employees/delete", { method: "POST", body: formData })
+                    .then(function(res) { return res.json(); })
+                    .then(function(data) {
+                        if (data.success) {
+                            Swal.fire({ title: "Berhasil!", text: data.message, icon: "success", timer: 1500, showConfirmButton: false });
+                            window.loadSuperAdminUsers();
+                        } else {
+                            Swal.fire("Error", data.message || "Gagal menghapus data", "error");
+                        }
+                    })
+                    .catch(function(err) {
+                        console.error("Delete user error:", err);
+                        Swal.fire("Error", "Terjadi kesalahan sistem.", "error");
+                    });
+            }
+        });
+    };
+
+    window.triggerSuperAdminRestore = function(btn) {
+        if (typeof Swal === "undefined") return;
+        var userId = btn.getAttribute("data-id");
+        var fullName = btn.getAttribute("data-name");
+
+        Swal.fire({
+            title: "Pulihkan Akun Karyawan?",
+            text: "Akun untuk \"" + fullName + "\" akan dipulihkan kembali ke daftar karyawan aktif.",
+            icon: "question",
+            showCancelButton: true,
+            confirmButtonColor: "#10b981", // Green
+            cancelButtonColor: "#c6c5d4",
+            confirmButtonText: "Ya, Pulihkan Akun",
+            cancelButtonText: "Batal"
+        }).then(function(result) {
+            if (result.isConfirmed) {
+                var formData = new FormData();
+                formData.append("id", userId);
+
+                fetch("/hrops/employees/restore", { method: "POST", body: formData })
+                    .then(function(res) { return res.json(); })
+                    .then(function(data) {
+                        if (data.success) {
+                            Swal.fire({ title: "Berhasil!", text: data.message, icon: "success", timer: 1500, showConfirmButton: false });
+                            window.loadSuperAdminUsers();
+                        } else {
+                            Swal.fire("Error", data.message || "Gagal memulihkan data", "error");
+                        }
+                    })
+                    .catch(function(err) {
+                        console.error("Restore user error:", err);
+                        Swal.fire("Error", "Terjadi kesalahan sistem.", "error");
+                    });
+            }
+        });
+    };
+
+    window.triggerSuperAdminDeletePermanent = function(btn) {
+        if (typeof Swal === "undefined") return;
+        var userId = btn.getAttribute("data-id");
+        var fullName = btn.getAttribute("data-name");
+
+        Swal.fire({
+            title: "Hapus Akun secara Permanen?",
+            text: "Akun untuk \"" + fullName + "\" akan dihapus selamanya dari database. Tindakan ini tidak dapat dibatalkan!",
+            icon: "error",
+            showCancelButton: true,
+            confirmButtonColor: "#ef4444", // Red-500
+            cancelButtonColor: "#c6c5d4",
+            confirmButtonText: "Ya, Hapus Permanen",
+            cancelButtonText: "Batal"
+        }).then(function(result) {
+            if (result.isConfirmed) {
+                var formData = new FormData();
+                formData.append("id", userId);
+
+                fetch("/hrops/employees/delete-permanent", { method: "POST", body: formData })
+                    .then(function(res) { return res.json(); })
+                    .then(function(data) {
+                        if (data.success) {
+                            Swal.fire({ title: "Terhapus!", text: data.message, icon: "success", timer: 1500, showConfirmButton: false });
+                            window.loadSuperAdminUsers();
+                        } else {
+                            Swal.fire("Error", data.message || "Gagal menghapus data secara permanen", "error");
+                        }
+                    })
+                    .catch(function(err) {
+                        console.error("Delete permanent user error:", err);
+                        Swal.fire("Error", "Terjadi kesalahan sistem.", "error");
+                    });
+            }
+        });
+    };
+
     // ─── Mutation Modal ─────────────────────────────────────────────────────────
+    /**
+     * Helper to format currency values to Indonesian Rupiah.
+     */
+    function formatRupiah(value) {
+        if (value === null || value === undefined || value === "") return "Rp 0";
+        var number = parseFloat(value);
+        if (isNaN(number)) return "Rp 0";
+        return "Rp " + number.toLocaleString("id-ID", { minimumFractionDigits: 0, maximumFractionDigits: 0 });
+    }
+
+    /**
+     * Tab switching handler for Superadmin mutation modal.
+     */
+    window.switchSuperAdminMutTab = function(tabName) {
+        var tabs = ['kepegawaian', 'profil', 'finansial', 'lainnya'];
+        tabs.forEach(function(t) {
+            var btn = document.getElementById('tab-sa-mut-' + t);
+            var content = document.getElementById('content-sa-mut-' + t);
+            if (btn) {
+                if (t === tabName) {
+                    btn.classList.add('text-primary', 'border-primary');
+                    btn.classList.remove('text-on-surface-variant', 'border-transparent');
+                } else {
+                    btn.classList.remove('text-primary', 'border-primary');
+                    btn.classList.add('text-on-surface-variant', 'border-transparent');
+                }
+            }
+            if (content) {
+                if (t === tabName) {
+                    content.classList.remove('hidden');
+                } else {
+                    content.classList.add('hidden');
+                }
+            }
+        });
+    };
+
     /**
      * MVC View UI Action: Opens the mutation/settings modal and pre-fills input forms.
      * OOP Concept: DOM querying and value mapping.
@@ -624,34 +1371,102 @@
      * @param {string} id
      */
     window.openSuperAdminMutationModal = function(id) {
-        var user = superAdminUsersData.find(function(u) { return u.id === id; });
-        if (!user) return;
-
-        var fullName = (user.first_name || "") + (user.last_name ? " " + user.last_name : "");
         var el = function(eid) { return document.getElementById(eid); };
+        var modalTitle = document.querySelector("#superAdminMutationModal h3");
 
-        if (el("superAdminMutFullName"))   el("superAdminMutFullName").textContent  = fullName;
-        if (el("superAdminMutEmail"))      el("superAdminMutEmail").textContent     = user.email;
-        if (el("superAdminMutCurrentRole")) el("superAdminMutCurrentRole").textContent = user.role;
-        if (el("superAdminMutAvatar")) {
-            el("superAdminMutAvatar").src = user.profile_picture || "https://www.gravatar.com/avatar/" + window.md5((user.email || "").trim().toLowerCase()) + "?d=404&s=120";
-            el("superAdminMutAvatar").onerror = function() {
-                window.handleAvatarError(this, window.md5((user.email || "").trim().toLowerCase()));
-            };
+        if (id) {
+            // EDIT USER MODE
+            var user = superAdminUsersData.find(function(u) { return u.id === id; });
+            if (!user) return;
+
+            if (modalTitle) {
+                modalTitle.innerHTML = '<span class="material-symbols-outlined text-primary">edit</span> Edit Data User Lengkap (Super Admin)';
+            }
+
+            var fullName = (user.first_name || "") + (user.last_name ? " " + user.last_name : "");
+            if (el("superAdminMutFullName"))   el("superAdminMutFullName").textContent  = fullName;
+            if (el("superAdminMutEmail"))      el("superAdminMutEmail").textContent     = user.email;
+            if (el("superAdminMutCurrentRole")) el("superAdminMutCurrentRole").textContent = user.role;
+            if (el("superAdminMutAvatar")) {
+                el("superAdminMutAvatar").src = user.profile_picture || "https://www.gravatar.com/avatar/" + window.md5((user.email || "").trim().toLowerCase()) + "?d=identicon&s=120";
+                el("superAdminMutAvatar").onerror = function() {
+                    window.handleAvatarError(this, window.md5((user.email || "").trim().toLowerCase()));
+                };
+            }
+
+            if (el("superAdminMutId"))          el("superAdminMutId").value          = user.id          || "";
+            if (el("superAdminMutStaffId"))     el("superAdminMutStaffId").value     = user.employee_id || "";
+            if (el("superAdminMutJobTitle"))    el("superAdminMutJobTitle").value    = user.job_title   || "";
+            if (el("superAdminMutDepartment"))  el("superAdminMutDepartment").value  = user.department_id || "";
+            if (el("superAdminMutRole"))        el("superAdminMutRole").value        = user.role        || "employee";
+            if (el("superAdminMutPassword"))    el("superAdminMutPassword").value    = "";
+
+            if (el("superAdminMutFirstName"))   el("superAdminMutFirstName").value   = user.first_name        || "";
+            if (el("superAdminMutLastName"))    el("superAdminMutLastName").value    = user.last_name         || "";
+            if (el("superAdminMutEmailHidden")) el("superAdminMutEmailHidden").value = user.email             || "";
+            if (el("superAdminMutLeaveQuota"))  el("superAdminMutLeaveQuota").value  = user.annual_leave_quota || 12;
+            if (el("superAdminMutBaseSalary"))  el("superAdminMutBaseSalary").value  = formatRupiah(user.base_salary);
+
+            // Populate personal profile inputs
+            if (el("superAdminMutPhone"))            el("superAdminMutPhone").value            = user.no_telepon || "";
+            if (el("superAdminMutKtpName"))          el("superAdminMutKtpName").value          = user.nama_sesuai_ktp || "";
+            if (el("superAdminMutKtpNik"))           el("superAdminMutKtpNik").value           = user.ktp_nik || "";
+            if (el("superAdminMutBirthDate"))        el("superAdminMutBirthDate").value        = user.tanggal_lahir || "";
+            if (el("superAdminMutGender"))           el("superAdminMutGender").value           = user.jenis_kelamin || "";
+            if (el("superAdminMutMaritalStatus"))    el("superAdminMutMaritalStatus").value    = user.status_pernikahan || "";
+            if (el("superAdminMutKtpAddress"))       el("superAdminMutKtpAddress").value       = user.alamat_ktp || "";
+            if (el("superAdminMutDomisiliAddress"))  el("superAdminMutDomisiliAddress").value  = user.alamat_domisili || "";
+            if (el("superAdminMutBankName"))         el("superAdminMutBankName").value         = user.bank_name || "";
+            if (el("superAdminMutBankAccountNumber"))el("superAdminMutBankAccountNumber").value = user.bank_account_number || "";
+            if (el("superAdminMutNpwpNumber"))       el("superAdminMutNpwpNumber").value       = user.npwp_number || "";
+            if (el("superAdminMutBpjsTk"))           el("superAdminMutBpjsTk").value           = user.bpjs_tk || "";
+            if (el("superAdminMutBpjsKes"))          el("superAdminMutBpjsKes").value          = user.bpjs_kes || "";
+            
+            if (el("superAdminMutPlafonMedis"))      el("superAdminMutPlafonMedis").value      = formatRupiah(user.reimburse_plafon_medis);
+            if (el("superAdminMutPlafonTransport"))  el("superAdminMutPlafonTransport").value  = formatRupiah(user.reimburse_plafon_transport);
+            if (el("superAdminMutPlafonOperasional"))el("superAdminMutPlafonOperasional").value= formatRupiah(user.reimburse_plafon_operasional);
+            if (el("superAdminMutPlafonMakan"))      el("superAdminMutPlafonMakan").value      = formatRupiah(user.reimburse_plafon_makan);
+
+            if (el("superAdminMutUniformSize"))      el("superAdminMutUniformSize").value      = user.uniform_size || "";
+            if (el("superAdminMutCardId"))           el("superAdminMutCardId").value           = user.id_kartu || "";
+            if (el("superAdminMutQrId"))             el("superAdminMutQrId").value             = user.id_qrcode || "";
+            if (el("superAdminMutEmergencyName"))    el("superAdminMutEmergencyName").value    = user.emergency_name || "";
+            if (el("superAdminMutEmergencyRelation"))el("superAdminMutEmergencyRelation").value= user.emergency_relation || "";
+            if (el("superAdminMutEmergencyPhone"))   el("superAdminMutEmergencyPhone").value   = user.emergency_phone || "";
+        } else {
+            // ADD NEW USER MODE
+            if (modalTitle) {
+                modalTitle.innerHTML = '<span class="material-symbols-outlined text-primary">person_add</span> Tambah Pengguna Baru';
+            }
+
+            if (el("superAdminMutFullName"))   el("superAdminMutFullName").textContent  = "Pengguna Baru";
+            if (el("superAdminMutEmail"))      el("superAdminMutEmail").textContent     = "Belum diisi";
+            if (el("superAdminMutCurrentRole")) el("superAdminMutCurrentRole").textContent = "Baru";
+            if (el("superAdminMutAvatar")) {
+                el("superAdminMutAvatar").src = "https://www.gravatar.com/avatar/00000000000000000000000000000000?d=identicon&s=120";
+            }
+
+            // Clear all fields
+            var fieldsToClear = [
+                "superAdminMutId", "superAdminMutStaffId", "superAdminMutJobTitle", "superAdminMutDepartment",
+                "superAdminMutPassword", "superAdminMutFirstName", "superAdminMutLastName", "superAdminMutEmailHidden",
+                "superAdminMutPhone", "superAdminMutKtpName", "superAdminMutKtpNik", "superAdminMutBirthDate",
+                "superAdminMutGender", "superAdminMutMaritalStatus", "superAdminMutKtpAddress", "superAdminMutDomisiliAddress",
+                "superAdminMutBankName", "superAdminMutBankAccountNumber", "superAdminMutNpwpNumber", "superAdminMutBpjsTk",
+                "superAdminMutBpjsKes", "superAdminMutPlafonMedis", "superAdminMutPlafonTransport", "superAdminMutPlafonOperasional",
+                "superAdminMutPlafonMakan", "superAdminMutUniformSize", "superAdminMutCardId", "superAdminMutQrId",
+                "superAdminMutEmergencyName", "superAdminMutEmergencyRelation", "superAdminMutEmergencyPhone"
+            ];
+            fieldsToClear.forEach(function(fid) {
+                if (el(fid)) el(fid).value = "";
+            });
+
+            if (el("superAdminMutRole"))       el("superAdminMutRole").value = "employee";
+            if (el("superAdminMutLeaveQuota")) el("superAdminMutLeaveQuota").value = 12;
         }
 
-        if (el("superAdminMutId"))          el("superAdminMutId").value          = user.id          || "";
-        if (el("superAdminMutStaffId"))     el("superAdminMutStaffId").value     = user.employee_id || "";
-        if (el("superAdminMutJobTitle"))    el("superAdminMutJobTitle").value    = user.job_title   || "";
-        if (el("superAdminMutDepartment"))  el("superAdminMutDepartment").value  = user.department_id || "";
-        if (el("superAdminMutRole"))        el("superAdminMutRole").value        = user.role        || "employee";
-        if (el("superAdminMutPassword"))    el("superAdminMutPassword").value    = "";
-
-        if (el("superAdminMutFirstName"))   el("superAdminMutFirstName").value   = user.first_name        || "";
-        if (el("superAdminMutLastName"))    el("superAdminMutLastName").value    = user.last_name         || "";
-        if (el("superAdminMutEmailHidden")) el("superAdminMutEmailHidden").value = user.email             || "";
-        if (el("superAdminMutLeaveQuota"))  el("superAdminMutLeaveQuota").value  = user.annual_leave_quota || 12;
-        if (el("superAdminMutBaseSalary"))  el("superAdminMutBaseSalary").value  = user.base_salary       || 0;
+        // Reset default active tab
+        window.switchSuperAdminMutTab('kepegawaian');
 
         // Hide password strength box when opening
         var pwBox = document.getElementById("superAdminMutPwStrengthBox");
@@ -706,7 +1521,7 @@
                 if (data.success) {
                     window.closeSuperAdminMutationModal();
                     if (typeof Swal !== "undefined") {
-                        Swal.fire({ title: "Berhasil", text: "Mutasi jabatan berhasil diperbarui.", icon: "success", confirmButtonColor: "#000666" });
+                        Swal.fire({ title: "Berhasil", text: "Data pengguna berhasil diperbarui.", icon: "success", confirmButtonColor: "#000666" });
                     }
                     window.loadSuperAdminUsers();
                 } else {

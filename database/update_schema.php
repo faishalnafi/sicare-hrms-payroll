@@ -129,7 +129,10 @@ try {
         "ALTER TABLE users ADD COLUMN IF NOT EXISTS job_title VARCHAR(100) NULL AFTER department_id",
         "ALTER TABLE users ADD COLUMN IF NOT EXISTS base_salary DECIMAL(15,2) DEFAULT 0.00 AFTER job_title",
         "ALTER TABLE users ADD COLUMN IF NOT EXISTS profile_reset_token VARCHAR(100) NULL AFTER base_salary",
-        "ALTER TABLE users ADD COLUMN IF NOT EXISTS login_just_occurred TINYINT DEFAULT 0 AFTER profile_reset_token"
+        "ALTER TABLE users ADD COLUMN IF NOT EXISTS login_just_occurred TINYINT DEFAULT 0 AFTER profile_reset_token",
+        "ALTER TABLE users ADD COLUMN IF NOT EXISTS is_suspended TINYINT DEFAULT 0 AFTER login_just_occurred",
+        "ALTER TABLE users ADD COLUMN IF NOT EXISTS is_deleted TINYINT DEFAULT 0 AFTER is_suspended",
+        "ALTER TABLE users ADD COLUMN IF NOT EXISTS remember_token VARCHAR(255) NULL DEFAULT NULL AFTER is_deleted"
     ];
 
     foreach ($alterQueries as $q) {
@@ -293,203 +296,29 @@ try {
         'base_salary' => 12000000.00
     ]);
 
-    // Seed Alex Rivera (Employee)
-    $alexId = upsertUser($db, 'employee@mail.com', 'employee', 'Alex', 'Rivera', $passwordHash, [
-        'employee_id' => 'EMP-2026-0033',
-        'no_telepon' => '+62 812-3456-7890',
-        'alamat_domisili' => 'Jl. Gading Serpong Boulevard, Cluster Emerald No. 88, Tangerang, Banten 15810',
-        'ktp_nik' => '3275012309990001',
-        'nama_sesuai_ktp' => 'ALEX RIVERA',
-        'alamat_ktp' => 'Jl. Boulevard Gading Serpong No. 12, Tangerang, Banten 15810',
-        'bank_name' => 'Bank Central Asia (BCA)',
-        'bank_account_number' => '8012345678',
-        'npwp_number' => '12.345.678.9-012.000',
-        'bpjs_tk' => '12098765432',
-        'bpjs_kes' => '0001234567890',
-        'tanggal_lahir' => '12 September 1995',
-        'status_pernikahan' => 'Belum Menikah',
-        'jenis_kelamin' => 'Laki-Laki',
-        'department_id' => $deptFrontend ?: $deptIt,
-        'job_title' => 'Senior Frontend Engineer',
-        'base_salary' => 15000000.00
-    ]);
+    // Purge any existing dummy users and their transactional records if they exist in the DB
+    $dummyEmails = [
+        'employee@mail.com',
+        'budi.santoso@example.com',
+        'amanda.putri@example.com',
+        'rian.hidayat@example.com',
+        'siti.aminah@example.com',
+        'farhan.said@example.com'
+    ];
 
-    // Seed Budi Santoso (Employee)
-    $budiId = upsertUser($db, 'budi.santoso@example.com', 'employee', 'Budi', 'Santoso', $passwordHash, [
-        'employee_id' => 'EMP-2026-0034',
-        'no_telepon' => '+62 813-1111-2222',
-        'alamat_domisili' => 'Jl. Boulevard Raya No. 12, Tangerang',
-        'ktp_nik' => '3275012309990003',
-        'nama_sesuai_ktp' => 'BUDI SANTOSO',
-        'alamat_ktp' => 'Jl. Boulevard Raya No. 12, Tangerang',
-        'bank_name' => 'Bank Mandiri',
-        'bank_account_number' => '1234567890123',
-        'npwp_number' => '12.345.678.9-012.002',
-        'bpjs_tk' => '12098765434',
-        'bpjs_kes' => '0001234567892',
-        'tanggal_lahir' => '15 Agustus 1993',
-        'status_pernikahan' => 'Menikah',
-        'jenis_kelamin' => 'Laki-Laki',
-        'department_id' => $deptBackend ?: $deptIt,
-        'job_title' => 'Lead Software Engineer',
-        'base_salary' => 18000000.00
-    ]);
-
-    // Seed Amanda Putri (Employee)
-    $amandaId = upsertUser($db, 'amanda.putri@example.com', 'employee', 'Amanda', 'Putri', $passwordHash, [
-        'employee_id' => 'EMP-2026-0035',
-        'no_telepon' => '+62 812-9876-5432',
-        'alamat_domisili' => 'Jl. Raya Serpong No. 100, Tangerang, Banten 15310',
-        'ktp_nik' => '3275012309990002',
-        'nama_sesuai_ktp' => 'AMANDA PUTRI',
-        'alamat_ktp' => 'Jl. Raya Serpong No. 100, Tangerang, Banten 15310',
-        'bank_name' => 'Bank Central Asia (BCA)',
-        'bank_account_number' => '8012345688',
-        'npwp_number' => '12.345.678.9-012.001',
-        'bpjs_tk' => '12098765433',
-        'bpjs_kes' => '0001234567891',
-        'tanggal_lahir' => '10 Mei 1997',
-        'status_pernikahan' => 'Belum Menikah',
-        'jenis_kelamin' => 'Perempuan',
-        'department_id' => $deptFrontend ?: $deptIt,
-        'job_title' => 'UI/UX Designer',
-        'base_salary' => 10000000.00
-    ]);
-
-    // Seed Rian Hidayat (Employee)
-    $rianId = upsertUser($db, 'rian.hidayat@example.com', 'employee', 'Rian', 'Hidayat', $passwordHash, [
-        'employee_id' => 'EMP-2026-0036',
-        'no_telepon' => '+62 812-5555-6666',
-        'alamat_domisili' => 'Jl. Alam Sutera No. 45, Tangerang',
-        'ktp_nik' => '3275012309990005',
-        'nama_sesuai_ktp' => 'RIAN HIDAYAT',
-        'alamat_ktp' => 'Jl. Alam Sutera No. 45, Tangerang',
-        'bank_name' => 'Bank Mandiri',
-        'bank_account_number' => '1234567890999',
-        'npwp_number' => '12.345.678.9-012.005',
-        'bpjs_tk' => '12098765439',
-        'bpjs_kes' => '0001234567899',
-        'tanggal_lahir' => '25 Juni 1994',
-        'status_pernikahan' => 'Menikah',
-        'jenis_kelamin' => 'Laki-Laki',
-        'department_id' => $deptDevOps ?: $deptIt,
-        'job_title' => 'DevOps Engineer',
-        'base_salary' => 14000000.00
-    ]);
-
-    // Seed Siti Aminah (Employee)
-    $sitiId = upsertUser($db, 'siti.aminah@example.com', 'employee', 'Siti', 'Aminah', $passwordHash, [
-        'employee_id' => 'EMP-2026-0037',
-        'no_telepon' => '+62 813-3333-4444',
-        'alamat_domisili' => 'Jl. Gading Gajah No. 50, Tangerang',
-        'ktp_nik' => '3275012309990004',
-        'nama_sesuai_ktp' => 'SITI AMINAH',
-        'alamat_ktp' => 'Jl. Gading Gajah No. 50, Tangerang',
-        'bank_name' => 'Bank Central Asia (BCA)',
-        'bank_account_number' => '8012345699',
-        'npwp_number' => '00.000.000.0-000.000',
-        'bpjs_tk' => '12098765435',
-        'bpjs_kes' => '0001234567893',
-        'tanggal_lahir' => '20 November 1996',
-        'status_pernikahan' => 'Belum Menikah',
-        'jenis_kelamin' => 'Perempuan',
-        'department_id' => $deptHrOps ?: $deptHr,
-        'job_title' => 'HR Staff',
-        'base_salary' => 7000000.00
-    ]);
-
-    // Seed Farhan Said (Employee)
-    $farhanId = upsertUser($db, 'farhan.said@example.com', 'employee', 'Farhan', 'Said', $passwordHash, [
-        'employee_id' => 'EMP-2026-0038',
-        'no_telepon' => '+62 813-7777-8888',
-        'alamat_domisili' => 'Jl. BSD Grand Boulevard No. 10, Tangerang',
-        'ktp_nik' => '3275012309990006',
-        'nama_sesuai_ktp' => 'FARHAN SAID',
-        'alamat_ktp' => 'Jl. BSD Grand Boulevard No. 10, Tangerang',
-        'bank_name' => 'Bank Negara Indonesia (BNI)',
-        'bank_account_number' => '0823456789',
-        'npwp_number' => '12.345.678.9-012.006',
-        'bpjs_tk' => '12098765438',
-        'bpjs_kes' => '0001234567898',
-        'tanggal_lahir' => '18 Maret 1992',
-        'status_pernikahan' => 'Menikah',
-        'jenis_kelamin' => 'Laki-Laki',
-        'department_id' => $deptTa ?: $deptHr,
-        'job_title' => 'Technical Recruiter',
-        'base_salary' => 8000000.00
-    ]);
-
-    // 4. Seed initial correction requests
-    $countCorrection = $db->query("SELECT COUNT(*) FROM employee_data_correction_requests")->fetchColumn();
-    if ($countCorrection == 0) {
-        $dummyRequests = [
-            [
-                'id' => 'req-alex-1',
-                'user_id' => $alexId,
-                'category' => 'finansial',
-                'field' => 'bank_account_number',
-                'old_value' => '8012345678',
-                'new_value' => '1234567890',
-                'reason' => 'Rekening gaji dipindahkan ke rekening BCA baru demi kemudahan penarikan bulanan.',
-                'file_path' => 'buku_tabungan_alex.png',
-                'status' => 'pending'
-            ],
-            [
-                'id' => 'req-amanda-1',
-                'user_id' => $amandaId,
-                'category' => 'data_pribadi',
-                'field' => 'status_pernikahan',
-                'old_value' => 'Belum Menikah',
-                'new_value' => 'Menikah',
-                'reason' => 'Penyesuaian status PTKP pajak setelah pernikahan pada tanggal 10 Mei 2026.',
-                'file_path' => 'buku_nikah_amanda.pdf',
-                'status' => 'pending'
-            ],
-            [
-                'id' => 'req-budi-1',
-                'user_id' => $budiId,
-                'category' => 'kependudukan',
-                'field' => 'alamat_ktp',
-                'old_value' => 'Jl. Melati No. 5, Jakarta',
-                'new_value' => 'Jl. Boulevard Raya No. 12, Tangerang',
-                'reason' => 'Pindah domisili tetap sesuai KTP baru.',
-                'file_path' => 'ktp_baru_budi.jpg',
-                'status' => 'approved'
-            ],
-            [
-                'id' => 'req-siti-1',
-                'user_id' => $sitiId,
-                'category' => 'pajak_asuransi',
-                'field' => 'npwp_number',
-                'old_value' => '00.000.000.0-000.000',
-                'new_value' => '12.345.678.9-012.000',
-                'reason' => 'Pendaftaran NPWP baru selesai diproses kantor pajak.',
-                'file_path' => 'npwp_siti.jpg',
-                'status' => 'rejected',
-                'rejection_reason' => 'Unggahan dokumen NPWP terpotong di bagian nomor dan nama sehingga tidak valid. Silakan ajukan ulang dengan scan dokumen penuh yang terbaca jelas.'
-            ]
-        ];
-
-        $stmt = $db->prepare("INSERT INTO employee_data_correction_requests (id, user_id, category, field, old_value, new_value, reason, file_path, status, rejection_reason) VALUES (:id, :user_id, :category, :field, :old_value, :new_value, :reason, :file_path, :status, :rejection_reason)");
-
-        foreach ($dummyRequests as $r) {
-            $stmt->execute([
-                'id' => $r['id'],
-                'user_id' => $r['user_id'],
-                'category' => $r['category'],
-                'field' => $r['field'],
-                'old_value' => $r['old_value'],
-                'new_value' => $r['new_value'],
-                'reason' => $r['reason'],
-                'file_path' => $r['file_path'],
-                'status' => $r['status'],
-                'rejection_reason' => $r['rejection_reason'] ?? null
-            ]);
+    foreach ($dummyEmails as $email) {
+        $stmtGet = $db->prepare("SELECT id FROM users WHERE email = ?");
+        $stmtGet->execute([$email]);
+        $uid = $stmtGet->fetchColumn();
+        if ($uid) {
+            // Delete manually from non-cascade table if needed
+            $db->prepare("DELETE FROM employee_attendance WHERE user_id = ?")->execute([$uid]);
+            $db->prepare("DELETE FROM users WHERE id = ?")->execute([$uid]);
+            echo "Cleaned up dummy user: $email\n";
         }
-        echo "Seed correction requests complete.\n";
-    } else {
-        echo "Skipping correction requests seeding because data already exists.\n";
     }
+
+    // Dummy users and dummy data seeding removed as requested.
 
     // 5. Create employee_reimbursement_claims table
     $createClaimsTableQuery = "
@@ -531,99 +360,9 @@ try {
         echo "Table employee_reimbursement_claims created without FK constraint successfully.\n";
     }
 
-    // 6. Seed employee_reimbursement_claims
-    $countClaims = $db->query("SELECT COUNT(*) FROM employee_reimbursement_claims")->fetchColumn();
-    if ($countClaims == 0) {
-        $dummyClaims = [
-            [
-                'id' => 'claim-budi-1',
-                'user_id' => $budiId,
-                'category' => 'operasional',
-                'amount' => 1250000.00,
-                'description' => 'Pembelian Keyboard Mechanical Keychron K2 untuk efisiensi coding di kantor.',
-                'receipt_path' => 'keychron.jpg',
-                'status' => 'pending',
-                'rejection_reason' => null
-            ],
-            [
-                'id' => 'claim-amanda-1',
-                'user_id' => $amandaId,
-                'category' => 'medis',
-                'amount' => 450000.00,
-                'description' => 'Pembelian kacamata lensa anti-radiasi komputer sesuai rekomendasi medis optik.',
-                'receipt_path' => 'kacamata.jpg',
-                'status' => 'pending',
-                'rejection_reason' => null
-            ],
-            [
-                'id' => 'claim-rian-1',
-                'user_id' => $rianId,
-                'category' => 'transport',
-                'amount' => 320000.00,
-                'description' => 'Bensin & Tol kunjungan pusat data (Data Center) untuk pemeliharaan server tahunan.',
-                'receipt_path' => 'tol.jpg',
-                'status' => 'approved',
-                'rejection_reason' => null
-            ],
-            [
-                'id' => 'claim-siti-1',
-                'user_id' => $sitiId,
-                'category' => 'makan',
-                'amount' => 850000.00,
-                'description' => 'Makan malam diskusi kerja dengan auditor eksternal ISO 27001.',
-                'receipt_path' => 'makan.jpg',
-                'status' => 'pending',
-                'rejection_reason' => null
-            ],
-            [
-                'id' => 'claim-farhan-1',
-                'user_id' => $farhanId,
-                'category' => 'medis',
-                'amount' => 3400000.00,
-                'description' => 'Rawat jalan rumah sakit spesialis mata untuk keluhan mata minus mendadak.',
-                'receipt_path' => 'mata.jpg',
-                'status' => 'rejected',
-                'rejection_reason' => 'Klaim ditolak secara otomatis oleh sistem karena sisa saldo (plafon) rawat jalan tahunan karyawan yang bersangkutan telah mencapai batas limit maksimal (Rp 0).'
-            ]
-        ];
+    // Dummy reimbursement claims seeding removed.
 
-        $stmt = $db->prepare("
-            INSERT INTO employee_reimbursement_claims (id, user_id, category, amount, description, receipt_path, status, rejection_reason)
-            VALUES (:id, :user_id, :category, :amount, :description, :receipt_path, :status, :rejection_reason)
-        ");
-
-        foreach ($dummyClaims as $c) {
-            $stmt->execute([
-                'id' => $c['id'],
-                'user_id' => $c['user_id'],
-                'category' => $c['category'],
-                'amount' => $c['amount'],
-                'description' => $c['description'],
-                'receipt_path' => $c['receipt_path'],
-                'status' => $c['status'],
-                'rejection_reason' => $c['rejection_reason']
-            ]);
-        }
-        echo "Seed reimbursement claims complete.\n";
-    } else {
-        echo "Skipping reimbursement claims seeding because data already exists.\n";
-    }
-
-    // 7. Write secure dummy receipt files
-    $receiptsDir = __DIR__ . '/../storage/secured_storage/receipts/';
-    if (!file_exists($receiptsDir)) {
-        mkdir($receiptsDir, 0755, true);
-    }
-
-    // A tiny transparent valid 1x1 PNG image as dummy receipt content
-    $tinyPngB64 = 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=';
-    $tinyPngBytes = base64_decode($tinyPngB64);
-
-    $dummyFiles = ['keychron.jpg', 'kacamata.jpg', 'tol.jpg', 'makan.jpg', 'mata.jpg'];
-    foreach ($dummyFiles as $fn) {
-        file_put_contents($receiptsDir . $fn, $tinyPngBytes);
-        echo "Created dummy receipt file: $fn\n";
-    }
+    // Dummy receipt files generation removed.
 
     // 8. Create employee_leave_requests table
     $createLeaveTableQuery = "
@@ -669,107 +408,9 @@ try {
         echo "Table employee_leave_requests created without FK constraint successfully.\n";
     }
 
-    // 9. Seed employee_leave_requests
-    $countLeaves = $db->query("SELECT COUNT(*) FROM employee_leave_requests")->fetchColumn();
-    if ($countLeaves == 0) {
-        $dummyLeaves = [
-            [
-                'id' => 'leave-rian-1',
-                'user_id' => $rianId,
-                'leave_type' => 'cuti sakit',
-                'start_date' => '2026-05-20',
-                'end_date' => '2026-05-21',
-                'duration' => 2,
-                'reason' => 'Demam tinggi disertai sakit kepala parah.',
-                'attachment_path' => 'surat_dokter_rian.pdf',
-                'status' => 'approved',
-                'rejection_reason' => null
-            ],
-            [
-                'id' => 'leave-amanda-1',
-                'user_id' => $amandaId,
-                'leave_type' => 'cuti tahunan',
-                'start_date' => '2026-05-25',
-                'end_date' => '2026-05-27',
-                'duration' => 3,
-                'reason' => 'Liburan keluarga ke luar kota.',
-                'attachment_path' => null,
-                'status' => 'pending',
-                'rejection_reason' => null
-            ],
-            [
-                'id' => 'leave-budi-1',
-                'user_id' => $budiId,
-                'leave_type' => 'cuti tahunan',
-                'start_date' => '2026-05-22',
-                'end_date' => '2026-05-22',
-                'duration' => 1,
-                'reason' => 'Mengurus administrasi KPR perbankan.',
-                'attachment_path' => null,
-                'status' => 'pending',
-                'rejection_reason' => null
-            ],
-            [
-                'id' => 'leave-siti-1',
-                'user_id' => $sitiId,
-                'leave_type' => 'cuti melahirkan',
-                'start_date' => '2026-06-01',
-                'end_date' => '2026-08-29',
-                'duration' => 90,
-                'reason' => 'Persalinan anak pertama (HPL awal Juni).',
-                'attachment_path' => 'rujukan_hpl.pdf',
-                'status' => 'pending',
-                'rejection_reason' => null
-            ],
-            [
-                'id' => 'leave-farhan-1',
-                'user_id' => $farhanId,
-                'leave_type' => 'cuti tahunan',
-                'start_date' => '2026-05-12',
-                'end_date' => '2026-05-16',
-                'duration' => 5,
-                'reason' => 'Liburan pasca rilis besar produk.',
-                'attachment_path' => null,
-                'status' => 'rejected',
-                'rejection_reason' => 'Pengajuan cuti ditolak karena ada peluncuran fitur krusial yang memerlukan kehadiran Product Owner secara fisik di kantor pada periode tersebut.'
-            ]
-        ];
+    // Dummy leave requests seeding removed.
 
-        $stmt = $db->prepare("
-            INSERT INTO employee_leave_requests (id, user_id, leave_type, start_date, end_date, duration, reason, attachment_path, status, rejection_reason)
-            VALUES (:id, :user_id, :leave_type, :start_date, :end_date, :duration, :reason, :attachment_path, :status, :rejection_reason)
-        ");
-
-        foreach ($dummyLeaves as $l) {
-            $stmt->execute([
-                'id' => $l['id'],
-                'user_id' => $l['user_id'],
-                'leave_type' => $l['leave_type'],
-                'start_date' => $l['start_date'],
-                'end_date' => $l['end_date'],
-                'duration' => $l['duration'],
-                'reason' => $l['reason'],
-                'attachment_path' => $l['attachment_path'],
-                'status' => $l['status'],
-                'rejection_reason' => $l['rejection_reason']
-            ]);
-        }
-        echo "Seed leave requests complete.\n";
-    } else {
-        echo "Skipping leave requests seeding because data already exists.\n";
-    }
-
-    // 10. Write secure dummy leave files
-    $leavesDir = __DIR__ . '/../storage/secured_storage/leaves/';
-    if (!file_exists($leavesDir)) {
-        mkdir($leavesDir, 0755, true);
-    }
-
-    $dummyLeaveFiles = ['surat_dokter_rian.pdf', 'rujukan_hpl.pdf'];
-    foreach ($dummyLeaveFiles as $fn) {
-        file_put_contents($leavesDir . $fn, $tinyPngBytes);
-        echo "Created dummy leave file: $fn\n";
-    }
+    // Dummy leave files generation removed.
 
     // 11. Create employee_attendance table
     $createAttendanceTableQuery = "
@@ -825,101 +466,7 @@ try {
         echo "Table employee_attendance created (fallback).\n";
     }
 
-    // 12. Seed dummy attendance records for the past 30 days
-    $countAttendance = $db->query("SELECT COUNT(*) FROM employee_attendance")->fetchColumn();
-    if ($countAttendance == 0) {
-        // Helper to generate UUID
-        if (!function_exists('genUuid')) {
-            function genUuid() {
-                return sprintf('%04x%04x-%04x-%04x-%04x-%04x%04x%04x',
-                    mt_rand(0, 0xffff), mt_rand(0, 0xffff), mt_rand(0, 0xffff),
-                    mt_rand(0, 0x0fff) | 0x4000, mt_rand(0, 0x3fff) | 0x8000,
-                    mt_rand(0, 0xffff), mt_rand(0, 0xffff), mt_rand(0, 0xffff)
-                );
-            }
-        }
-
-        $employeeIds = [
-            $alexId    => ['name' => 'Alex Rivera',   'pattern' => 'good'],
-            $budiId    => ['name' => 'Budi Santoso',  'pattern' => 'good'],
-            $amandaId  => ['name' => 'Amanda Putri',  'pattern' => 'late'],
-            $rianId    => ['name' => 'Rian Hidayat',  'pattern' => 'absent'],
-            $sitiId    => ['name' => 'Siti Aminah',   'pattern' => 'good'],
-            $farhanId  => ['name' => 'Farhan Said',   'pattern' => 'late'],
-        ];
-
-        $officeIp = '192.168.10.45';
-        $officeLat = -6.2297;
-        $officeLng = 106.8164;
-        $stmtAtt = $db->prepare("
-            INSERT IGNORE INTO employee_attendance
-                (id, user_id, attendance_date, clock_in, clock_out, status, clock_in_latitude, clock_in_longitude, clock_out_latitude, clock_out_longitude, location_method, ip_address)
-            VALUES
-                (:id, :user_id, :date, :clock_in, :clock_out, :status, :lat_in, :lng_in, :lat_out, :lng_out, :method, :ip)
-        ");
-
-        for ($daysAgo = 30; $daysAgo >= 0; $daysAgo--) {
-            $date = date('Y-m-d', strtotime("-{$daysAgo} days"));
-            $dayOfWeek = date('N', strtotime($date)); // 1=Mon..7=Sun
-            if ($dayOfWeek >= 6) continue; // skip weekends
-
-            foreach ($employeeIds as $empId => $info) {
-                $pattern = $info['pattern'];
-                $rand = mt_rand(1, 100);
-
-                // Determine attendance outcome based on pattern
-                if ($pattern === 'absent' && $rand <= 20) {
-                    // Sick/leave day
-                    $stmtAtt->execute([
-                        'id' => genUuid(), 'user_id' => $empId, 'date' => $date,
-                        'clock_in' => null, 'clock_out' => null, 'status' => 'sakit/izin',
-                        'lat_in' => null, 'lng_in' => null, 'lat_out' => null, 'lng_out' => null,
-                        'method' => null, 'ip' => null
-                    ]);
-                } elseif ($pattern === 'late' && $rand <= 40) {
-                    // Late arrival
-                    $lateMin = mt_rand(5, 90);
-                    $baseH = 8; $baseM = 0;
-                    $totalMin = $baseH * 60 + $baseM + $lateMin;
-                    $clockIn = sprintf('%02d:%02d:00', intdiv($totalMin, 60), $totalMin % 60);
-                    $clockOut = sprintf('%02d:%02d:00', mt_rand(16, 18), mt_rand(0, 59));
-                    $stmtAtt->execute([
-                        'id' => genUuid(), 'user_id' => $empId, 'date' => $date,
-                        'clock_in' => $clockIn, 'clock_out' => $clockOut, 'status' => 'terlambat',
-                        'lat_in' => $officeLat + (mt_rand(-5, 5) / 10000), 'lng_in' => $officeLng + (mt_rand(-5, 5) / 10000),
-                        'lat_out' => $officeLat + (mt_rand(-5, 5) / 10000), 'lng_out' => $officeLng + (mt_rand(-5, 5) / 10000),
-                        'method' => 'GPS', 'ip' => $officeIp
-                    ]);
-                } elseif ($rand <= 5) {
-                    // Random alpa
-                    $stmtAtt->execute([
-                        'id' => genUuid(), 'user_id' => $empId, 'date' => $date,
-                        'clock_in' => null, 'clock_out' => null, 'status' => 'alpa',
-                        'lat_in' => null, 'lng_in' => null, 'lat_out' => null, 'lng_out' => null,
-                        'method' => null, 'ip' => null
-                    ]);
-                } else {
-                    // Tepat waktu
-                    $earlyMin = mt_rand(0, 25);
-                    $clockInH = 8; $clockInM = 0;
-                    $totalMin = $clockInH * 60 + $clockInM - $earlyMin;
-                    $clockIn = sprintf('%02d:%02d:00', intdiv($totalMin, 60), $totalMin % 60);
-                    $clockOut = sprintf('%02d:%02d:00', mt_rand(17, 19), mt_rand(0, 59));
-                    $method = (mt_rand(0,1) === 0) ? 'WIFI' : 'GPS';
-                    $stmtAtt->execute([
-                        'id' => genUuid(), 'user_id' => $empId, 'date' => $date,
-                        'clock_in' => $clockIn, 'clock_out' => $clockOut, 'status' => 'tepat waktu',
-                        'lat_in' => $officeLat + (mt_rand(-3, 3) / 10000), 'lng_in' => $officeLng + (mt_rand(-3, 3) / 10000),
-                        'lat_out' => $officeLat + (mt_rand(-3, 3) / 10000), 'lng_out' => $officeLng + (mt_rand(-3, 3) / 10000),
-                        'method' => $method, 'ip' => $officeIp
-                    ]);
-                }
-            }
-        }
-        echo "Seed attendance records complete (30 days).\n";
-    } else {
-        echo "Skipping attendance records seeding because data already exists.\n";
-    }
+    // Dummy attendance records seeding removed.
 
     // 13. Add work_mode column to employee_attendance (if not exists)
     try {
@@ -1182,129 +729,7 @@ try {
         echo "Table self_reflections created without FK constraint successfully.\n";
     }
 
-    // Seed dummy self_reflections if empty
-    $countReflections = $db->query("SELECT COUNT(*) FROM self_reflections")->fetchColumn();
-    if ($countReflections == 0) {
-        // Helper to generate UUID locally
-        $localGenUuid = function() {
-            return sprintf('%04x%04x-%04x-%04x-%04x-%04x%04x%04x',
-                mt_rand(0, 0xffff), mt_rand(0, 0xffff), mt_rand(0, 0xffff),
-                mt_rand(0, 0x0fff) | 0x4000, mt_rand(0, 0x3fff) | 0x8000,
-                mt_rand(0, 0xffff), mt_rand(0, 0xffff), mt_rand(0, 0xffff)
-            );
-        };
-
-        $dummyReflections = [
-            [
-                'id' => $localGenUuid(),
-                'user_id' => $alexId,
-                'period' => '2026-Q2',
-                'achievements' => 'Membangun dashboard modular siCare dengan teknologi SPA berbasis AJAX, serta mengoptimalkan aset Google Fonts & Google Material Symbols untuk performa maksimal.',
-                'challenges' => 'Integrasi GPS pada absensi harian sempat mengalami kendala akurasi di beberapa perangkat mobile karyawan.',
-                'core_values_rating' => 5,
-                'future_goals' => 'Mengimplementasikan modul payroll otomatis terintegrasi PPh21 untuk memangkas waktu kerja tim HR Operations.',
-                'support_needed' => 'Membutuhkan dokumentasi API GPS terbaru dari tim infrastruktur serta testing sandbox tambahan.',
-                'mood_rating' => 'excellent',
-                'workload_rating' => 3,
-                'reflection_notes' => 'Sangat menikmati iklim kolaborasi yang terbuka di tim frontend.',
-                'career_aspirations' => 'Menjadi Tech Lead Frontend di siCare.',
-                'skills_to_develop' => 'Advanced SPA Performance & Web Security.',
-                'action_plan' => 'Membaca referensi OWASP serta mengikuti sertifikasi keamanan aplikasi.',
-                'status' => 'submitted',
-                'manager_feedback' => null,
-                'manager_feedback_by' => null,
-                'manager_feedback_at' => null
-            ],
-            [
-                'id' => $localGenUuid(),
-                'user_id' => $budiId,
-                'period' => '2026-Q2',
-                'achievements' => 'Mengoptimalkan skema relasi database (UUID & Staff ID) dan merancang Unified Session Handler berbasis Redis/DB untuk performa login multitenant.',
-                'challenges' => 'Menyelaraskan library phpspreadsheet untuk import/upsert data karyawan agar tidak terjadi konflik data.',
-                'core_values_rating' => 4,
-                'future_goals' => 'Mengembangkan API v1/ secure menggunakan X-API-Key untuk integrasi mesin sidik jari cabang.',
-                'support_needed' => 'Pelatihan lanjutan mengenai Redis caching cluster.',
-                'mood_rating' => 'good',
-                'workload_rating' => 4,
-                'reflection_notes' => 'Beban kerja sempat tinggi karena sprint penyesuaian regulasi perpajakan.',
-                'career_aspirations' => 'Principal Software Architect.',
-                'skills_to_develop' => 'Database Performance Tuning & Scaling.',
-                'action_plan' => 'Melakukan benchmark SQL query berkala pada tabel audit_logs dan employee_attendance.',
-                'status' => 'completed',
-                'manager_feedback' => 'Budi melakukan pekerjaan luar biasa di backend. Perancangan skema database sangat rapi dan aman. Tetap pertahankan!',
-                'manager_feedback_by' => $managerId,
-                'manager_feedback_at' => date('Y-m-d H:i:s')
-            ],
-            [
-                'id' => $localGenUuid(),
-                'user_id' => $amandaId,
-                'period' => '2026-Q2',
-                'achievements' => 'Merancang interface visual glassmorphism modern untuk siCare sesuai panduan UI/UX korporat.',
-                'challenges' => 'Mencegah horizontal scroll overflow di resolusi mobile 320px pada halaman master data tabel.',
-                'core_values_rating' => 5,
-                'future_goals' => 'Membuat library desain UI internal yang konsisten untuk mempercepat pengerjaan modul-modul mendatang.',
-                'support_needed' => 'Lisensi Figma Pro untuk kolaborasi tim desain.',
-                'mood_rating' => 'tired',
-                'workload_rating' => 4,
-                'reflection_notes' => 'Merasa sedikit kelelahan karena revisi tampilan portal onboarding yang berulang-ulang.',
-                'career_aspirations' => 'Senior UI/UX Designer / Product Designer.',
-                'skills_to_develop' => 'Interactive Micro-Animations & Design Systems.',
-                'action_plan' => 'Mempelajari prinsip CSS transitions dan web animations.',
-                'status' => 'draft',
-                'manager_feedback' => null,
-                'manager_feedback_by' => null,
-                'manager_feedback_at' => null
-            ],
-            [
-                'id' => $localGenUuid(),
-                'user_id' => $rianId,
-                'period' => '2026-Q2',
-                'achievements' => 'Mengatur server Nginx reverse proxy dan mengonfigurasi batas ukuran upload file 10MB serta validasi server-side finfo.',
-                'challenges' => 'Server sempat overload karena load test impor data karyawan massal.',
-                'core_values_rating' => 4,
-                'future_goals' => 'Mengatur setup auto-backup database sicare_db harian ke secure remote storage.',
-                'support_needed' => 'Penambahan resource server staging untuk load testing.',
-                'mood_rating' => 'stressed',
-                'workload_rating' => 5,
-                'reflection_notes' => 'Sangat stres minggu ini karena ada perbaikan server mendadak di luar jam kerja.',
-                'career_aspirations' => 'Lead DevOps / Site Reliability Engineer.',
-                'skills_to_develop' => 'Load Balancing, Docker & Kubernetes.',
-                'action_plan' => 'Mempelajari containerization pada docker-compose.yml perusahaan.',
-                'status' => 'submitted',
-                'manager_feedback' => null,
-                'manager_feedback_by' => null,
-                'manager_feedback_at' => null
-            ]
-        ];
-
-        $stmtRef = $db->prepare("
-            INSERT INTO self_reflections (
-                id, user_id, period, achievements, challenges, core_values_rating, future_goals, support_needed,
-                mood_rating, workload_rating, reflection_notes, career_aspirations, skills_to_develop, action_plan,
-                status, manager_feedback, manager_feedback_by, manager_feedback_at
-            ) VALUES (
-                :id, :user_id, :period, :achievements, :challenges, :core_values_rating, :future_goals, :support_needed,
-                :mood_rating, :workload_rating, :reflection_notes, :career_aspirations, :skills_to_develop, :action_plan,
-                :status, :manager_feedback, :manager_feedback_by, :manager_feedback_at
-            )
-        ");
-
-        foreach ($dummyReflections as $r) {
-            $stmtRef->execute($r);
-        }
-        echo "Seed dummy self_reflections complete.\n";
-    } else {
-        echo "Skipping self_reflections seeding because data already exists.\n";
-    }
-
-    // Helper to generate UUID locally
-    $localGenUuid = function() {
-        return sprintf('%04x%04x-%04x-%04x-%04x-%04x%04x%04x',
-            mt_rand(0, 0xffff), mt_rand(0, 0xffff), mt_rand(0, 0xffff),
-            mt_rand(0, 0x0fff) | 0x4000, mt_rand(0, 0x3fff) | 0x8000,
-            mt_rand(0, 0xffff), mt_rand(0, 0xffff), mt_rand(0, 0xffff)
-        );
-    };
+    // Dummy self reflections seeding removed.
 
     // 19. Create mood_pulses table
     $createMoodPulsesTableQuery = "
@@ -1338,24 +763,7 @@ try {
         echo "Table mood_pulses created without FK constraint successfully.\n";
     }
 
-    // Seed dummy mood_pulses if empty
-    $countMoodPulses = $db->query("SELECT COUNT(*) FROM mood_pulses")->fetchColumn();
-    if ($countMoodPulses == 0) {
-        $dummyMoodPulses = [
-            ['id' => $localGenUuid(), 'user_id' => $alexId, 'period' => '2026-B11', 'mood_rating' => 'excellent', 'workload_rating' => 3],
-            ['id' => $localGenUuid(), 'user_id' => $budiId, 'period' => '2026-B11', 'mood_rating' => 'good', 'workload_rating' => 4],
-            ['id' => $localGenUuid(), 'user_id' => $amandaId, 'period' => '2026-B11', 'mood_rating' => 'neutral', 'workload_rating' => 3],
-            ['id' => $localGenUuid(), 'user_id' => $rianId, 'period' => '2026-B11', 'mood_rating' => 'stressed', 'workload_rating' => 5],
-            ['id' => $localGenUuid(), 'user_id' => $alexId, 'period' => '2026-B12', 'mood_rating' => 'good', 'workload_rating' => 3],
-            ['id' => $localGenUuid(), 'user_id' => $budiId, 'period' => '2026-B12', 'mood_rating' => 'good', 'workload_rating' => 3]
-            // We leave amanda and rian unseeded for 2026-B12 to trigger dashboard warnings!
-        ];
-        $stmtMood = $db->prepare("INSERT INTO mood_pulses (id, user_id, period, mood_rating, workload_rating) VALUES (:id, :user_id, :period, :mood_rating, :workload_rating)");
-        foreach ($dummyMoodPulses as $dm) {
-            $stmtMood->execute($dm);
-        }
-        echo "Seed dummy mood_pulses complete.\n";
-    }
+    // Dummy mood pulses seeding removed.
 
     // 20. Create personal_journals table
     $createPersonalJournalsTableQuery = "
@@ -1387,20 +795,7 @@ try {
         echo "Table personal_journals created without FK constraint successfully.\n";
     }
 
-    // Seed dummy personal_journals if empty
-    $countJournals = $db->query("SELECT COUNT(*) FROM personal_journals")->fetchColumn();
-    if ($countJournals == 0) {
-        $dummyJournals = [
-            ['id' => $localGenUuid(), 'user_id' => $alexId, 'title' => 'Pembelajaran Git Flow', 'notes' => 'Hari ini belajar merapikan branch menggunakan git flow di repository siCare. Sangat menyenangkan.'],
-            ['id' => $localGenUuid(), 'user_id' => $budiId, 'title' => 'Optimasi Query SQL', 'notes' => 'Melakukan testing index pada kolom user_id dan period di tabel self_reflections. Kecepatan query meningkat 40%.'],
-            ['id' => $localGenUuid(), 'user_id' => $rianId, 'title' => 'Troubleshooting Server', 'notes' => 'Server Nginx sempat down 10 menit karena kehabisan memory. Sudah diselesaikan dengan membatasi worker connections. Perlu memantau log berkala.']
-        ];
-        $stmtJournal = $db->prepare("INSERT INTO personal_journals (id, user_id, title, notes) VALUES (:id, :user_id, :title, :notes)");
-        foreach ($dummyJournals as $dj) {
-            $stmtJournal->execute($dj);
-        }
-        echo "Seed dummy personal_journals complete.\n";
-    }
+    // Dummy personal journals seeding removed.
 
     // 21. Create changelogs table
     $createChangelogsTableQuery = "

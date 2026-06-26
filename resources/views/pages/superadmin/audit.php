@@ -118,10 +118,10 @@
 
         <!-- Table Container -->
         <div class="overflow-x-auto">
-            <table class="w-full text-left border-collapse">
+            <table class="w-full text-left border-collapse table-standardized" data-has-custom-pagination="true">
                 <thead>
                     <tr class="bg-surface text-on-surface-variant border-b border-outline-variant/15">
-                        <th class="py-4 px-6 text-[11px] font-extrabold uppercase tracking-wider w-16">No</th>
+                        <th class="no-col w-12 text-center py-4 px-6 text-[10px] font-extrabold uppercase tracking-wider">No</th>
                         <th class="py-4 px-6 text-[11px] font-extrabold uppercase tracking-wider">Waktu</th>
                         <th class="py-4 px-6 text-[11px] font-extrabold uppercase tracking-wider">Pengguna</th>
                         <th class="py-4 px-6 text-[11px] font-extrabold uppercase tracking-wider">Aksi</th>
@@ -267,7 +267,7 @@
                     var logs       = res.data || [];
                     totalAuditPages = res.total_pages || 1;
                     totalAuditItems = res.total || 0;
-                    var perPage     = res.per_page || 20;
+                    var perPage     = res.per_page || 10;
 
                     // Populate table name filter dropdown (if provided)
                     if (res.table_names && Array.isArray(res.table_names)) {
@@ -286,8 +286,10 @@
 
                             var rowNum = startNum + index + 1;
 
+                            tr.dataset.rowIndexed = 'true';
+
                             tr.innerHTML =
-                                '<td class="px-6 py-4 text-sm font-semibold text-on-surface-variant">' + rowNum + '</td>' +
+                                '<td class="no-col-cell px-6 py-4 text-center font-bold text-xs text-on-surface-variant">' + rowNum + '</td>' +
                                 '<td class="px-6 py-4">' +
                                     '<div class="flex flex-col">' +
                                         '<span class="text-sm font-semibold text-on-surface">' + formatDateTime(log.created_at) + '</span>' +

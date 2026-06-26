@@ -23,7 +23,7 @@ try {
     // Check if table exists
     $tableCheck = $db->query("SHOW TABLES LIKE 'changelogs'")->fetch();
     if ($tableCheck) {
-        $stmt = $db->query("SELECT * FROM changelogs ORDER BY compiled_date DESC, created_at DESC");
+        $stmt = $db->query("SELECT * FROM changelogs ORDER BY compiled_date DESC, version DESC");
         $dbData = $stmt->fetchAll(PDO::FETCH_ASSOC);
         
         if (!empty($dbData)) {

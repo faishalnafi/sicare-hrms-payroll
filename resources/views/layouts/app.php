@@ -135,16 +135,40 @@ if (!empty($resolvedPage)) {
           }
         }
     </script>
+    <?php
+    if (session_status() === PHP_SESSION_NONE) {
+        session_start();
+    }
+    if (isset($_SESSION["user_id"]) && empty($_SESSION["jwt_token"])) {
+        try {
+            $db = \App\Config\Database::getInstance()->getConnection();
+            $stmt = $db->prepare("SELECT id, first_name, last_name, email, role FROM users WHERE id = ? LIMIT 1");
+            $stmt->execute([$_SESSION["user_id"]]);
+            $user = $stmt->fetch(\PDO::FETCH_ASSOC);
+            if ($user) {
+                $jwtPayload = [
+                    "user_id" => $user["id"],
+                    "name" => $user["first_name"] . " " . $user["last_name"],
+                    "email" => $user["email"],
+                    "role" => $user["role"]
+                ];
+                $_SESSION["jwt_token"] = \App\Config\JwtHelper::createToken($jwtPayload);
+            }
+        } catch (\Exception $e) {
+            // Fail-safe fallback
+        }
+    }
+    ?>
+    <!-- Global JWT Token for CRUD authorization -->
+    <script>
+        window.jwtToken = <?php echo json_encode($_SESSION["jwt_token"] ?? ""); ?>;
+    </script>
     <!-- Global Avatar Helper Functions -->
     <script>
         // Global Avatar Fallback Error Handler
         window.handleAvatarError = function(img, emailHash) {
-            if (img.src.indexOf('d=404') !== -1) {
-                img.src = 'https://www.gravatar.com/avatar/' + emailHash + '?d=identicon&s=200';
-                img.onerror = null;
-            } else {
-                img.src = 'https://www.gravatar.com/avatar/' + emailHash + '?d=404&s=200';
-            }
+            img.src = 'https://www.gravatar.com/avatar/' + emailHash + '?d=identicon&s=200';
+            img.onerror = null;
         };
 
         // Global MD5 helper for non-letter Gravatar avatars
@@ -262,6 +286,410 @@ if (!empty($resolvedPage)) {
             var temp = wordToHex(a) + wordToHex(b) + wordToHex(c) + wordToHex(d);
             return temp.toLowerCase();
         };
+
+        // Global DOM table sorter for static/PHP-rendered tables
+        window.sortDomTable = function(thElement, columnIndex, dataType) {
+            var table = thElement.closest('table');
+            var tbody = table.querySelector('tbody');
+            var rows = Array.from(tbody.querySelectorAll('tr:not(.empty-row):not(.loading-row):not(.empty-table-row)'));
+            
+            var dir = thElement.getAttribute('data-sort-dir') === 'asc' ? 'desc' : 'asc';
+            thElement.setAttribute('data-sort-dir', dir);
+            
+            // Reset and update sort direction classes
+            var headers = thElement.parentNode.querySelectorAll('th');
+            headers.forEach(function(th) {
+                th.classList.remove('sort-active-asc', 'sort-active-desc');
+            });
+            thElement.classList.add(dir === 'asc' ? 'sort-active-asc' : 'sort-active-desc');
+            
+            rows.sort(function(rowA, rowB) {
+                var cellA = rowA.cells[columnIndex];
+                var cellB = rowB.cells[columnIndex];
+                
+                var valA = cellA ? cellA.innerText.trim() : '';
+                var valB = cellB ? cellB.innerText.trim() : '';
+                
+                if (dataType === 'number') {
+                    var numA = parseFloat(valA.replace(/[^\d.-]/g, '')) || 0;
+                    var numB = parseFloat(valB.replace(/[^\d.-]/g, '')) || 0;
+                    return dir === 'asc' ? numA - numB : numB - numA;
+                } else if (dataType === 'date') {
+                    var parseDateVal = function(s) {
+                        if (!s) return 0;
+                        s = s.trim();
+                        // Support DD/MM/YYYY HH:MM:SS or DD-MM-YYYY HH:MM:SS
+                        var match = s.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})(?:\s+(\d{1,2}):(\d{1,2})(?::(\d{1,2}))?)?/);
+                        if (match) {
+                            var day = parseInt(match[1]);
+                            var month = parseInt(match[2]) - 1;
+                            var year = parseInt(match[3]);
+                            var hour = parseInt(match[4]) || 0;
+                            var minute = parseInt(match[5]) || 0;
+                            var second = parseInt(match[6]) || 0;
+                            return new Date(year, month, day, hour, minute, second).getTime();
+                        }
+                        var monthsMap = {
+                            'januari': 0, 'februari': 1, 'maret': 2, 'april': 3, 'mei': 4, 'juni': 5,
+                            'juli': 6, 'agustus': 7, 'september': 8, 'oktober': 9, 'november': 10, 'desember': 11
+                        };
+                        var parts = s.toLowerCase().replace(/,/g, '').split(/\s+/);
+                        if (parts.length >= 3) {
+                            var day = parseInt(parts[0]) || 1;
+                            var month = monthsMap[parts[1]] !== undefined ? monthsMap[parts[1]] : (parseInt(parts[1]) - 1 || 0);
+                            var year = parseInt(parts[2]) || 1970;
+                            return new Date(year, month, day).getTime();
+                        }
+                        var d = Date.parse(s);
+                        return isNaN(d) ? 0 : d;
+                    };
+                    return dir === 'asc' ? parseDateVal(valA) - parseDateVal(valB) : parseDateVal(valB) - parseDateVal(valA);
+                } else {
+                    return dir === 'asc' ? valA.localeCompare(valB) : valB.localeCompare(valA);
+                }
+            });
+            
+            // Re-append rows in sorted order
+            rows.forEach(function(row) {
+                tbody.appendChild(row);
+            });
+            
+            // Re-index the sequence number if there is a 'No' column!
+            var hasNoColumn = table.querySelector('thead th.no-col') !== null;
+            if (hasNoColumn) {
+                var startIdx = 1;
+                rows.forEach(function(row) {
+                    if (row.cells[0]) {
+                        row.cells[0].innerText = startIdx++;
+                    }
+                });
+            }
+        };
+
+        // Automatic Table Standardizer Framework
+        // Automatic Table Standardizer Framework
+        (function() {
+            var isStandardizing = false;
+
+            function standardizeAllTables() {
+                if (isStandardizing) return;
+                isStandardizing = true;
+
+                try {
+                    document.querySelectorAll('table').forEach(function(table) {
+                        // 1. Ensure table has table-standardized class
+                        table.classList.add('table-standardized');
+
+                        // 2. Ensure parent has proper responsive wrapper
+                        var parent = table.parentNode;
+                        if (parent && !parent.classList.contains('overflow-x-auto') && !parent.classList.contains('table-wrapper-standardized')) {
+                            var wrapper = document.createElement('div');
+                            wrapper.className = 'table-wrapper-standardized overflow-x-auto w-full max-w-full rounded-2xl border border-outline-variant/15';
+                            parent.insertBefore(wrapper, table);
+                            wrapper.appendChild(table);
+                            parent = wrapper;
+                        }
+                        if (parent) {
+                            parent.classList.add('table-wrapper-standardized');
+                            parent.style.setProperty('overflow-x', 'auto', 'important');
+                            parent.style.setProperty('width', '100%', 'important');
+                            parent.style.setProperty('max-width', '100%', 'important');
+                        }
+
+                        // 3. Ensure thead has 'No' column & clean header titles
+                        if (table.dataset.headersProcessed !== 'true') {
+                            var thead = table.querySelector('thead');
+                            if (thead) {
+                                var headerRows = thead.querySelectorAll('tr');
+                                headerRows.forEach(function(hr) {
+                                    if (!hr.querySelector('.no-col')) {
+                                        var th = document.createElement('th');
+                                        th.className = 'no-col w-12 text-center py-4 px-6 text-[10px] font-extrabold uppercase tracking-wider select-none';
+                                        th.innerText = 'No';
+                                        hr.insertBefore(th, hr.firstChild);
+                                    }
+
+                                    // Add/recreate sort arrows to other headers
+                                    var headers = Array.from(hr.querySelectorAll('th:not(.no-col)'));
+                                    headers.forEach(function(th, idx) {
+                                        // Clone th and remove any sort icon containers to get clean title
+                                        var tempTh = th.cloneNode(true);
+                                        var oldIcons = tempTh.querySelector('.sort-icon-container');
+                                        if (oldIcons) oldIcons.remove();
+                                        
+                                        var title = tempTh.innerText.trim();
+                                        if (!title) return;
+
+                                        // Split header with parenthesis into exactly two lines
+                                        var parenMatch = title.match(/^([^(]+)\s*(\([^)]+\))$/);
+                                        var innerHtml = '';
+                                        if (parenMatch) {
+                                            var mainText = parenMatch[1].trim();
+                                            var parenText = parenMatch[2].trim();
+                                            innerHtml = '<div class="flex flex-col text-left">' +
+                                                            '<span class="whitespace-nowrap">' + mainText + '</span>' +
+                                                            '<span class="text-[9px] font-normal text-on-surface-variant/70 normal-case whitespace-nowrap">' + parenText + '</span>' +
+                                                        '</div>';
+                                        } else {
+                                            innerHtml = '<span class="whitespace-nowrap">' + title + '</span>';
+                                        }
+
+                                        th.innerHTML = '<div class="flex items-center ' + (th.classList.contains('text-right') || th.style.textAlign === 'right' ? 'justify-end' : '') + ' gap-1">' + 
+                                            innerHtml + 
+                                            '<span class="sort-icon-container"></span></div>';
+
+                                        var dataType = 'string';
+                                        var lowerTitle = title.toLowerCase();
+                                        if (lowerTitle.indexOf('gaji') !== -1 || lowerTitle.indexOf('jumlah') !== -1 || lowerTitle.indexOf('nominal') !== -1 || lowerTitle.indexOf('durasi') !== -1 || lowerTitle.indexOf('kuota') !== -1 || lowerTitle.indexOf('total') !== -1 || lowerTitle.indexOf('potongan') !== -1) {
+                                            dataType = 'number';
+                                        } else if (lowerTitle.indexOf('tanggal') !== -1 || lowerTitle.indexOf('waktu') !== -1 || lowerTitle.indexOf('periode') !== -1 || lowerTitle.indexOf('clock') !== -1) {
+                                            dataType = 'date';
+                                        }
+
+                                        if (!th.getAttribute('onclick')) {
+                                            th.addEventListener('click', function() {
+                                                window.sortDomTable(th, idx + 1, dataType);
+                                            });
+                                            th.classList.add('cursor-pointer', 'select-none');
+                                        }
+                                    });
+                                });
+                            }
+                            table.dataset.headersProcessed = 'true';
+                        }
+
+                        // 4. Force inline nowrap on all cells and descendants to ensure max 2 lines
+                        // Note: Handled efficiently via CSS rules to prevent layout thrashing
+
+                        // 5. Prepend No cell to tbody rows
+                        var tbody = table.querySelector('tbody');
+                        if (tbody) {
+                            var rows = Array.from(tbody.querySelectorAll('tr'));
+                            var validIndex = 1;
+                            rows.forEach(function(row) {
+                                if (row.querySelector('[colspan]') || row.classList.contains('empty-row') || row.classList.contains('loading-row') || row.classList.contains('empty-table-row')) return;
+                                
+                                if (!row.querySelector('.no-col-cell') && !row.dataset.rowIndexed) {
+                                    var td = document.createElement('td');
+                                    td.className = 'no-col-cell px-6 py-4 text-center font-bold text-xs text-on-surface-variant';
+                                    td.innerText = validIndex++;
+                                    row.insertBefore(td, row.firstChild);
+                                    row.dataset.rowIndexed = 'true';
+                                } else {
+                                    var td = row.querySelector('.no-col-cell');
+                                    if (td) {
+                                        td.innerText = validIndex++;
+                                    }
+                                }
+                            });
+                        }
+
+                        // 6. Default Sort Logic (jika belum disort)
+                        var validRows = Array.from(tbody.querySelectorAll('tr:not(.empty-row):not(.loading-row):not(.empty-table-row)'));
+                        if (table.dataset.defaultSorted !== 'true' && validRows.length > 0) {
+                            var firstDataHeader = table.querySelector('thead th:not(.no-col)');
+                            if (firstDataHeader) {
+                                var dataType = 'string';
+                                var title = firstDataHeader.innerText.trim();
+                                var lowerTitle = title.toLowerCase();
+                                if (lowerTitle.indexOf('gaji') !== -1 || lowerTitle.indexOf('jumlah') !== -1 || lowerTitle.indexOf('nominal') !== -1 || lowerTitle.indexOf('durasi') !== -1 || lowerTitle.indexOf('kuota') !== -1 || lowerTitle.indexOf('total') !== -1 || lowerTitle.indexOf('potongan') !== -1) {
+                                    dataType = 'number';
+                                } else if (lowerTitle.indexOf('tanggal') !== -1 || lowerTitle.indexOf('waktu') !== -1 || lowerTitle.indexOf('periode') !== -1 || lowerTitle.indexOf('clock') !== -1) {
+                                    dataType = 'date';
+                                }
+
+                                // Tentukan arah default
+                                var defaultDir = (dataType === 'string') ? 'asc' : 'desc';
+                                // Atur agar window.sortDomTable menghasilkan defaultDir
+                                firstDataHeader.setAttribute('data-sort-dir', defaultDir === 'asc' ? 'desc' : 'asc');
+                                
+                                // Jalankan sort
+                                window.sortDomTable(firstDataHeader, 1, dataType);
+                            }
+                            table.dataset.defaultSorted = 'true';
+                        }
+
+                        // 7. Global Pagination (max 10 rows per page)
+                        if (table.classList.contains('no-pagination') || table.dataset.hasCustomPagination === 'true') {
+                            table.dataset.tableStandardized = 'true';
+                            return;
+                        }
+                        
+                        var rowsAfterSort = Array.from(tbody.querySelectorAll('tr:not(.empty-row):not(.loading-row):not(.empty-table-row)'));
+                        if (rowsAfterSort.length <= 10 && !table.dataset.paginated) {
+                            table.dataset.tableStandardized = 'true';
+                            return;
+                        }
+                        
+                        table.dataset.paginated = 'true';
+                        var currentPage = parseInt(table.dataset.currentPage) || 1;
+                        var totalRows = rowsAfterSort.length;
+                        var totalPages = Math.ceil(totalRows / 10) || 1;
+                        if (currentPage > totalPages) currentPage = totalPages;
+                        table.dataset.currentPage = currentPage;
+
+                        // Tampilkan baris sesuai halaman aktif
+                        rowsAfterSort.forEach(function(row, idx) {
+                            var start = (currentPage - 1) * 10;
+                            var end = start + 10;
+                            if (idx >= start && idx < end) {
+                                row.style.removeProperty('display');
+                            } else {
+                                row.style.setProperty('display', 'none', 'important');
+                            }
+                        });
+
+                        // Hapus pagination container lama jika ada
+                        var wrapper = table.closest('.table-wrapper-standardized');
+                        if (wrapper) {
+                            var oldPagination = wrapper.nextElementSibling;
+                            if (oldPagination && oldPagination.classList.contains('table-pagination-container')) {
+                                oldPagination.remove();
+                            }
+
+                            // Buat pagination container baru
+                            var paginationContainer = document.createElement('div');
+                            paginationContainer.className = 'table-pagination-container flex flex-col sm:flex-row items-center justify-between gap-4 px-6 py-4 border-t border-outline-variant/15 bg-surface-container-low/30 rounded-b-2xl mt-[-1px]';
+
+                            var startIdx = totalRows === 0 ? 0 : (currentPage - 1) * 10 + 1;
+                            var endIdx = Math.min(currentPage * 10, totalRows);
+                            var infoText = 'Menampilkan data ' + startIdx + ' sampai ' + endIdx + ' dari ' + totalRows;
+
+                            var infoDiv = document.createElement('div');
+                            infoDiv.className = 'table-pagination-info text-sm text-on-surface-variant font-medium';
+                            infoDiv.innerText = infoText;
+                            paginationContainer.appendChild(infoDiv);
+
+                            var btnDiv = document.createElement('div');
+                            btnDiv.className = 'table-pagination-buttons flex items-center gap-1.5';
+
+                            // Tombol Previous
+                            var btnPrev = document.createElement('button');
+                            btnPrev.type = 'button';
+                            btnPrev.className = 'p-1.5 rounded-lg border border-outline-variant/30 text-on-surface-variant hover:bg-surface-container-high transition-all flex items-center justify-center disabled:opacity-40 disabled:hover:bg-transparent';
+                            btnPrev.innerHTML = '<span class="material-symbols-outlined text-lg">chevron_left</span>';
+                            btnPrev.disabled = currentPage === 1;
+                            btnPrev.onclick = function() {
+                                table.dataset.currentPage = currentPage - 1;
+                                standardizeAllTables();
+                            };
+                            btnDiv.appendChild(btnPrev);
+
+                            // Halaman nomor (max 5)
+                            var startPage = Math.max(1, currentPage - 2);
+                            var endPage = Math.min(totalPages, startPage + 4);
+                            if (endPage - startPage < 4) {
+                                startPage = Math.max(1, endPage - 4);
+                            }
+
+                            for (var p = startPage; p <= endPage; p++) {
+                                (function(pageNumber) {
+                                    var btnPage = document.createElement('button');
+                                    btnPage.type = 'button';
+                                    if (pageNumber === currentPage) {
+                                        btnPage.className = 'px-3 py-1.5 rounded-lg bg-primary text-white text-xs font-bold shadow-sm transition-all';
+                                    } else {
+                                        btnPage.className = 'px-3 py-1.5 rounded-lg border border-outline-variant/30 text-on-surface-variant hover:bg-surface-container-high text-xs font-semibold transition-all';
+                                    }
+                                    btnPage.innerText = pageNumber;
+                                    btnPage.onclick = function() {
+                                        table.dataset.currentPage = pageNumber;
+                                        standardizeAllTables();
+                                    };
+                                    btnDiv.appendChild(btnPage);
+                                })(p);
+                            }
+
+                            // Tombol Next
+                            var btnNext = document.createElement('button');
+                            btnNext.type = 'button';
+                            btnNext.className = 'p-1.5 rounded-lg border border-outline-variant/30 text-on-surface-variant hover:bg-surface-container-high transition-all flex items-center justify-center disabled:opacity-40 disabled:hover:bg-transparent';
+                            btnNext.innerHTML = '<span class="material-symbols-outlined text-lg">chevron_right</span>';
+                            btnNext.disabled = currentPage === totalPages;
+                            btnNext.onclick = function() {
+                                table.dataset.currentPage = currentPage + 1;
+                                standardizeAllTables();
+                            };
+                            btnDiv.appendChild(btnNext);
+
+                            paginationContainer.appendChild(btnDiv);
+                            wrapper.parentNode.insertBefore(paginationContainer, wrapper.nextSibling);
+                        }
+                        
+                        table.dataset.tableStandardized = 'true';
+                    });
+                } finally {
+                    isStandardizing = false;
+                }
+            }
+
+            window.standardizeAllTables = standardizeAllTables;
+
+            if (document.readyState === 'loading') {
+                document.addEventListener('DOMContentLoaded', standardizeAllTables);
+            } else {
+                standardizeAllTables();
+            }
+
+            var standardizeTimeout;
+            var tableObserver = new MutationObserver(function(mutations) {
+                if (isStandardizing) return;
+                var needsUpdate = false;
+                for (var i = 0; i < mutations.length; i++) {
+                    var added = mutations[i].addedNodes;
+                    for (var j = 0; j < added.length; j++) {
+                        var node = added[j];
+                        if (node.nodeType === 1) {
+                            if (node.classList.contains('table-pagination-container') || 
+                                node.closest('.table-pagination-container') ||
+                                node.classList.contains('sort-icon-container')) {
+                                continue;
+                            }
+                            needsUpdate = true;
+                            break;
+                        }
+                    }
+                    if (needsUpdate) break;
+                }
+                if (needsUpdate) {
+                    clearTimeout(standardizeTimeout);
+                    standardizeTimeout = setTimeout(standardizeAllTables, 30);
+                }
+            });
+            tableObserver.observe(document.body, { childList: true, subtree: true });
+
+            // Wheel event listener for horizontal table scroll
+            document.addEventListener('wheel', function(e) {
+                var wrapper = e.target.closest('.table-wrapper-standardized');
+                if (wrapper) {
+                    if (wrapper.scrollWidth > wrapper.clientWidth) {
+                        e.preventDefault();
+                        wrapper.scrollLeft += e.deltaY;
+                    }
+                }
+            }, { passive: false });
+
+            // Dynamic scrolling indicator for premium scrollbar visibility
+            (function() {
+                var scrollTimeout;
+                window.addEventListener('scroll', function(e) {
+                    var target = e.target;
+                    if (target === document) {
+                        document.documentElement.classList.add('is-scrolling');
+                    } else if (target && target.classList) {
+                        target.classList.add('is-scrolling');
+                    }
+                    
+                    clearTimeout(scrollTimeout);
+                    scrollTimeout = setTimeout(function() {
+                        document.documentElement.classList.remove('is-scrolling');
+                        document.querySelectorAll('.is-scrolling').forEach(function(el) {
+                            el.classList.remove('is-scrolling');
+                        });
+                    }, 1000);
+                }, { capture: true, passive: true });
+            })();
+        })();
     </script>
     <style>
         :root {
@@ -403,101 +831,66 @@ if (!empty($resolvedPage)) {
                 justify-content: center !important;
             }
 
-            /* Enable overflow visible for collapsed sidebar elements to allow tooltips to show */
+            /* Enable overflow hidden/scroll for collapsed sidebar to keep bounds clean, nav remains scrollable */
             html.sync-sidebar-collapsed #appSidebar,
             #appSidebar.sidebar-collapsed {
-                overflow: visible !important;
+                overflow: hidden !important;
             }
             html.sync-sidebar-collapsed #appSidebar nav,
             #appSidebar.sidebar-collapsed nav {
-                overflow: visible !important;
+                overflow-y: auto !important;
+                overflow-x: hidden !important;
             }
             html.sync-sidebar-collapsed #appSidebar > div,
             #appSidebar.sidebar-collapsed > div {
                 overflow: visible !important;
             }
+        }
 
-            /* Tooltip container element relative positioning */
-            html.sync-sidebar-collapsed #appSidebar a[data-tooltip],
-            #appSidebar.sidebar-collapsed a[data-tooltip],
-            html.sync-sidebar-collapsed #appSidebar button[data-tooltip],
-            #appSidebar.sidebar-collapsed button[data-tooltip] {
-                position: relative !important;
-            }
-
-            /* The Floating Tooltip Box */
-            html.sync-sidebar-collapsed #appSidebar a[data-tooltip]::after,
-            #appSidebar.sidebar-collapsed a[data-tooltip]::after,
-            html.sync-sidebar-collapsed #appSidebar button[data-tooltip]::after,
-            #appSidebar.sidebar-collapsed button[data-tooltip]::after {
-                content: attr(data-tooltip);
-                position: absolute;
-                left: calc(100% + 12px);
-                top: 50%;
-                transform: translateY(-50%) scale(0.9);
-                background-color: rgba(25, 28, 29, 0.95);
-                backdrop-filter: blur(8px);
-                -webkit-backdrop-filter: blur(8px);
-                color: #ffffff;
-                padding: 6px 12px;
-                border-radius: 8px;
-                font-size: 12px;
-                font-weight: 600;
-                white-space: nowrap;
-                opacity: 0;
-                pointer-events: none;
-                transition: opacity 0.15s cubic-bezier(0.4, 0, 0.2, 1), transform 0.15s cubic-bezier(0.4, 0, 0.2, 1);
-                box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-                border: 1px solid rgba(255, 255, 255, 0.1);
-                z-index: 100;
-            }
-
-            /* The Tooltip Indicator Arrow */
-            html.sync-sidebar-collapsed #appSidebar a[data-tooltip]::before,
-            #appSidebar.sidebar-collapsed a[data-tooltip]::before,
-            html.sync-sidebar-collapsed #appSidebar button[data-tooltip]::before,
-            #appSidebar.sidebar-collapsed button[data-tooltip]::before {
-                content: "";
-                position: absolute;
-                left: calc(100% + 6px);
-                top: 50%;
-                transform: translateY(-50%) scale(0.9);
-                border-width: 5px;
-                border-style: solid;
-                border-color: transparent rgba(25, 28, 29, 0.95) transparent transparent;
-                opacity: 0;
-                pointer-events: none;
-                transition: opacity 0.15s cubic-bezier(0.4, 0, 0.2, 1), transform 0.15s cubic-bezier(0.4, 0, 0.2, 1);
-                z-index: 100;
-            }
-
-            /* Custom red glassmorphism for logout button tooltip */
-            html.sync-sidebar-collapsed #appSidebar button[data-tooltip]::after,
-            #appSidebar.sidebar-collapsed button[data-tooltip]::after {
-                background-color: rgba(186, 26, 26, 0.95) !important;
-                border: 1px solid rgba(255, 255, 255, 0.15) !important;
-            }
-            html.sync-sidebar-collapsed #appSidebar button[data-tooltip]::before,
-            #appSidebar.sidebar-collapsed button[data-tooltip]::before {
-                border-color: transparent rgba(186, 26, 26, 0.95) transparent transparent !important;
-            }
-
-            /* Show Tooltip & Arrow on Hover */
-            html.sync-sidebar-collapsed #appSidebar a[data-tooltip]:hover::after,
-            #appSidebar.sidebar-collapsed a[data-tooltip]:hover::after,
-            html.sync-sidebar-collapsed #appSidebar button[data-tooltip]:hover::after,
-            #appSidebar.sidebar-collapsed button[data-tooltip]:hover::after {
-                opacity: 1;
-                transform: translateY(-50%) scale(1);
-            }
-
-            html.sync-sidebar-collapsed #appSidebar a[data-tooltip]:hover::before,
-            #appSidebar.sidebar-collapsed a[data-tooltip]:hover::before,
-            html.sync-sidebar-collapsed #appSidebar button[data-tooltip]:hover::before,
-            #appSidebar.sidebar-collapsed button[data-tooltip]:hover::before {
-                opacity: 1;
-                transform: translateY(-50%) scale(1);
-            }
+        /* Floating Tooltip styling (placed outside desktop media query for clean global access) */
+        #sidebar-floating-tooltip {
+            position: fixed;
+            pointer-events: none;
+            background-color: rgba(25, 28, 29, 0.95);
+            backdrop-filter: blur(8px);
+            -webkit-backdrop-filter: blur(8px);
+            color: #ffffff;
+            padding: 6px 12px;
+            border-radius: 8px;
+            font-size: 12px;
+            font-weight: 600;
+            white-space: nowrap;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            z-index: 9999;
+            opacity: 0;
+            transform: translateY(-50%) scale(0.9);
+            transition: opacity 0.15s cubic-bezier(0.4, 0, 0.2, 1), transform 0.15s cubic-bezier(0.4, 0, 0.2, 1);
+            display: none;
+        }
+        #sidebar-floating-tooltip.show {
+            display: block;
+        }
+        #sidebar-floating-tooltip.visible {
+            opacity: 1;
+            transform: translateY(-50%) scale(1);
+        }
+        #sidebar-floating-tooltip.logout-tooltip {
+            background-color: rgba(186, 26, 26, 0.95);
+            border-color: rgba(255, 255, 255, 0.15);
+        }
+        #sidebar-floating-tooltip::before {
+            content: "";
+            position: absolute;
+            left: -10px;
+            top: 50%;
+            transform: translateY(-50%);
+            border-width: 5px;
+            border-style: solid;
+            border-color: transparent rgba(25, 28, 29, 0.95) transparent transparent;
+        }
+        #sidebar-floating-tooltip.logout-tooltip::before {
+            border-color: transparent rgba(186, 26, 26, 0.95) transparent transparent;
         }
 
         /* Custom Leaflet Control Layer Styling */
@@ -552,10 +945,142 @@ if (!empty($resolvedPage)) {
             border-color: rgba(0,6,102,0.3);
         }
         .map-type-btn.map-type-active {
-            background-color: #000666;
-            color: #ffffff;
-            border-color: #000666;
             box-shadow: 0 2px 8px rgba(0,6,102,0.25);
+        }
+
+        /* Standardized Table UI Styles */
+        .table-standardized {
+            min-width: 1100px !important;
+            width: 100% !important;
+            border-collapse: collapse !important;
+            text-align: left !important;
+            table-layout: auto !important;
+        }
+        .table-standardized td,
+        .table-standardized th,
+        .table-standardized td *,
+        .table-standardized th * {
+            white-space: nowrap !important;
+            vertical-align: middle !important;
+        }
+        .table-standardized td .flex,
+        .table-standardized td .grid,
+        .table-standardized th .flex,
+        .table-standardized th .grid {
+            flex-wrap: nowrap !important;
+        }
+        .table-standardized th:not(.no-col) {
+            cursor: pointer;
+            user-select: none;
+            transition: background-color 0.2s ease;
+        }
+        .table-standardized th:not(.no-col):hover {
+            background-color: var(--color-surface-container-high, #e7e8e9) !important;
+        }
+        .sort-icon-container {
+            display: inline-flex;
+            flex-direction: column;
+            align-items: center;
+            vertical-align: middle;
+            margin-left: 6px;
+            width: 10px;
+            height: 14px;
+            justify-content: center;
+            line-height: 1;
+            font-size: 8px;
+            gap: 1px;
+            opacity: 0.6;
+        }
+        .sort-icon-container::before {
+            content: '▲';
+            font-size: 7px;
+            color: #b0b2c3;
+            transition: all 0.2s ease;
+        }
+        .sort-icon-container::after {
+            content: '▼';
+            font-size: 7px;
+            color: #b0b2c3;
+            transition: all 0.2s ease;
+        }
+        
+        th:hover .sort-icon-container {
+            opacity: 1;
+        }
+        th:hover .sort-icon-container::before,
+        th:hover .sort-icon-container::after {
+            color: #82859f;
+        }
+
+        .sort-active-asc .sort-icon-container {
+            opacity: 1 !important;
+        }
+        .sort-active-asc .sort-icon-container::before {
+            color: var(--color-primary, #000666) !important;
+            font-weight: 900 !important;
+        }
+        .sort-active-asc .sort-icon-container::after {
+            color: #b0b2c3 !important;
+        }
+
+        .sort-active-desc .sort-icon-container {
+            opacity: 1 !important;
+        }
+        .sort-active-desc .sort-icon-container::after {
+            color: var(--color-primary, #000666) !important;
+            font-weight: 900 !important;
+        }
+        .sort-active-desc .sort-icon-container::before {
+            color: #b0b2c3 !important;
+        }
+
+        /* Premium Custom Scrollbars */
+        ::-webkit-scrollbar {
+            width: 6px !important;
+            height: 6px !important;
+        }
+        ::-webkit-scrollbar-track {
+            background: transparent !important;
+        }
+        ::-webkit-scrollbar-thumb {
+            background-color: transparent !important;
+            border-radius: 10px !important;
+            border: 1px solid transparent !important;
+            background-clip: padding-box !important;
+            transition: background-color 0.3s ease !important;
+        }
+        /* Show on hover or scroll activity */
+        *:hover::-webkit-scrollbar-thumb,
+        html:hover::-webkit-scrollbar-thumb,
+        body:hover::-webkit-scrollbar-thumb,
+        .is-scrolling::-webkit-scrollbar-thumb,
+        html.is-scrolling::-webkit-scrollbar-thumb,
+        body.is-scrolling::-webkit-scrollbar-thumb {
+            background-color: rgba(0, 6, 102, 0.15) !important;
+        }
+        /* Darker on thumb hover */
+        ::-webkit-scrollbar-thumb:hover {
+            background-color: rgba(0, 6, 102, 0.45) !important;
+        }
+        ::-webkit-scrollbar-thumb:active {
+            background-color: rgba(0, 6, 102, 0.6) !important;
+        }
+
+        /* Firefox Support */
+        * {
+            scrollbar-width: thin;
+            scrollbar-color: transparent transparent;
+        }
+        *:hover,
+        .is-scrolling {
+            scrollbar-color: rgba(0, 6, 102, 0.15) transparent;
+        }
+
+        .table-wrapper-standardized {
+            display: block !important;
+            width: 100% !important;
+            max-width: 100% !important;
+            overflow-x: auto !important;
         }
 
     </style>
@@ -576,9 +1101,11 @@ if (!empty($resolvedPage)) {
     <div id="sidebarBackdrop" class="fixed inset-0 bg-black/40 z-30 hidden transition-opacity duration-300 lg:hidden animate-fade-in"></div>
 
     <!-- Floating Hamburger for Mobile (Always visible since global header is removed) -->
-    <button id="mobileSidebarToggle" class="lg:hidden fixed <?= isset($_SESSION['original_user_id']) ? 'top-24 sm:top-20' : 'top-4' ?> left-4 z-40 p-3 bg-surface-container-lowest border border-outline-variant/20 shadow-md rounded-full text-on-surface-variant hover:bg-surface-container-high transition-colors flex items-center justify-center">
-        <span class="material-symbols-outlined">menu</span>
-    </button>
+    <?php if (!isset($_SESSION['original_user_id'])): ?>
+        <button id="mobileSidebarToggle" class="lg:hidden fixed top-4 left-4 z-40 p-3 bg-surface-container-lowest border border-outline-variant/20 shadow-md rounded-full text-on-surface-variant hover:bg-surface-container-high transition-colors flex items-center justify-center">
+            <span class="material-symbols-outlined">menu</span>
+        </button>
+    <?php endif; ?>
     
     <!-- Middle Container -->
     <div class="flex-grow flex relative min-w-0 w-full">
@@ -588,8 +1115,12 @@ if (!empty($resolvedPage)) {
         <!-- Right Content Container (Pushed by collapsed sidebar) -->
         <div id="contentContainer" class="content-container flex-grow flex flex-col min-w-0 lg:pl-28 xl:pl-80 transition-all duration-300">
             <?php if (isset($_SESSION['original_user_id'])): ?>
-                <div class="bg-amber-500 text-white px-6 py-3 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 shadow-sm z-30 text-sm font-semibold sticky top-0 border-b border-amber-600/30 backdrop-blur-md bg-amber-500/95">
+                <div class="mx-4 mt-4 lg:mx-8 lg:mt-4 bg-gradient-to-r from-amber-500 to-orange-600 text-white px-6 py-3.5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 shadow-lg rounded-2xl border border-orange-600/20 z-30 text-sm font-semibold sticky top-4 backdrop-blur-md bg-opacity-95">
                     <div class="flex items-center gap-2.5">
+                        <!-- Mobile Hamburger inside the banner -->
+                        <button onclick="openSidebar()" class="lg:hidden p-1.5 bg-white/20 hover:bg-white/35 text-white rounded-lg transition-colors flex items-center justify-center mr-1">
+                            <span class="material-symbols-outlined text-xl">menu</span>
+                        </button>
                         <span class="material-symbols-outlined text-xl animate-pulse">supervised_user_circle</span>
                         <span>Anda sedang melakukan simulasi login sebagai <strong><?= htmlspecialchars($_SESSION['name']) ?></strong> (<?= htmlspecialchars($_SESSION['email']) ?>).</span>
                     </div>
@@ -602,7 +1133,26 @@ if (!empty($resolvedPage)) {
                 <!-- Identity Chip -->
                 <div class="flex items-center gap-2">
                     <span class="bg-green-100 text-green-800 text-[10px] font-bold uppercase tracking-widest px-3 py-1 rounded-full">AKUN TERVERIFIKASI</span>
-                    <span class="text-on-surface-variant text-sm font-medium">Portal Karyawan</span>
+                    <?php
+                    $roleLabel = 'Portal Karyawan';
+                    if (isset($_SESSION['role'])) {
+                        $role = $_SESSION['role'];
+                        if ($role === 'superadmin') {
+                            $roleLabel = 'Portal Superadmin';
+                        } elseif ($role === 'admin') {
+                            $roleLabel = 'Portal Admin';
+                        } elseif ($role === 'hr_ops') {
+                            $roleLabel = 'Portal HR Ops';
+                        } elseif ($role === 'hiring_manager') {
+                            $roleLabel = 'Portal Manager';
+                        } elseif ($role === 'executive') {
+                            $roleLabel = 'Portal Eksekutif';
+                        } elseif ($role === 'candidate') {
+                            $roleLabel = 'Portal Kandidat';
+                        }
+                    }
+                    ?>
+                    <span class="text-on-surface-variant text-sm font-medium"><?= htmlspecialchars($roleLabel) ?></span>
                 </div>
                 
                 <!-- SPA Content Container -->
@@ -713,6 +1263,80 @@ if (!empty($resolvedPage)) {
             }
             
             updateActiveSidebarMenu();
+
+            // Floating Tooltip for collapsed sidebar
+            const tooltipEl = document.createElement('div');
+            tooltipEl.id = 'sidebar-floating-tooltip';
+            document.body.appendChild(tooltipEl);
+            
+            let hoverTimeout;
+            
+            document.addEventListener('mouseover', function(e) {
+                const sidebar = document.getElementById('appSidebar');
+                if (!sidebar || !sidebar.classList.contains('sidebar-collapsed')) {
+                    tooltipEl.classList.remove('visible', 'show');
+                    return;
+                }
+                
+                const target = e.target.closest('#appSidebar [data-tooltip]');
+                if (!target) {
+                    hideTooltip();
+                    return;
+                }
+                
+                const tooltipText = target.getAttribute('data-tooltip');
+                if (!tooltipText) {
+                    hideTooltip();
+                    return;
+                }
+                
+                clearTimeout(hoverTimeout);
+                tooltipEl.textContent = tooltipText;
+                
+                if (tooltipText === 'Keluar') {
+                    tooltipEl.classList.add('logout-tooltip');
+                } else {
+                    tooltipEl.classList.remove('logout-tooltip');
+                }
+                
+                tooltipEl.classList.add('show');
+                
+                // Position the tooltip next to the target
+                const rect = target.getBoundingClientRect();
+                const x = rect.right + 12;
+                const y = rect.top + rect.height / 2;
+                
+                tooltipEl.style.left = `${x}px`;
+                tooltipEl.style.top = `${y}px`;
+                
+                requestAnimationFrame(() => {
+                    tooltipEl.classList.add('visible');
+                });
+            });
+            
+            document.addEventListener('mouseout', function(e) {
+                const sidebar = document.getElementById('appSidebar');
+                if (!sidebar || !sidebar.classList.contains('sidebar-collapsed')) return;
+                
+                const target = e.target.closest('#appSidebar [data-tooltip]');
+                if (target) {
+                    const related = e.relatedTarget ? e.relatedTarget.closest('#appSidebar [data-tooltip]') : null;
+                    if (related === target) {
+                        return;
+                    }
+                }
+                hideTooltip();
+            });
+            
+            function hideTooltip() {
+                clearTimeout(hoverTimeout);
+                tooltipEl.classList.remove('visible');
+                hoverTimeout = setTimeout(() => {
+                    if (!tooltipEl.classList.contains('visible')) {
+                        tooltipEl.classList.remove('show');
+                    }
+                }, 150);
+            }
         });
 
         function injectHtmlAndRunScripts(html) {
@@ -730,6 +1354,11 @@ if (!empty($resolvedPage)) {
                 }
                 script.parentNode.replaceChild(newScript, script);
             });
+
+            // Trigger table standardization explicitly after SPA content injection
+            if (typeof window.standardizeAllTables === 'function') {
+                window.standardizeAllTables();
+            }
         }
 
         function updatePageTitle(url) {
@@ -1632,6 +2261,21 @@ if (!empty($resolvedPage)) {
         // Global Fetch Interceptor to handle Backend/Server/Database errors
         const originalFetch = window.fetch;
         window.fetch = async function(...args) {
+            let [resource, config] = args;
+            if (window.jwtToken) {
+                config = config || {};
+                config.headers = config.headers || {};
+                if (config.headers instanceof Headers) {
+                    if (!config.headers.has('X-JWT-Token')) {
+                        config.headers.set('X-JWT-Token', window.jwtToken);
+                    }
+                } else {
+                    if (!config.headers['X-JWT-Token']) {
+                        config.headers['X-JWT-Token'] = window.jwtToken;
+                    }
+                }
+                args = [resource, config];
+            }
             try {
                 const response = await originalFetch(...args);
                 if (!response.ok && response.status >= 500) {

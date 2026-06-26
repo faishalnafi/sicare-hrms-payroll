@@ -117,7 +117,7 @@ function formatIndoDate($dateStr) {
 
 function getGravatarIcon($email) {
     $hash = md5(strtolower(trim($email)));
-    return "https://www.gravatar.com/avatar/{$hash}?d=404&s=80";
+    return "https://www.gravatar.com/avatar/{$hash}?d=identicon&s=80";
 }
 ?>
 
@@ -887,12 +887,20 @@ function getGravatarIcon($email) {
                     let metodeHtml = '<span class="text-on-surface-variant/30 text-xs">—</span>';
                     if (r.location_method) {
                         let icon = 'location_on';
+                        let colorClass = 'text-amber-600';
+                        let iconColor = 'text-amber-500';
                         if (r.location_method === 'WIFI') {
                             icon = 'wifi';
+                            colorClass = 'text-primary';
+                            iconColor = 'text-primary';
+                        } else if (r.location_method === 'POP') {
+                            icon = 'laptop';
+                            colorClass = 'text-blue-600';
+                            iconColor = 'text-blue-500';
                         }
                         metodeHtml = `
-                            <span class="inline-flex items-center gap-1 text-[11px] font-extrabold text-amber-600">
-                                <span class="material-symbols-outlined text-xs text-amber-500">${icon}</span>
+                            <span class="inline-flex items-center gap-1 text-[11px] font-extrabold ${colorClass}">
+                                <span class="material-symbols-outlined text-xs ${iconColor}">${icon}</span>
                                 ${escapeHtml(r.location_method)}
                             </span>
                         `;
@@ -949,7 +957,7 @@ function getGravatarIcon($email) {
 
                     const reasonText = r.correction_reason || '-';
                     const hash = md5((r.email || '').trim().toLowerCase());
-                    const avatar = r.profile_picture ? r.profile_picture : `https://www.gravatar.com/avatar/${hash}?d=404&s=80`;
+                    const avatar = r.profile_picture ? r.profile_picture : `https://www.gravatar.com/avatar/${hash}?d=identicon&s=80`;
 
                     html += `
                     <tr class="hover:bg-surface-container-low/20 transition-colors">

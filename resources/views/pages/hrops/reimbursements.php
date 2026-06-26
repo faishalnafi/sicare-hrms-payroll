@@ -206,7 +206,7 @@ function getEmployeePosition($email) {
                         $claimLastName = (string)($claim['last_name'] ?? '');
                         $fullname = trim($claimFirstName . ' ' . $claimLastName);
                         $hash = md5(strtolower(trim($claim['email'] ?? '')));
-                        $avatarUrl = !empty($claim['profile_picture']) ? $claim['profile_picture'] : "https://www.gravatar.com/avatar/{$hash}?d=404&s=120";
+                        $avatarUrl = !empty($claim['profile_picture']) ? $claim['profile_picture'] : "https://www.gravatar.com/avatar/{$hash}?d=identicon&s=120";
                     ?>
                     <tr class="hover:bg-surface-container-low/30 transition-colors" data-name="<?= htmlspecialchars(strtolower($fullname)) ?>" data-status="<?= htmlspecialchars($claim['status']) ?>" data-category="<?= htmlspecialchars($claim['category']) ?>">
                         <td class="py-4 px-6">
@@ -278,17 +278,7 @@ function getEmployeePosition($email) {
             </table>
         </div>
 
-        <!-- Pagination / Footer Info -->
-        <div class="bg-surface-container-lowest p-6 border-t border-outline-variant/15 flex flex-col md:flex-row justify-between items-center gap-4 text-xs font-bold text-on-surface-variant">
-            <div>
-                Menampilkan <span id="displayedCount"><?= count($claims) ?></span> dari <?= count($claims) ?> data klaim reimbursement
-            </div>
-            <div class="flex items-center gap-1">
-                <button class="w-8 h-8 rounded-lg bg-surface border border-outline-variant/30 flex items-center justify-center hover:bg-surface-container-high transition-colors" disabled><span class="material-symbols-outlined text-sm">chevron_left</span></button>
-                <button class="w-8 h-8 rounded-lg bg-primary text-white flex items-center justify-center shadow-sm">1</button>
-                <button class="w-8 h-8 rounded-lg bg-surface border border-outline-variant/30 flex items-center justify-center hover:bg-surface-container-high transition-colors" disabled><span class="material-symbols-outlined text-sm">chevron_right</span></button>
-            </div>
-        </div>
+
     </div>
 </div>
 

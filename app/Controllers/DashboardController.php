@@ -202,42 +202,46 @@ class DashboardController {
         if ($role === "superadmin") {
             $allowed = true; // Superadmin has unrestricted access
         } else {
-            $parts = explode("/", $path);
-            $prefix = $parts[0] ?? "";
-            
-            switch ($prefix) {
-                case "employee":
-                    $allowed = ($role === "employee");
-                    break;
-                case "manager":
-                    $allowed = ($role === "hiring_manager" || $role === "manager");
-                    break;
-                case "hrops":
-                    $allowed = ($role === "hr_ops" || $role === "hrops");
-                    break;
-                case "executive":
-                    $allowed = ($role === "executive");
-                    break;
-                case "admin":
-                    $allowed = ($role === "admin");
-                    break;
-                case "recruiter":
-                    $allowed = ($role === "recruiter");
-                    break;
-                case "candidate":
-                    $allowed = ($role === "candidate");
-                    break;
-                case "superadmin":
-                    if ($path === "superadmin/audit") {
-                        $allowed = ($role === "superadmin" || $role === "executive");
-                    } else {
-                        $allowed = ($role === "superadmin");
-                    }
-                    break;
-                default:
-                    // If no matching prefix (e.g. root pages or other views), allow access
-                    $allowed = true;
-                    break;
+            if ($path === "changelogs/guide") {
+                $allowed = ($role === "admin");
+            } else {
+                $parts = explode("/", $path);
+                $prefix = $parts[0] ?? "";
+                
+                switch ($prefix) {
+                    case "employee":
+                        $allowed = ($role === "employee");
+                        break;
+                    case "manager":
+                        $allowed = ($role === "hiring_manager" || $role === "manager");
+                        break;
+                    case "hrops":
+                        $allowed = ($role === "hr_ops" || $role === "hrops");
+                        break;
+                    case "executive":
+                        $allowed = ($role === "executive");
+                        break;
+                    case "admin":
+                        $allowed = ($role === "admin");
+                        break;
+                    case "recruiter":
+                        $allowed = ($role === "recruiter");
+                        break;
+                    case "candidate":
+                        $allowed = ($role === "candidate");
+                        break;
+                    case "superadmin":
+                        if ($path === "superadmin/audit") {
+                            $allowed = ($role === "superadmin" || $role === "executive");
+                        } else {
+                            $allowed = ($role === "superadmin");
+                        }
+                        break;
+                    default:
+                        // If no matching prefix (e.g. root pages or other views), allow access
+                        $allowed = true;
+                        break;
+                }
             }
         }
 

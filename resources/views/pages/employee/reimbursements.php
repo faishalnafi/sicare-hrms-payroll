@@ -313,29 +313,87 @@ function getCategoryLabel($category) {
 
         <!-- Table -->
         <div class="overflow-x-auto">
-            <table class="min-w-[1000px] w-full text-left border-collapse">
+            <table class="w-full text-left border-collapse table-standardized">
                 <thead>
                     <tr class="bg-surface text-on-surface-variant border-b border-outline-variant/15">
-                        <th class="py-4 px-6 text-[11px] font-bold uppercase tracking-wider">Tanggal Diajukan</th>
-                        <th class="py-4 px-6 text-[11px] font-bold uppercase tracking-wider">Kategori</th>
-                        <th class="py-4 px-6 text-[11px] font-bold uppercase tracking-wider">Jumlah Klaim</th>
-                        <th class="py-4 px-6 text-[11px] font-bold uppercase tracking-wider">Keterangan</th>
-                        <th class="py-4 px-6 text-[11px] font-bold uppercase tracking-wider">Bukti Nota</th>
-                        <th class="py-4 px-6 text-[11px] font-bold uppercase tracking-wider">Status</th>
-                        <th class="py-4 px-6 text-right text-[11px] font-bold uppercase tracking-wider">Aksi</th>
+                        <th class="no-col w-12 text-center py-4 px-6 text-[10px] font-bold uppercase tracking-wider">No</th>
+                        <th onclick="window.sortDomTable(this, 1, 'date')" class="py-4 px-6 text-[11px] font-bold uppercase tracking-wider">
+                            <div class="flex items-center gap-1">
+                                Tanggal Diajukan
+                                <span class="sort-icon-container">
+                                    <span class="material-symbols-outlined sort-up">arrow_drop_up</span>
+                                    <span class="material-symbols-outlined sort-down">arrow_drop_down</span>
+                                </span>
+                            </div>
+                        </th>
+                        <th onclick="window.sortDomTable(this, 2, 'string')" class="py-4 px-6 text-[11px] font-bold uppercase tracking-wider">
+                            <div class="flex items-center gap-1">
+                                Kategori
+                                <span class="sort-icon-container">
+                                    <span class="material-symbols-outlined sort-up">arrow_drop_up</span>
+                                    <span class="material-symbols-outlined sort-down">arrow_drop_down</span>
+                                </span>
+                            </div>
+                        </th>
+                        <th onclick="window.sortDomTable(this, 3, 'number')" class="py-4 px-6 text-[11px] font-bold uppercase tracking-wider">
+                            <div class="flex items-center gap-1">
+                                Jumlah Klaim
+                                <span class="sort-icon-container">
+                                    <span class="material-symbols-outlined sort-up">arrow_drop_up</span>
+                                    <span class="material-symbols-outlined sort-down">arrow_drop_down</span>
+                                </span>
+                            </div>
+                        </th>
+                        <th onclick="window.sortDomTable(this, 4, 'string')" class="py-4 px-6 text-[11px] font-bold uppercase tracking-wider">
+                            <div class="flex items-center gap-1">
+                                Keterangan
+                                <span class="sort-icon-container">
+                                    <span class="material-symbols-outlined sort-up">arrow_drop_up</span>
+                                    <span class="material-symbols-outlined sort-down">arrow_drop_down</span>
+                                </span>
+                            </div>
+                        </th>
+                        <th onclick="window.sortDomTable(this, 5, 'string')" class="py-4 px-6 text-[11px] font-bold uppercase tracking-wider">
+                            <div class="flex items-center gap-1">
+                                Bukti Nota
+                                <span class="sort-icon-container">
+                                    <span class="material-symbols-outlined sort-up">arrow_drop_up</span>
+                                    <span class="material-symbols-outlined sort-down">arrow_drop_down</span>
+                                </span>
+                            </div>
+                        </th>
+                        <th onclick="window.sortDomTable(this, 6, 'string')" class="py-4 px-6 text-[11px] font-bold uppercase tracking-wider">
+                            <div class="flex items-center gap-1">
+                                Status
+                                <span class="sort-icon-container">
+                                    <span class="material-symbols-outlined sort-up">arrow_drop_up</span>
+                                    <span class="material-symbols-outlined sort-down">arrow_drop_down</span>
+                                </span>
+                            </div>
+                        </th>
+                        <th onclick="window.sortDomTable(this, 7, 'string')" class="py-4 px-6 text-right text-[11px] font-bold uppercase tracking-wider">
+                            <div class="flex items-center justify-end gap-1">
+                                Aksi
+                                <span class="sort-icon-container">
+                                    <span class="material-symbols-outlined sort-up">arrow_drop_up</span>
+                                    <span class="material-symbols-outlined sort-down">arrow_drop_down</span>
+                                </span>
+                            </div>
+                        </th>
                     </tr>
                 </thead>
                 <tbody id="employeeClaimsTableBody" class="divide-y divide-outline-variant/10">
                     <?php if (empty($claims)): ?>
                     <tr class="empty-row">
-                        <td colspan="7" class="py-8 text-center text-on-surface-variant font-medium text-xs">
+                        <td colspan="8" class="py-8 text-center text-on-surface-variant font-medium text-xs">
                             <span class="material-symbols-outlined text-4xl text-outline-variant mb-2">inbox</span>
                             <p>Belum ada riwayat pengajuan reimbursement.</p>
                         </td>
                     </tr>
                     <?php else: ?>
-                    <?php foreach ($claims as $claim): ?>
+                    <?php $rowNo = 1; foreach ($claims as $claim): ?>
                     <tr class="hover:bg-surface-container-low/30 transition-colors" data-status="<?= htmlspecialchars($claim['status']) ?>" data-category="<?= htmlspecialchars($claim['category']) ?>">
+                        <td class="py-4 px-6 text-center font-bold text-xs text-on-surface-variant"><?= $rowNo++ ?></td>
                         <td class="py-4 px-6 font-semibold text-xs text-on-surface">
                             <?= date('d M Y, H:i', strtotime($claim['created_at'])) ?>
                         </td>

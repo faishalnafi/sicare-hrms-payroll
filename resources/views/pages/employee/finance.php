@@ -482,21 +482,70 @@ $latestBaseSalary = $latest ? $latest['base_salary'] : $baseSalary;
             </div>
 
             <div class="overflow-x-auto">
-                <table class="w-full text-left border-collapse">
+                <table class="w-full text-left border-collapse table-standardized">
                     <thead>
                         <tr class="bg-surface-container-low/50 border-b border-outline-variant/10">
-                            <th class="p-4 text-xs font-bold text-on-surface-variant uppercase tracking-wider">Periode</th>
-                            <th class="p-4 text-xs font-bold text-on-surface-variant uppercase tracking-wider">Gaji Pokok</th>
-                            <th class="p-4 text-xs font-bold text-on-surface-variant uppercase tracking-wider">Total Tunjangan</th>
-                            <th class="p-4 text-xs font-bold text-on-surface-variant uppercase tracking-wider">Potongan</th>
-                            <th class="p-4 text-xs font-bold text-on-surface-variant uppercase tracking-wider">Gaji Bersih (THP)</th>
-                            <th class="p-4 text-xs font-bold text-on-surface-variant uppercase tracking-wider text-center">Aksi</th>
+                            <th class="no-col w-12 text-center p-4 text-xs font-bold text-on-surface-variant uppercase tracking-wider">No</th>
+                            <th onclick="window.sortDomTable(this, 1, 'string')" class="p-4 text-xs font-bold text-on-surface-variant uppercase tracking-wider">
+                                <div class="flex items-center gap-1">
+                                    Periode
+                                    <span class="sort-icon-container">
+                                        <span class="material-symbols-outlined sort-up">arrow_drop_up</span>
+                                        <span class="material-symbols-outlined sort-down">arrow_drop_down</span>
+                                    </span>
+                                </div>
+                            </th>
+                            <th onclick="window.sortDomTable(this, 2, 'number')" class="p-4 text-xs font-bold text-on-surface-variant uppercase tracking-wider">
+                                <div class="flex items-center gap-1">
+                                    Gaji Pokok
+                                    <span class="sort-icon-container">
+                                        <span class="material-symbols-outlined sort-up">arrow_drop_up</span>
+                                        <span class="material-symbols-outlined sort-down">arrow_drop_down</span>
+                                    </span>
+                                </div>
+                            </th>
+                            <th onclick="window.sortDomTable(this, 3, 'number')" class="p-4 text-xs font-bold text-on-surface-variant uppercase tracking-wider">
+                                <div class="flex items-center gap-1">
+                                    Total Tunjangan
+                                    <span class="sort-icon-container">
+                                        <span class="material-symbols-outlined sort-up">arrow_drop_up</span>
+                                        <span class="material-symbols-outlined sort-down">arrow_drop_down</span>
+                                    </span>
+                                </div>
+                            </th>
+                            <th onclick="window.sortDomTable(this, 4, 'number')" class="p-4 text-xs font-bold text-on-surface-variant uppercase tracking-wider">
+                                <div class="flex items-center gap-1">
+                                    Potongan
+                                    <span class="sort-icon-container">
+                                        <span class="material-symbols-outlined sort-up">arrow_drop_up</span>
+                                        <span class="material-symbols-outlined sort-down">arrow_drop_down</span>
+                                    </span>
+                                </div>
+                            </th>
+                            <th onclick="window.sortDomTable(this, 5, 'number')" class="p-4 text-xs font-bold text-on-surface-variant uppercase tracking-wider">
+                                <div class="flex items-center gap-1">
+                                    Gaji Bersih (THP)
+                                    <span class="sort-icon-container">
+                                        <span class="material-symbols-outlined sort-up">arrow_drop_up</span>
+                                        <span class="material-symbols-outlined sort-down">arrow_drop_down</span>
+                                    </span>
+                                </div>
+                            </th>
+                            <th onclick="window.sortDomTable(this, 6, 'string')" class="p-4 text-xs font-bold text-on-surface-variant uppercase tracking-wider text-center">
+                                <div class="flex items-center justify-center gap-1">
+                                    Aksi
+                                    <span class="sort-icon-container">
+                                        <span class="material-symbols-outlined sort-up">arrow_drop_up</span>
+                                        <span class="material-symbols-outlined sort-down">arrow_drop_down</span>
+                                    </span>
+                                </div>
+                            </th>
                         </tr>
                     </thead>
                     <tbody class="divide-y divide-outline-variant/8">
                         <?php if (empty($months)): ?>
                         <tr>
-                            <td colspan="6" class="p-10 text-center">
+                            <td colspan="7" class="p-10 text-center">
                                 <div class="flex flex-col items-center gap-3 text-on-surface-variant">
                                     <span class="material-symbols-outlined text-4xl opacity-40">receipt_long</span>
                                     <p class="text-sm font-medium">Belum ada slip gaji yang disetujui untuk tahun <?= $currentYear ?>.</p>
@@ -505,8 +554,9 @@ $latestBaseSalary = $latest ? $latest['base_salary'] : $baseSalary;
                             </td>
                         </tr>
                         <?php else: ?>
-                        <?php foreach ($months as $m): ?>
+                        <?php $rowNo = 1; foreach ($months as $m): ?>
                         <tr class="hover:bg-surface-container-low/20 transition-colors">
+                            <td class="p-4 text-center font-bold text-xs text-on-surface-variant"><?= $rowNo++ ?></td>
                             <td class="p-4 font-bold text-xs text-on-surface"><?= htmlspecialchars($m['month_name']) ?></td>
                             <td class="p-4 text-xs font-mono font-medium text-on-surface-variant">Rp <?= number_format($m['base_salary'], 0, ',', '.') ?></td>
                             <td class="p-4 text-xs font-mono font-medium text-green-700 bg-green-50/40">Rp <?= number_format($m['tunjangan_total'], 0, ',', '.') ?></td>

@@ -11,8 +11,10 @@
  */
 $db = \App\Config\Database::getInstance()->getConnection();
 $level1Depts = [];
+$avatarMap = [];
 try {
     $level1Depts = $db->query("SELECT name FROM departments WHERE parent_id IS NULL OR level = 1 ORDER BY name ASC")->fetchAll(PDO::FETCH_COLUMN);
+    $avatarMap = $db->query("SELECT employee_id, profile_picture FROM users WHERE employee_id IS NOT NULL AND employee_id != ''")->fetchAll(PDO::FETCH_KEY_PAIR);
 } catch (\Exception $e) {
     // Fail-safe fallback if DB connection fails
 }
@@ -115,9 +117,7 @@ try {
                         <div class="space-y-3">
                             <h4 class="text-xs font-extrabold uppercase tracking-wider text-primary">Informasi Pemohon</h4>
                             <div class="flex items-center gap-3 bg-surface-container-low/55 p-3 rounded-xl border border-outline-variant/10">
-                                <div class="w-10 h-10 rounded-full bg-primary/10 text-primary flex items-center justify-center font-bold text-sm" id="modalAvatar">
-                                    --
-                                </div>
+                                <img class="w-10 h-10 rounded-full object-cover border border-outline-variant/20 flex-shrink-0 bg-white" id="modalAvatar" src="" alt="Avatar" />
                                 <div class="min-w-0">
                                     <p class="text-sm font-bold text-on-surface truncate" id="modalRequesterName">---</p>
                                     <p class="text-xs text-on-surface-variant truncate" id="modalRequesterEmail">---</p>
@@ -182,6 +182,9 @@ try {
 
 <script>
 (function() {
+    // Map of employee_id to database profile picture URL
+    var databaseAvatars = <?php echo json_encode($avatarMap); ?> || {};
+
     // Static Mock Data representing different directorates
     var mockApprovals = [
         {
@@ -280,15 +283,17 @@ try {
             if (item.status === "Approved") statusClass = "bg-green-100 text-green-700 border-green-200/50";
             if (item.status === "Rejected") statusClass = "bg-red-100 text-red-700 border-red-200/50";
 
+            var emailHash = window.md5((item.email || "").trim().toLowerCase());
+            var dbPic = databaseAvatars[item.nik];
+            var avatarUrl = (dbPic && dbPic.trim() !== "") ? dbPic : ("https://www.gravatar.com/avatar/" + emailHash + "?d=identicon&s=80");
+
             tr.innerHTML = 
                 "<td class=\"py-4 px-6\">" +
                     "<div class=\"flex items-center gap-3\">" +
-                        "<div class=\"w-8 h-8 rounded-full bg-primary/10 text-primary flex items-center justify-center font-bold text-xs flex-shrink-0\">" +
-                            item.requester.charAt(0).toUpperCase() +
-                        "</div>" +
-                        "<div class=\"min-w-0\">" +
-                            "<p class=\"text-xs font-bold text-on-surface truncate\">" + escapeHtml(item.requester) + "</p>" +
-                            "<p class=\"text-[10px] text-on-surface-variant font-mono mt-0.5\">" + escapeHtml(item.nik) + "</p>" +
+                        "<img src=\"" + avatarUrl + "\" onerror=\"window.handleAvatarError(this, '" + emailHash + "')\" alt=\"" + escapeHtml(item.requester) + "\" class=\"w-10 h-10 rounded-full object-cover border border-outline-variant/30 flex-shrink-0 bg-white\" />" +
+                        "<div>" +
+                            "<p class=\"text-sm font-bold text-on-surface\">" + escapeHtml(item.requester) + "</p>" +
+                            "<p class=\"text-xs text-on-surface-variant font-mono mt-0.5\">" + escapeHtml(item.nik) + "</p>" +
                         "</div>" +
                     "</div>" +
                 "</td>" +
@@ -360,7 +365,16 @@ try {
         
         document.getElementById("modalTitle").textContent = item.type;
         document.getElementById("modalTicketId").textContent = "Ticket ID: #" + item.id;
-        document.getElementById("modalAvatar").textContent = item.requester.charAt(0).toUpperCase();
+        
+        var emailHash = window.md5((item.email || "").trim().toLowerCase());
+        var dbPic = databaseAvatars[item.nik];
+        var avatarUrl = (dbPic && dbPic.trim() !== "") ? dbPic : ("https://www.gravatar.com/avatar/" + emailHash + "?d=identicon&s=120");
+        var modalAvatarImg = document.getElementById("modalAvatar");
+        modalAvatarImg.src = avatarUrl;
+        modalAvatarImg.onerror = function() {
+            window.handleAvatarError(this, emailHash);
+        };
+        
         document.getElementById("modalRequesterName").textContent = item.requester;
         document.getElementById("modalRequesterEmail").textContent = item.email;
         document.getElementById("modalDescription").textContent = item.description;

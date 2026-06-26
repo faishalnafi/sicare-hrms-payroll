@@ -77,6 +77,17 @@ $appName = $db->query("SELECT `value` FROM global_settings WHERE `key` = 'app_na
                         <div class="flex-grow border-t border-outline-variant opacity-30"></div>
                     </div>
                     
+                    <!-- Dynamic Warning Alerts (JS Handled) -->
+                    <div id="loginWarningAlert" class="hidden mb-4 rounded-xl p-4 flex items-start gap-3 shadow-sm transition-all duration-300">
+                        <div class="p-1.5 rounded-full shrink-0 flex items-center justify-center text-current" id="loginWarningIconContainer">
+                            <span class="material-symbols-outlined text-sm" id="loginWarningIcon">warning</span>
+                        </div>
+                        <div class="flex-grow">
+                            <h4 class="text-sm font-bold font-headline" id="loginWarningTitle">Peringatan</h4>
+                            <p class="mt-1 text-sm font-medium" id="loginWarningText"></p>
+                        </div>
+                    </div>
+
                     <!-- Login Form -->
                     <form id="signinForm" class="space-y-4" action="/auth/login" method="POST">
                         <input type="hidden" name="csrf_token" value="dummy_token_here">
@@ -107,6 +118,8 @@ $appName = $db->query("SELECT `value` FROM global_settings WHERE `key` = 'app_na
                     </form>
 
                     <script>
+                        let countdownInterval = null;
+
                         function handleGoogleLogin() {
                             const rememberMe = document.getElementById('remember-me').checked;
                             if (rememberMe) {
@@ -115,6 +128,59 @@ $appName = $db->query("SELECT `value` FROM global_settings WHERE `key` = 'app_na
                                 document.cookie = "remember_google=; path=/; max-age=0; SameSite=Lax";
                             }
                             window.location.href = '/auth/google';
+                        }
+
+                        function showWarningAlert(type, message) {
+                            const alertDiv = document.getElementById('loginWarningAlert');
+                            const warningTitle = document.getElementById('loginWarningTitle');
+                            const warningText = document.getElementById('loginWarningText');
+                            const warningIcon = document.getElementById('loginWarningIcon');
+                            const submitBtn = document.querySelector('#signinForm button[type="submit"]');
+
+                            alertDiv.classList.remove('hidden');
+
+                            // Reset classes
+                            alertDiv.className = "mb-4 rounded-xl p-4 flex items-start gap-3 shadow-sm transition-all duration-300";
+                            
+                            if (type === 'block') {
+                                alertDiv.classList.add('bg-red-50', 'border', 'border-red-400', 'text-red-800');
+                                warningTitle.textContent = "Akses Diblokir";
+                                warningIcon.textContent = "block";
+                                warningText.textContent = message;
+                                submitBtn.disabled = true;
+                                submitBtn.classList.add('opacity-50', 'cursor-not-allowed');
+                            } else if (type === 'lock') {
+                                alertDiv.classList.add('bg-red-50', 'border', 'border-red-400', 'text-red-800');
+                                warningTitle.textContent = "Terlalu Banyak Percobaan";
+                                warningIcon.textContent = "hourglass_empty";
+                                submitBtn.disabled = true;
+                                submitBtn.classList.add('opacity-50', 'cursor-not-allowed');
+
+                                let remaining = parseInt(message);
+                                warningText.textContent = `Terlalu banyak percobaan. Harap tunggu ${remaining} detik sebelum mencoba lagi.`;
+
+                                if (countdownInterval) clearInterval(countdownInterval);
+                                countdownInterval = setInterval(() => {
+                                    remaining--;
+                                    if (remaining <= 0) {
+                                        clearInterval(countdownInterval);
+                                        submitBtn.disabled = false;
+                                        submitBtn.classList.remove('opacity-50', 'cursor-not-allowed');
+                                        alertDiv.classList.add('hidden');
+                                    } else {
+                                        warningText.textContent = `Terlalu banyak percobaan. Harap tunggu ${remaining} detik sebelum mencoba lagi.`;
+                                    }
+                                }, 1000);
+                            } else {
+                                // warning (1-9)
+                                alertDiv.classList.add('bg-yellow-50', 'border', 'border-yellow-400', 'text-yellow-800');
+                                warningTitle.textContent = "Gagal Masuk";
+                                warningIcon.textContent = "warning";
+                                warningText.textContent = message;
+                                submitBtn.disabled = false;
+                                submitBtn.classList.remove('opacity-50', 'cursor-not-allowed');
+                                if (countdownInterval) clearInterval(countdownInterval);
+                            }
                         }
 
                         document.getElementById('signinForm').addEventListener('submit', function(e) {
@@ -138,7 +204,13 @@ $appName = $db->query("SELECT `value` FROM global_settings WHERE `key` = 'app_na
                                         window.location.href = data.redirect;
                                     });
                                 } else {
-                                    Swal.fire('Gagal!', data.message, 'error');
+                                    if (data.is_blocked) {
+                                        showWarningAlert('block', data.message);
+                                    } else if (data.lockout_duration) {
+                                        showWarningAlert('lock', data.lockout_duration);
+                                    } else {
+                                        showWarningAlert('warn', data.message);
+                                    }
                                 }
                             })
                             .catch(err => Swal.fire('Error!', 'Koneksi ke server gagal.', 'error'));

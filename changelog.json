@@ -1,5 +1,272 @@
 [
     {
+        "version": "local-26.06.00021",
+        "edition": "enterprise",
+        "repo_type": "mono",
+        "compiled_date": "2026-06-26",
+        "migration_level": "stg -> production",
+        "alias_name": null,
+        "summary": {
+            "added": [
+                "Proteksi URL level-controller untuk route \"changelogs/guide\" (Pedoman Penomoran) agar mengembalikan error 403 jika diakses non-admin.",
+                "Penerapan custom scrollbar premium tipis (6px) rounded dan scroll listener dinamis (class '.is-scrolling') di layouts/guest.php."
+            ],
+            "improved": [
+                "Penyempurnaan warna visual sort icon (panah tidak aktif) menjadi '#b0b2c3' agar tetap tampak redup, bukan tersamar putih."
+            ],
+            "fixed": [
+                "Optimalisasi performa table standardizer dengan menambahkan flag 'isStandardizing' di MutationObserver untuk mencegah loop tak terbatas.",
+                "Mempercepat loading data tabel pengguna dengan meniadakan cURL network request HEAD serial ke Gravatar.",
+                "Inisialisasi ulang standardisasi tabel saat navigasi SPA selesai agar sort icon langsung muncul tanpa refresh halaman manual."
+            ],
+            "removed": [
+                "Penghapusan style custom-scrollbar lokal di auth/signup.php untuk keselarasan dengan scrollbar global."
+            ],
+            "changed": [
+                "Pembatasan menu \"Pedoman Penomoran\" agar hanya tampil di role admin & superadmin di sidebar.",
+                "Mengubah query parameter Gravatar default dari 'd=404' menjadi 'd=identicon' di seluruh controllers dan views untuk performa optimal.",
+                "Mengganti fallback default profil kosong di seluruh UI menu sidebar dan header dengan motif Identicon dinamis."
+            ]
+        }
+    },
+    {
+        "version": "local-26.06.00020",
+        "edition": "enterprise",
+        "repo_type": "mono",
+        "compiled_date": "2026-06-26",
+        "migration_level": "stg -> production",
+        "alias_name": null,
+        "summary": {
+            "changed": [
+                "Kustomisasi pagination tabel manajemen pengguna (Superadmin & Admin) untuk menampilkan info data range di sebelah kiri dan navigasi halaman dengan tombol First/Last/Prev/Next serta 3 page numbers berpusat di halaman aktif di sebelah kanan."
+            ]
+        }
+    },
+    {
+        "version": "local-26.06.00019",
+        "edition": "enterprise",
+        "repo_type": "mono",
+        "compiled_date": "2026-06-25",
+        "migration_level": "stg -> production",
+        "alias_name": null,
+        "summary": {
+            "changed": [
+                "Penghapusan fitur Menu Builder dan Matriks Akses (ACL) secara bersih pada kode program (views, controller, routes, seeder) serta entri database terkait dan pembersihan cache sidebar."
+            ]
+        }
+    },
+    {
+        "version": "local-26.06.00018",
+        "edition": "enterprise",
+        "repo_type": "mono",
+        "compiled_date": "2026-06-25",
+        "migration_level": "stg -> production",
+        "alias_name": null,
+        "summary": {
+            "fixed": [
+                "Perbaikan overflow layout sidebar collapsed (minimize) agar terpotong rapi sesuai batas wadah dan bagian menu navigasi dapat di-scroll dengan custom scrollbar tipis, serta implementasi floating tooltip berbasis JavaScript untuk menggantikan tooltip CSS."
+            ]
+        }
+    },
+    {
+        "version": "local-26.06.00017",
+        "edition": "enterprise",
+        "repo_type": "mono",
+        "compiled_date": "2026-06-25",
+        "migration_level": "stg -> production",
+        "alias_name": null,
+        "summary": {
+            "local-26.06.00017": [
+                "Memperluas form edit user/employee modal di Admin dan Superadmin untuk memuat semua kolom profil pribadi dan kepegawaian yang dapat diubah serta pembersihan base_salary/plafon desimal saat save."
+            ]
+        }
+    },
+    {
+        "version": "local-26.06.00016",
+        "edition": "enterprise",
+        "repo_type": "mono",
+        "compiled_date": "2026-06-25",
+        "migration_level": "stg -> production",
+        "alias_name": null,
+        "summary": {
+            "added": [
+                "Mengintegrasikan tombol Edit Data User Lengkap, Suspend/Aktifkan, dan Hapus Pengguna di kolom aksi Manajemen Pengguna Admin dan Superadmin, serta memvalidasi status penangguhan saat login."
+            ],
+            "changed": [
+                "Memperbarui judul halaman Manajemen Pengguna, label modal edit lengkap, serta menyesuaikan pesan sukses penyimpanan data pengguna pada portal Admin dan Superadmin."
+            ]
+        }
+    },
+    {
+        "version": "local-26.06.00015",
+        "edition": "enterprise",
+        "repo_type": "mono",
+        "compiled_date": "2026-06-25",
+        "migration_level": "stg -> production",
+        "alias_name": null,
+        "summary": {
+            "added": [
+                "Mengintegrasikan tombol Edit Data User Lengkap, Suspend/Aktifkan, dan Hapus Pengguna di kolom aksi Manajemen Pengguna Admin dan Superadmin, serta memvalidasi status penangguhan saat login."
+            ]
+        }
+    },
+    {
+        "version": "local-26.06.00014",
+        "edition": "enterprise",
+        "repo_type": "mono",
+        "compiled_date": "2026-06-22",
+        "migration_level": "stg -> production",
+        "alias_name": null,
+        "summary": {
+            "improved": [
+                "Menyempurnakan detail pesan error pada kegagalan login untuk secara spesifik menginformasikan apabila email tidak terdaftar (Email tidak terdaftar) atau kata sandi salah (Kata sandi salah) bersama dengan informasi sisa percobaan."
+            ]
+        }
+    },
+    {
+        "version": "local-26.06.00013",
+        "edition": "enterprise",
+        "repo_type": "mono",
+        "compiled_date": "2026-06-22",
+        "migration_level": "stg -> production",
+        "alias_name": null,
+        "summary": {
+            "added": [
+                "Menambahkan fitur throttling login berbasis database. Percobaan 1-9 menampilkan sisa percobaan. Percobaan 10-12 memberikan penguncian 15s hingga 150s. Percobaan 13-20 melipatgandakan durasi penguncian sebelumnya. Percobaan 21+ memblokir akun secara permanen."
+            ]
+        }
+    },
+    {
+        "version": "local-26.06.00012",
+        "edition": "enterprise",
+        "repo_type": "mono",
+        "compiled_date": "2026-06-22",
+        "migration_level": "stg -> production",
+        "alias_name": null,
+        "summary": {
+            "removed": [
+                "Menghapus tabel redundan system_menus dan department_menu_privileges yang tidak digunakan oleh sistem. Memperbarui migrasi SeedSysMenusAndPermissions untuk menggunakan UUID v4 acak (random) alih-alih UUID berurutan, serta menyinkronkan ulang database."
+            ]
+        }
+    },
+    {
+        "version": "local-26.06.00011",
+        "edition": "enterprise",
+        "repo_type": "mono",
+        "compiled_date": "2026-06-22",
+        "migration_level": "stg -> production",
+        "alias_name": null,
+        "summary": {
+            "fixed": [
+                "Memperbaiki query pengambilan versi skema terinstal di halaman Pembaruan Sistem dan daftar Changelogs agar diurutkan berdasarkan string versi terbalik (version DESC), sehingga versi terbaru (local-26.06.00010) teridentifikasi secara akurat."
+            ]
+        }
+    },
+    {
+        "version": "local-26.06.00010",
+        "edition": "enterprise",
+        "repo_type": "mono",
+        "compiled_date": "2026-06-22",
+        "migration_level": "stg -> production",
+        "alias_name": null,
+        "summary": {
+            "improved": [
+                "Memperbaiki dan menyeragamkan ukuran foto profil pemohon (w-10 h-10) serta ukuran teks nama pemohon (text-sm) di halaman Global Approval Center, serta menyetel label portal header secara dinamis menjadi \"Portal Superadmin\" berdasarkan peran pengguna"
+            ]
+        }
+    },
+    {
+        "version": "local-26.06.00009",
+        "edition": "enterprise",
+        "repo_type": "mono",
+        "compiled_date": "2026-06-22",
+        "migration_level": "stg -> production",
+        "alias_name": null,
+        "summary": {
+            "security": [
+                "Mengimplementasikan otorisasi dan validasi JWT Token pada seluruh operasi CRUD data (POST) untuk mencegah manipulasi data tidak sah dan serangan CSRF"
+            ]
+        }
+    },
+    {
+        "version": "local-26.06.00008",
+        "edition": "enterprise",
+        "repo_type": "mono",
+        "compiled_date": "2026-06-22",
+        "migration_level": "stg -> production",
+        "alias_name": null,
+        "summary": {
+            "improved": [
+                "Memperbaiki foto profil pemohon di Global Approval Center agar memprioritaskan database profile_picture sebelum Gravatar"
+            ]
+        }
+    },
+    {
+        "version": "local-26.06.00007",
+        "edition": "enterprise",
+        "repo_type": "mono",
+        "compiled_date": "2026-06-22",
+        "migration_level": "stg -> production",
+        "alias_name": null,
+        "summary": {
+            "improved": [
+                "Standardisasi tampilan foto profil pemohon pada halaman Global Approval Center menggunakan Gravatar dengan fallback, menyelaraskan dengan aturan global aplikasi"
+            ]
+        }
+    },
+    {
+        "version": "local-26.06.00006",
+        "edition": "enterprise",
+        "repo_type": "mono",
+        "compiled_date": "2026-06-22",
+        "migration_level": "stg -> production",
+        "alias_name": null,
+        "summary": {
+            "added": [
+                "Penambahan metode presensi POP (Presensi Online Portal) untuk laptop/desktop yang tidak memiliki GPS fisik, termasuk bypass validasi radius"
+            ]
+        }
+    },
+    {
+        "version": "local-26.06.00005",
+        "edition": "enterprise",
+        "repo_type": "mono",
+        "compiled_date": "2026-06-22",
+        "migration_level": "stg -> production",
+        "alias_name": null,
+        "summary": {
+            "removed": [
+                "Penghapusan total fitur alarm presensi beserta tombol pengaturan dan berkas audio pengingat (samsung_s25.mp3)"
+            ]
+        }
+    },
+    {
+        "version": "local-26.06.00004",
+        "edition": "enterprise",
+        "repo_type": "mono",
+        "compiled_date": "2026-06-22",
+        "migration_level": "stg -> production",
+        "alias_name": null,
+        "summary": {
+            "improved": [
+                "Mengubah desain banner simulasi login menjadi kartu melayang (floating card) dengan rounded-2xl dan bayangan lembut agar selaras dengan desain sidebar"
+            ]
+        }
+    },
+    {
+        "version": "local-26.06.00003",
+        "edition": "enterprise",
+        "repo_type": "mono",
+        "compiled_date": "2026-06-22",
+        "migration_level": "stg -> production",
+        "alias_name": null,
+        "summary": {
+            "fixed": [
+                "Penempatan tombol hamburger menu langsung di dalam banner simulasi login agar tidak tertutup ketika banner melipat di layar kecil"
+            ]
+        }
+    },
+    {
         "version": "local-26.06.00002",
         "edition": "enterprise",
         "repo_type": "mono",

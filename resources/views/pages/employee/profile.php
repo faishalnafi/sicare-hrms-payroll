@@ -20,7 +20,7 @@ $profilePic = $dbUser['profile_picture'] ?? $_SESSION['profile_picture'] ?? null
 
 $hash = md5(strtolower(trim($sessEmail)));
 if (empty($profilePic)) {
-    $profilePic = "https://www.gravatar.com/avatar/{$hash}?d=404&s=200";
+    $profilePic = "https://www.gravatar.com/avatar/{$hash}?d=identicon&s=200";
 }
 
 $employeeId = !empty($dbUser['employee_id']) ? $dbUser['employee_id'] : '-';
@@ -74,7 +74,7 @@ $pendingRequests = $reqQuery->fetchAll();
                 
                 <div class="relative flex flex-col items-center">
                     <div class="relative mb-4">
-                        <img alt="Foto Profil" class="w-32 h-32 rounded-full object-cover border-4 border-surface shadow-md bg-white" src="<?php echo htmlspecialchars($profilePic); ?>" onerror="window.handleAvatarError(this, '<?= $hash ?>')"/>
+                        <img referrerpolicy="no-referrer" alt="Foto Profil" class="w-32 h-32 rounded-full object-cover border-4 border-surface shadow-md bg-white" src="<?php echo htmlspecialchars($profilePic); ?>" onerror="window.handleAvatarError(this, '<?= $hash ?>')"/>
                         <button onclick="Swal.fire({title: 'Ubah Foto Profil', text: 'Unggah foto profil baru divalidasi aman via server. Maks 10MB.', icon: 'info', confirmButtonColor: '#000666'})" class="hidden absolute bottom-1 right-1 bg-primary text-white p-2 rounded-full shadow-lg hover:scale-110 active:scale-95 transition-all">
                             <span class="material-symbols-outlined text-sm">photo_camera</span>
                         </button>
