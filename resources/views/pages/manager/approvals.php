@@ -28,8 +28,26 @@ if (!empty($managerDeptId)) {
 }
 
 // Check department status
-$hasDepartment = !empty($allowedDepts);
-$inClause = $hasDepartment ? implode(',', array_map(fn($id) => $db->quote($id), $allowedDepts)) : "''";
+$sessRole = $_SESSION['role'] ?? '';
+$isSuperAdmin = $sessRole === 'superadmin';
+
+$hasDepartment = $isSuperAdmin ? true : !empty($allowedDepts);
+$inClause = !empty($allowedDepts) ? implode(',', array_map(fn($id) => $db->quote($id), $allowedDepts)) : "''";
+$deptFilter = $isSuperAdmin ? "" : "WHERE u.department_id IN ($inClause)";
+$deptFilter2 = $isSuperAdmin ? "" : "AND department_id IN ($inClause)";
+
+// Dynamic Page Titles & Labels based on role
+$pageTitle = $isSuperAdmin ? "Persetujuan Level Manager" : "Persetujuan Tim";
+$pageSubtitle = $isSuperAdmin ? "Kelola, setujui, tolak, dan audit Cuti, Reimbursement, serta Presensi seluruh pengguna di sistem." : "Kelola, setujui, tolak, dan audit Cuti, Reimbursement, serta Presensi tim di bawah departemen Anda.";
+$badgeLabel = $isSuperAdmin ? "Akses Global Sistem" : "Divisi Fungsional Terhubung";
+$kpiUsersLabel = $isSuperAdmin ? "Total Pengguna Sistem" : "Total Anggota Tim";
+$tabAttendanceLabel = $isSuperAdmin ? "Presensi Karyawan" : "Presensi Tim";
+$tableLeavesTitle = $isSuperAdmin ? "Daftar Riwayat Cuti & Izin" : "Daftar Riwayat Cuti & Izin Tim";
+$tableReimTitle = $isSuperAdmin ? "Daftar Klaim & Reimbursement" : "Daftar Klaim & Reimbursement Tim";
+$tableAttendanceTitle = $isSuperAdmin ? "Audit Presensi & Kehadiran Harian" : "Audit Presensi & Kehadiran Harian Tim";
+$inputAttendanceLabel = $isSuperAdmin ? "Input Kehadiran" : "Input Kehadiran Tim";
+$selectEmployeeLabel = $isSuperAdmin ? "Karyawan / Pengguna" : "Karyawan Tim";
+$selectOptionLabel = $isSuperAdmin ? "-- Pilih Pengguna --" : "-- Pilih Staf Fungsional --";
 
 // A. Fetch Cuti (Leaves)
 $leaves = [];
@@ -38,7 +56,7 @@ if ($hasDepartment) {
         SELECT r.*, u.first_name, u.last_name, u.employee_id, u.email, u.profile_picture, u.job_title, u.role
         FROM employee_leave_requests r
         JOIN users u ON r.user_id = u.id
-        WHERE u.department_id IN ($inClause)
+        $deptFilter
         ORDER BY r.created_at DESC
     ");
     $leaves = $stmt->fetchAll(PDO::FETCH_ASSOC);
@@ -51,19 +69,20 @@ if ($hasDepartment) {
         SELECT c.*, u.first_name, u.last_name, u.employee_id, u.email, u.profile_picture, u.job_title, u.role
         FROM employee_reimbursement_claims c
         JOIN users u ON c.user_id = u.id
-        WHERE u.department_id IN ($inClause)
+        $deptFilter
         ORDER BY c.created_at DESC
     ");
     $reimbursements = $stmt->fetchAll(PDO::FETCH_ASSOC);
 }
 
-// C. Fetch Team Members List for Attendance dropdown select
+// C. Fetch Team Members List for Attendance dropdown select & Total Users count
 $teamMembers = [];
 if ($hasDepartment) {
+    $userWhere = $isSuperAdmin ? "WHERE role != 'candidate'" : "WHERE role = 'employee' $deptFilter2";
     $stmt = $db->query("
-        SELECT id, first_name, last_name, employee_id, job_title 
+        SELECT id, first_name, last_name, employee_id, job_title, role 
         FROM users 
-        WHERE role = 'employee' AND department_id IN ($inClause)
+        $userWhere
         ORDER BY first_name ASC
     ");
     $teamMembers = $stmt->fetchAll(PDO::FETCH_ASSOC);
@@ -125,14 +144,14 @@ function getGravatarIcon($email) {
     <!-- Page Header -->
     <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div class="space-y-1">
-            <h1 class="font-headline text-3xl font-extrabold text-primary tracking-tight">Persetujuan Tim</h1>
-            <p class="text-on-surface-variant font-medium text-sm">Kelola, setujui, tolak, dan audit Cuti, Reimbursement, serta Presensi tim di bawah departemen Anda.</p>
+            <h1 class="font-headline text-3xl font-extrabold text-primary tracking-tight"><?= $pageTitle ?></h1>
+            <p class="text-on-surface-variant font-medium text-sm"><?= $pageSubtitle ?></p>
         </div>
         <?php if ($hasDepartment): ?>
         <div class="flex items-center gap-2">
             <span class="bg-green-50 text-green-700 text-xs font-extrabold px-3 py-1.5 rounded-lg border border-green-200/50 flex items-center gap-1.5">
                 <span class="w-1.5 h-1.5 bg-green-500 rounded-full animate-ping"></span>
-                Divisi Fungsional Terhubung
+                <?= $badgeLabel ?>
             </span>
         </div>
         <?php endif; ?>
@@ -151,29 +170,36 @@ function getGravatarIcon($email) {
 
     <!-- KPI Summary Cards -->
     <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <!-- Team Members KPI (Far Left & Blue Gradient) -->
+        <div class="bg-gradient-to-br from-primary to-blue-900 text-white rounded-2xl p-5 shadow-md flex flex-col justify-between min-h-[140px] relative overflow-hidden group">
+            <div class="absolute right-0 bottom-0 opacity-10 translate-x-2 translate-y-2 group-hover:scale-110 transition-transform duration-500">
+                <span class="material-symbols-outlined text-9xl">groups</span>
+            </div>
+            <div class="flex items-center justify-between z-10">
+                <span class="text-[10px] font-bold uppercase tracking-wider text-blue-200"><?= $kpiUsersLabel ?></span>
+                <span class="material-symbols-outlined text-blue-200 bg-white/10 p-1.5 rounded-lg text-sm">groups</span>
+            </div>
+            <div class="mt-4 z-10">
+                <h3 class="text-2xl font-black"><?= count($teamMembers) ?> <span class="text-xs font-semibold text-blue-200">Pengguna</span></h3>
+            </div>
+        </div>
+
         <!-- Leaves KPI -->
-        <div class="bg-surface-container-lowest rounded-2xl p-5 border border-outline-variant/15 shadow-[0_4px_20px_rgba(0,6,102,0.01)] flex items-center justify-between">
+        <div class="stat-card-scale bg-surface-container-lowest rounded-2xl p-5 border border-outline-variant/15 shadow-[0_4px_20px_rgba(0,6,102,0.01)] flex items-center justify-between">
             <div class="space-y-2">
                 <span class="text-[10px] font-extrabold text-on-surface-variant uppercase tracking-wider">Cuti Butuh ACC</span>
                 <h3 class="text-2xl font-black text-amber-700"><?= $pendingLeavesCount ?> <span class="text-xs font-semibold text-amber-600">Pengajuan</span></h3>
             </div>
             <span class="material-symbols-outlined text-amber-600 bg-amber-50 p-3 rounded-2xl text-xl font-bold <?= $pendingLeavesCount > 0 ? 'animate-pulse' : '' ?>">pending_actions</span>
         </div>
+
         <!-- Reimbursement KPI -->
-        <div class="bg-surface-container-lowest rounded-2xl p-5 border border-outline-variant/15 shadow-[0_4px_20px_rgba(0,6,102,0.01)] flex items-center justify-between">
+        <div class="stat-card-scale bg-surface-container-lowest rounded-2xl p-5 border border-outline-variant/15 shadow-[0_4px_20px_rgba(0,6,102,0.01)] flex items-center justify-between">
             <div class="space-y-2">
                 <span class="text-[10px] font-extrabold text-on-surface-variant uppercase tracking-wider">Klaim Butuh ACC</span>
                 <h3 class="text-2xl font-black text-blue-700"><?= $pendingReimCount ?> <span class="text-xs font-semibold text-blue-600">Klaim</span></h3>
             </div>
             <span class="material-symbols-outlined text-blue-600 bg-blue-50 p-3 rounded-2xl text-xl font-bold <?= $pendingReimCount > 0 ? 'animate-pulse' : '' ?>">receipt_long</span>
-        </div>
-        <!-- Team Members KPI -->
-        <div class="bg-surface-container-lowest rounded-2xl p-5 border border-outline-variant/15 shadow-[0_4px_20px_rgba(0,6,102,0.01)] flex items-center justify-between">
-            <div class="space-y-2">
-                <span class="text-[10px] font-extrabold text-on-surface-variant uppercase tracking-wider">Total Anggota Tim</span>
-                <h3 class="text-2xl font-black text-primary"><?= count($teamMembers) ?> <span class="text-xs font-semibold text-primary/70">Karyawan</span></h3>
-            </div>
-            <span class="material-symbols-outlined text-primary bg-primary/5 p-3 rounded-2xl text-xl font-bold">groups</span>
         </div>
     </div>
 
@@ -195,7 +221,7 @@ function getGravatarIcon($email) {
         </button>
         <button onclick="switchTab('attendance-tab'); fetchAttendanceLogs();" id="btn-attendance-tab" class="tab-btn flex-1 py-3 px-4 rounded-xl font-bold text-xs flex items-center justify-center gap-2 transition-all cursor-pointer text-on-surface-variant hover:bg-surface-container-low">
             <span class="material-symbols-outlined text-sm">co_present</span>
-            Presensi Tim
+            <?= $tabAttendanceLabel ?>
         </button>
     </div>
 
@@ -207,11 +233,11 @@ function getGravatarIcon($email) {
                 <div class="px-6 py-4 border-b border-outline-variant/15 bg-surface-container-low/20">
                     <h3 class="text-sm font-extrabold text-on-surface font-headline flex items-center gap-2">
                         <span class="material-symbols-outlined text-primary text-lg">list_alt</span>
-                        Daftar Riwayat Cuti & Izin Tim
+                        <?= $tableLeavesTitle ?>
                     </h3>
                 </div>
                 <div class="overflow-x-auto">
-                    <table class="min-w-[1100px] w-full text-left border-collapse">
+                    <table class="min-w-[1100px] w-full text-left border-collapse table-standardized" data-has-custom-pagination="true">
                         <thead>
                             <tr class="bg-surface-container-low/30 border-b border-outline-variant/10 text-[10px] font-extrabold text-on-surface-variant uppercase tracking-wider">
                                 <th class="py-4 px-6">Karyawan</th>
@@ -317,11 +343,11 @@ function getGravatarIcon($email) {
                 <div class="px-6 py-4 border-b border-outline-variant/15 bg-surface-container-low/20">
                     <h3 class="text-sm font-extrabold text-on-surface font-headline flex items-center gap-2">
                         <span class="material-symbols-outlined text-primary text-lg">receipt_long</span>
-                        Daftar Klaim & Reimbursement Tim
+                        <?= $tableReimTitle ?>
                     </h3>
                 </div>
                 <div class="overflow-x-auto">
-                    <table class="min-w-[1200px] w-full text-left border-collapse">
+                    <table class="min-w-[1200px] w-full text-left border-collapse table-standardized" data-has-custom-pagination="true">
                         <thead>
                             <tr class="bg-surface-container-low/30 border-b border-outline-variant/10 text-[10px] font-extrabold text-on-surface-variant uppercase tracking-wider">
                                 <th class="py-4 px-6">Karyawan</th>
@@ -339,7 +365,7 @@ function getGravatarIcon($email) {
                             <tr>
                                 <td colspan="8" class="py-12 px-6 text-center text-on-surface-variant font-medium">
                                     <span class="material-symbols-outlined text-4xl text-outline-variant block mb-2">assignment_late</span>
-                                    Belum ada riwayat pengajuan reimbursement dari staf fungsional Anda.
+                                    Belum ada riwayat pengajuan reimbursement yang tercatat.
                                 </td>
                             </tr>
                             <?php else: ?>
@@ -424,7 +450,7 @@ function getGravatarIcon($email) {
                 <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
                     <h3 class="text-sm font-extrabold text-on-surface font-headline flex items-center gap-2">
                         <span class="material-symbols-outlined text-primary text-lg">co_present</span>
-                        Audit Presensi & Kehadiran Tim Harian
+                        <?= $tableAttendanceTitle ?>
                     </h3>
                     
                     <div class="flex flex-col md:flex-row items-stretch md:items-center gap-3 w-full md:w-auto">
@@ -435,7 +461,7 @@ function getGravatarIcon($email) {
                         </div>
                         <!-- Add attendance record manually -->
                         <button onclick="openAddAttendanceModal()" class="bg-primary hover:bg-primary/95 text-white font-bold text-xs py-2.5 px-4 rounded-xl flex items-center justify-center gap-2 transition-all shadow-md shadow-primary/10 cursor-pointer">
-                            <span class="material-symbols-outlined text-sm">add_task</span> Input Kehadiran Tim
+                            <span class="material-symbols-outlined text-sm">add_task</span> <?= $inputAttendanceLabel ?>
                         </button>
                     </div>
                 </div>
@@ -462,7 +488,7 @@ function getGravatarIcon($email) {
 
                 <!-- Table -->
                 <div class="overflow-x-auto border border-outline-variant/10 rounded-xl">
-                    <table class="min-w-[1200px] w-full text-left border-collapse" id="attendance-table">
+                    <table class="min-w-[1200px] w-full text-left border-collapse table-standardized" id="attendance-table" data-has-custom-pagination="true">
                         <thead>
                             <tr class="bg-surface-container-low/30 border-b border-outline-variant/10 text-[10px] font-extrabold text-on-surface-variant uppercase tracking-wider">
                                 <th class="py-4 px-6">Karyawan</th>

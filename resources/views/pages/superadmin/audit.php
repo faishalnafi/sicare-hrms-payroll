@@ -100,7 +100,7 @@
                         <select id="auditTableFilter" class="w-full bg-surface-container-low border border-outline-variant/30 text-on-surface text-sm rounded-xl pl-10 pr-10 py-2.5 appearance-none focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all">
                             <option value="">Semua Tabel</option>
                         </select>
-                        <span class="material-symbols-outlined absolute right-3 top-1/2 -translate-y-1/2 text-on-surface-variant/50 pointer-events-none">expand_more</span>
+                        
                     </div>
                 </div>
                 <!-- Action Buttons -->
@@ -149,14 +149,27 @@
 
         <!-- Pagination -->
         <div id="auditLogPagination" class="px-6 py-4 border-t border-outline-variant/15 flex items-center justify-between bg-surface-container-low/30 hidden">
-            <p id="auditLogPaginationInfo" class="text-xs font-semibold text-on-surface-variant"></p>
-            <div class="flex items-center gap-1">
-                <button id="auditPrevBtn" onclick="window.prevAuditPage()" class="p-2 flex items-center justify-center rounded-full hover:bg-surface-container-high text-on-surface-variant disabled:opacity-30 disabled:cursor-not-allowed transition-colors border border-transparent disabled:hover:bg-transparent">
+            <div id="auditLogPaginationInfo" class="table-pagination-info text-sm text-on-surface-variant font-medium"></div>
+            <div class="flex items-center gap-1.5">
+                <!-- First Page -->
+                <button id="auditFirstBtn" onclick="window.firstAuditPage()" class="p-2 flex items-center justify-center rounded-full hover:bg-surface-container-high text-on-surface-variant disabled:opacity-30 disabled:cursor-not-allowed transition-colors border border-transparent disabled:hover:bg-transparent" title="Halaman Pertama">
+                    <span class="material-symbols-outlined text-sm">first_page</span>
+                </button>
+                <!-- Prev Page -->
+                <button id="auditPrevBtn" onclick="window.prevAuditPage()" class="p-2 flex items-center justify-center rounded-full hover:bg-surface-container-high text-on-surface-variant disabled:opacity-30 disabled:cursor-not-allowed transition-colors border border-transparent disabled:hover:bg-transparent" title="Halaman Sebelumnya">
                     <span class="material-symbols-outlined text-sm">chevron_left</span>
                 </button>
+                
+                <!-- Page numbers container -->
                 <div id="auditPageNumbers" class="flex items-center gap-1"></div>
-                <button id="auditNextBtn" onclick="window.nextAuditPage()" class="p-2 flex items-center justify-center rounded-full hover:bg-surface-container-high text-on-surface-variant disabled:opacity-30 disabled:cursor-not-allowed transition-colors border border-transparent disabled:hover:bg-transparent">
+
+                <!-- Next Page -->
+                <button id="auditNextBtn" onclick="window.nextAuditPage()" class="p-2 flex items-center justify-center rounded-full hover:bg-surface-container-high text-on-surface-variant disabled:opacity-30 disabled:cursor-not-allowed transition-colors border border-transparent disabled:hover:bg-transparent" title="Halaman Berikutnya">
                     <span class="material-symbols-outlined text-sm">chevron_right</span>
+                </button>
+                <!-- Last Page -->
+                <button id="auditLastBtn" onclick="window.lastAuditPage()" class="p-2 flex items-center justify-center rounded-full hover:bg-surface-container-high text-on-surface-variant disabled:opacity-30 disabled:cursor-not-allowed transition-colors border border-transparent disabled:hover:bg-transparent" title="Halaman Terakhir">
+                    <span class="material-symbols-outlined text-sm">last_page</span>
                 </button>
             </div>
         </div>
@@ -359,8 +372,10 @@
         var pagination = document.getElementById('auditLogPagination');
         var infoEl     = document.getElementById('auditLogPaginationInfo');
         var pageNumsEl = document.getElementById('auditPageNumbers');
+        var firstBtn   = document.getElementById('auditFirstBtn');
         var prevBtn    = document.getElementById('auditPrevBtn');
         var nextBtn    = document.getElementById('auditNextBtn');
+        var lastBtn    = document.getElementById('auditLastBtn');
 
         if (!pagination) return;
 
@@ -374,53 +389,39 @@
 
         // Info text
         if (infoEl) {
-            infoEl.textContent = 'Halaman ' + currentAuditPage + ' dari ' + totalAuditPages + ' (' + formatNumber(totalAuditItems) + ' entri)';
+            var startShow = totalAuditItems === 0 ? 0 : (currentAuditPage - 1) * 10 + 1;
+            var endShow = Math.min(currentAuditPage * 10, totalAuditItems);
+            infoEl.textContent = 'Menampilkan data ' + startShow + ' sampai ' + endShow + ' dari ' + totalAuditItems;
         }
 
-        // Prev/Next buttons
+        // Disabled states
+        if (firstBtn) firstBtn.disabled = currentAuditPage <= 1;
         if (prevBtn) prevBtn.disabled = currentAuditPage <= 1;
-        if (nextBtn) nextBtn.disabled = currentAuditPage >= totalAuditPages;
+        if (nextBtn) nextBtn.disabled = currentAuditPage >= totalAuditPages || totalAuditPages === 0;
+        if (lastBtn) lastBtn.disabled = currentAuditPage >= totalAuditPages || totalAuditPages === 0;
 
-        // Page number buttons
+        // Page number buttons (max 3 centered)
         if (pageNumsEl) {
             pageNumsEl.innerHTML = '';
 
-            var startPage = Math.max(1, currentAuditPage - 2);
-            var endPage   = Math.min(totalAuditPages, currentAuditPage + 2);
+            var startPage = 1;
+            var endPage   = totalAuditPages;
 
-            // Ensure we always show at least 5 pages if available
-            if (endPage - startPage < 4) {
-                if (startPage === 1) {
-                    endPage = Math.min(totalAuditPages, startPage + 4);
-                } else if (endPage === totalAuditPages) {
-                    startPage = Math.max(1, endPage - 4);
-                }
-            }
-
-            // First page + ellipsis
-            if (startPage > 1) {
-                pageNumsEl.appendChild(createPageBtn(1));
-                if (startPage > 2) {
-                    var dots = document.createElement('span');
-                    dots.className = 'px-1 text-on-surface-variant/50 text-xs font-bold';
-                    dots.textContent = '…';
-                    pageNumsEl.appendChild(dots);
+            if (totalAuditPages > 3) {
+                if (currentAuditPage === 1) {
+                    startPage = 1;
+                    endPage = 3;
+                } else if (currentAuditPage === totalAuditPages) {
+                    startPage = totalAuditPages - 2;
+                    endPage = totalAuditPages;
+                } else {
+                    startPage = currentAuditPage - 1;
+                    endPage = currentAuditPage + 1;
                 }
             }
 
             for (var p = startPage; p <= endPage; p++) {
                 pageNumsEl.appendChild(createPageBtn(p));
-            }
-
-            // Last page + ellipsis
-            if (endPage < totalAuditPages) {
-                if (endPage < totalAuditPages - 1) {
-                    var dots = document.createElement('span');
-                    dots.className = 'px-1 text-on-surface-variant/50 text-xs font-bold';
-                    dots.textContent = '…';
-                    pageNumsEl.appendChild(dots);
-                }
-                pageNumsEl.appendChild(createPageBtn(totalAuditPages));
             }
         }
     }
@@ -428,19 +429,26 @@
     function createPageBtn(pageNum) {
         var btn = document.createElement('button');
         btn.type = 'button';
+        btn.className = 'w-8 h-8 flex items-center justify-center rounded-full text-xs font-semibold transition-all border ';
         btn.textContent = pageNum;
 
         if (pageNum === currentAuditPage) {
-            btn.className = 'w-9 h-9 flex items-center justify-center rounded-full bg-primary text-white text-xs font-extrabold shadow-sm';
+            btn.className += 'bg-primary text-white border-primary shadow-sm';
             btn.disabled = true;
         } else {
-            btn.className = 'w-9 h-9 flex items-center justify-center rounded-full hover:bg-surface-container-high text-on-surface-variant text-xs font-bold transition-colors';
+            btn.className += 'hover:bg-surface-container-high text-on-surface border-transparent';
             btn.onclick = function() { window.loadAuditLogs(pageNum); };
         }
         return btn;
     }
 
     // ─── Pagination Navigation ──────────────────────────────────────────────────
+    window.firstAuditPage = function() {
+        if (currentAuditPage > 1) {
+            window.loadAuditLogs(1);
+        }
+    };
+
     window.prevAuditPage = function() {
         if (currentAuditPage > 1) {
             window.loadAuditLogs(currentAuditPage - 1);
@@ -450,6 +458,12 @@
     window.nextAuditPage = function() {
         if (currentAuditPage < totalAuditPages) {
             window.loadAuditLogs(currentAuditPage + 1);
+        }
+    };
+
+    window.lastAuditPage = function() {
+        if (currentAuditPage < totalAuditPages) {
+            window.loadAuditLogs(totalAuditPages);
         }
     };
 

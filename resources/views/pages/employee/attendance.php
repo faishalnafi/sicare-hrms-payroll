@@ -166,6 +166,10 @@ function clockOutStatusLabel($status) {
     border-radius: 50%;
     background: rgba(255,255,255,0.04);
     pointer-events: none;
+    transition: transform 0.5s ease;
+}
+.att-hero-card:hover::before {
+    transform: scale(1.1);
 }
 .att-hero-card::after {
     content: '';
@@ -175,6 +179,10 @@ function clockOutStatusLabel($status) {
     border-radius: 50%;
     background: rgba(255,255,255,0.03);
     pointer-events: none;
+    transition: transform 0.5s ease;
+}
+.att-hero-card:hover::after {
+    transform: scale(1.1);
 }
 .att-btn-clockin {
     background: linear-gradient(135deg, #00c853 0%, #69f0ae 100%);
@@ -466,12 +474,12 @@ function clockOutStatusLabel($status) {
             </div>
             <div class="flex flex-wrap items-center gap-3">
                 <div class="flex items-center gap-1.5">
-                    <select id="filter_month" onchange="window.changeFilter()" class="text-xs font-bold text-on-surface bg-surface-container-low border border-outline-variant/10 px-3 py-1.5 rounded-xl outline-none cursor-pointer focus:border-primary transition-all">
+                    <select id="filter_month" onchange="window.changeFilter()" class="text-xs font-bold text-on-surface bg-surface-container-low border border-outline-variant/10 pl-3 pr-8 py-1.5 rounded-xl appearance-none outline-none cursor-pointer focus:border-primary transition-all">
                         <?php foreach ($monthsList as $mVal => $mName): ?>
                             <option value="<?= $mVal ?>" <?= $selectedMonth === $mVal ? 'selected' : '' ?>><?= $mName ?></option>
                         <?php endforeach; ?>
                     </select>
-                    <select id="filter_year" onchange="window.changeFilter()" class="text-xs font-bold text-on-surface bg-surface-container-low border border-outline-variant/10 px-3 py-1.5 rounded-xl outline-none cursor-pointer focus:border-primary transition-all">
+                    <select id="filter_year" onchange="window.changeFilter()" class="text-xs font-bold text-on-surface bg-surface-container-low border border-outline-variant/10 pl-3 pr-8 py-1.5 rounded-xl appearance-none outline-none cursor-pointer focus:border-primary transition-all">
                         <?php foreach ($yearsList as $yVal): ?>
                             <option value="<?= $yVal ?>" <?= (int)$selectedYear === $yVal ? 'selected' : '' ?>><?= $yVal ?></option>
                         <?php endforeach; ?>
@@ -484,7 +492,7 @@ function clockOutStatusLabel($status) {
         </div>
 
         <div class="overflow-x-auto">
-            <table class="w-full text-left border-collapse table-standardized">
+            <table class="w-full text-left border-collapse table-standardized" data-has-custom-pagination="true">
                 <thead>
                     <tr class="bg-surface text-on-surface-variant border-b border-outline-variant/10">
                         <th class="no-col w-12 text-center py-3 px-6 text-[10px] font-bold uppercase tracking-wider">No</th>
@@ -711,9 +719,30 @@ function clockOutStatusLabel($status) {
         </div>
         
         <!-- Pagination Controls -->
-        <div id="paginationControls" class="px-6 py-4 border-t border-outline-variant/10 flex items-center justify-end bg-surface-container-low/30 gap-2 hidden">
-            <button id="btnPrevPage" class="p-1.5 rounded-lg border border-outline-variant/20 text-on-surface hover:bg-surface-container-high transition-colors disabled:opacity-30 disabled:cursor-not-allowed"><span class="material-symbols-outlined text-sm">chevron_left</span></button>
-            <button id="btnNextPage" class="p-1.5 rounded-lg border border-outline-variant/20 text-on-surface hover:bg-surface-container-high transition-colors disabled:opacity-30 disabled:cursor-not-allowed"><span class="material-symbols-outlined text-sm">chevron_right</span></button>
+        <div id="paginationControls" class="px-6 py-4 border-t border-outline-variant/10 flex items-center justify-between bg-surface-container-low/30 hidden">
+            <div id="attendancePaginationInfo" class="table-pagination-info text-sm text-on-surface-variant font-medium"></div>
+            <div class="flex items-center gap-1.5">
+                <!-- First Page -->
+                <button id="btnAttendanceFirstPage" onclick="window.firstAttendancePage()" class="p-2 flex items-center justify-center rounded-full hover:bg-surface-container-high text-on-surface-variant disabled:opacity-30 disabled:cursor-not-allowed transition-colors border border-transparent disabled:hover:bg-transparent" title="Halaman Pertama">
+                    <span class="material-symbols-outlined text-sm">first_page</span>
+                </button>
+                <!-- Prev Page -->
+                <button id="btnPrevPage" onclick="window.prevAttendancePage()" class="p-2 flex items-center justify-center rounded-full hover:bg-surface-container-high text-on-surface-variant disabled:opacity-30 disabled:cursor-not-allowed transition-colors border border-transparent disabled:hover:bg-transparent" title="Halaman Sebelumnya">
+                    <span class="material-symbols-outlined text-sm">chevron_left</span>
+                </button>
+                
+                <!-- Page numbers container -->
+                <div id="attendancePageNumbers" class="flex items-center gap-1"></div>
+
+                <!-- Next Page -->
+                <button id="btnNextPage" onclick="window.nextAttendancePage()" class="p-2 flex items-center justify-center rounded-full hover:bg-surface-container-high text-on-surface-variant disabled:opacity-30 disabled:cursor-not-allowed transition-colors border border-transparent disabled:hover:bg-transparent" title="Halaman Berikutnya">
+                    <span class="material-symbols-outlined text-sm">chevron_right</span>
+                </button>
+                <!-- Last Page -->
+                <button id="btnAttendanceLastPage" onclick="window.lastAttendancePage()" class="p-2 flex items-center justify-center rounded-full hover:bg-surface-container-high text-on-surface-variant disabled:opacity-30 disabled:cursor-not-allowed transition-colors border border-transparent disabled:hover:bg-transparent" title="Halaman Terakhir">
+                    <span class="material-symbols-outlined text-sm">last_page</span>
+                </button>
+            </div>
         </div>
     </div>
 
@@ -726,10 +755,14 @@ function clockOutStatusLabel($status) {
     const rows = Array.from(document.querySelectorAll('.att-table-row'));
     const rowsPerPage = 10;
     let currentPage = 1;
+    let totalPages = Math.ceil(rows.length / rowsPerPage) || 1;
     
     function renderPagination() {
-        const totalPages = Math.ceil(rows.length / rowsPerPage);
-        if (totalPages <= 1) return;
+        if (totalPages <= 1) {
+            document.getElementById('paginationControls').classList.add('hidden');
+            rows.forEach(row => { row.style.display = ''; });
+            return;
+        }
         
         document.getElementById('paginationControls').classList.remove('hidden');
         
@@ -744,15 +777,92 @@ function clockOutStatusLabel($status) {
             }
         });
         
-        document.getElementById('btnPrevPage').disabled = currentPage === 1;
-        document.getElementById('btnNextPage').disabled = currentPage === totalPages;
+        // Info text
+        const infoEl = document.getElementById('attendancePaginationInfo');
+        if (infoEl) {
+            const startShow = rows.length === 0 ? 0 : start + 1;
+            const endShow = Math.min(end, rows.length);
+            infoEl.textContent = 'Menampilkan data ' + startShow + ' sampai ' + endShow + ' dari ' + rows.length;
+        }
+
+        // Disabled states
+        const firstBtn = document.getElementById('btnAttendanceFirstPage');
+        const prevBtn = document.getElementById('btnPrevPage');
+        const nextBtn = document.getElementById('btnNextPage');
+        const lastBtn = document.getElementById('btnAttendanceLastPage');
+
+        if (firstBtn) firstBtn.disabled = currentPage === 1;
+        if (prevBtn) prevBtn.disabled = currentPage === 1;
+        if (nextBtn) nextBtn.disabled = currentPage === totalPages;
+        if (lastBtn) lastBtn.disabled = currentPage === totalPages;
+
+        // Page numbers (max 3 centered)
+        const pageNumbersContainer = document.getElementById('attendancePageNumbers');
+        if (pageNumbersContainer) {
+            pageNumbersContainer.innerHTML = '';
+
+            let startPage = currentPage - 1;
+            let endPage = currentPage + 1;
+            if (startPage < 1) {
+                startPage = 1;
+                endPage = Math.min(3, totalPages);
+            }
+            if (endPage > totalPages) {
+                endPage = totalPages;
+                startPage = Math.max(1, totalPages - 2);
+            }
+
+            for (let p = startPage; p <= endPage; p++) {
+                (function(pageNum) {
+                    const btn = document.createElement('button');
+                    btn.type = 'button';
+                    btn.className = 'w-8 h-8 flex items-center justify-center rounded-full text-xs font-semibold transition-all border ';
+                    if (pageNum === currentPage) {
+                        btn.className += 'bg-primary text-white border-primary shadow-sm';
+                    } else {
+                        btn.className += 'hover:bg-surface-container-high text-on-surface border-transparent';
+                    }
+                    btn.textContent = pageNum;
+                    btn.onclick = function() {
+                        currentPage = pageNum;
+                        renderPagination();
+                    };
+                    pageNumbersContainer.appendChild(btn);
+                })(p);
+            }
+        }
     }
     
-    if (rows.length > rowsPerPage) {
-        document.getElementById('btnPrevPage').addEventListener('click', () => { if (currentPage > 1) { currentPage--; renderPagination(); } });
-        document.getElementById('btnNextPage').addEventListener('click', () => { if (currentPage < Math.ceil(rows.length / rowsPerPage)) { currentPage++; renderPagination(); } });
-        renderPagination();
-    }
+    window.firstAttendancePage = function() {
+        if (currentPage > 1) {
+            currentPage = 1;
+            renderPagination();
+        }
+    };
+
+    window.prevAttendancePage = function() {
+        if (currentPage > 1) {
+            currentPage--;
+            renderPagination();
+        }
+    };
+
+    window.nextAttendancePage = function() {
+        if (currentPage < totalPages) {
+            currentPage++;
+            renderPagination();
+        }
+    };
+
+    window.lastAttendancePage = function() {
+        if (currentPage < totalPages) {
+            currentPage = totalPages;
+            renderPagination();
+        }
+    };
+
+    // Initial render
+    renderPagination();
 })();
 
 // ── Office config from PHP settings ──────────────────────────────

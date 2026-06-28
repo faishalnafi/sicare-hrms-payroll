@@ -130,10 +130,10 @@ class AuditLogController {
 
         echo json_encode([
             'success' => true,
-            'stats' => [
+            'data' => [
                 'total' => (int)$totalLogs,
                 'today' => (int)$todayLogs,
-                'week' => (int)$weekLogs,
+                'this_week' => (int)$weekLogs,
                 'active_users' => (int)$activeUsers
             ]
         ]);

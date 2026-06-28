@@ -117,6 +117,9 @@ class DashboardController {
         $db = \App\Config\Database::getInstance()->getConnection();
         $userId = $_SESSION["user_id"];
         
+        // Auto-delete login logs from previous months (keep only current month)
+        $db->exec("DELETE FROM login_logs WHERE login_at < DATE_FORMAT(CURRENT_DATE, '%Y-%m-01')");
+        
         $stmtLogs = $db->prepare("SELECT * FROM login_logs WHERE user_id = :user_id ORDER BY login_at DESC LIMIT 100");
         $stmtLogs->execute(["user_id" => $userId]);
         $loginLogs = $stmtLogs->fetchAll(\PDO::FETCH_ASSOC);
@@ -246,6 +249,12 @@ class DashboardController {
         }
 
         $viewPath = "pages/" . $path;
+        if ($path === "superadmin/departments") {
+            $viewPath = "pages/admin/departments";
+        }
+        if ($path === "superadmin/approvals/manager") {
+            $viewPath = "pages/manager/approvals";
+        }
         if (!$allowed) {
             $viewPath = "pages/errors/403";
         }
@@ -264,7 +273,9 @@ class DashboardController {
                     "manager/requisitions", "manager/candidates", "manager/interviews", "manager/approvals",
                     "hrops/onboarding", "hrops/employees", "hrops/verifications", "hrops/payroll",
                     "admin/departments", "admin/users", "admin/settings",
-                    "executive/analytics", "executive/budgets", "executive/approvals"
+                    "executive/analytics", "executive/budgets", "executive/approvals",
+                    "superadmin/apps", "superadmin/api",
+                    "superadmin/approvals/executive", "superadmin/approvals/hrops", "superadmin/approvals/recruiter"
                 ];
                 if (in_array($path, $validUnbuilt)) {
                     $viewPath = "pages/errors/coming_soon";

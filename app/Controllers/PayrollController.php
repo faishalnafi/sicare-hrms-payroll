@@ -17,7 +17,7 @@ class PayrollController {
     /**
      * Check if user is logged in and has HR Ops, Superadmin, or Admin role.
      */
-    private function checkAccess() {
+    private function checkAccess(bool $requireCsrf = false) {
         if (session_status() === PHP_SESSION_NONE) {
             session_start();
         }
@@ -33,6 +33,14 @@ class PayrollController {
             http_response_code(403);
             echo json_encode(['success' => false, 'message' => 'Akses ditolak. Otoritas manajemen diperlukan.']);
             exit;
+        }
+        if ($requireCsrf) {
+            $token = $_POST['csrf_token'] ?? $_SERVER['HTTP_X_CSRF_TOKEN'] ?? '';
+            if (empty($token) || !hash_equals($_SESSION['csrf_token'] ?? '', $token)) {
+                header('Content-Type: application/json');
+                echo json_encode(['success' => false, 'message' => 'Token CSRF tidak valid atau kedaluwarsa. Silakan muat ulang halaman.']);
+                exit;
+            }
         }
     }
 
@@ -372,7 +380,7 @@ class PayrollController {
      * POST /hrops/payroll/generate
      */
     public function generate() {
-        $this->checkAccess();
+        $this->checkAccess(true);
         header('Content-Type: application/json');
 
         $monthYear = $_POST['month_year'] ?? '';
@@ -539,7 +547,7 @@ class PayrollController {
      * POST /hrops/payroll/update-bonus
      */
     public function updateBonus() {
-        $this->checkAccess();
+        $this->checkAccess(true);
         header('Content-Type: application/json');
 
         $payrollId = $_POST['id'] ?? '';
@@ -622,7 +630,7 @@ class PayrollController {
      * POST /hrops/payroll/update-status
      */
     public function updateStatus() {
-        $this->checkAccess();
+        $this->checkAccess(true);
         header('Content-Type: application/json');
 
         $ids = $_POST['ids'] ?? [];
@@ -680,7 +688,7 @@ class PayrollController {
      * POST /hrops/payroll/delete
      */
     public function delete() {
-        $this->checkAccess();
+        $this->checkAccess(true);
         header('Content-Type: application/json');
 
         $payrollId = $_POST['id'] ?? '';
@@ -725,7 +733,7 @@ class PayrollController {
      * POST /hrops/payroll/update-overtime
      */
     public function updateOvertime() {
-        $this->checkAccess();
+        $this->checkAccess(true);
         header('Content-Type: application/json');
 
         $payrollId = $_POST['id'] ?? '';
@@ -808,7 +816,7 @@ class PayrollController {
      * POST /hrops/payroll/update-other-deduction
      */
     public function updateOtherDeduction() {
-        $this->checkAccess();
+        $this->checkAccess(true);
         header('Content-Type: application/json');
 
         $payrollId = $_POST['id'] ?? '';

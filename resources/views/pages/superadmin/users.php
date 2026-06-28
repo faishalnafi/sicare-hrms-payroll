@@ -42,7 +42,7 @@
                                 <option value="superadmin">Superadmin</option>
                                 <option value="candidate">Candidate</option>
                             </select>
-                            <span class="material-symbols-outlined absolute right-3 top-1/2 -translate-y-1/2 text-on-surface-variant/50 pointer-events-none">expand_more</span>
+                            
                         </div>
                     </div>
                     <!-- Tambah Pengguna Button -->
@@ -185,7 +185,7 @@
                                 <option value="">Tanpa Departemen</option>
                                 <!-- Populated dynamically -->
                             </select>
-                            <span class="material-symbols-outlined absolute right-3 top-1/2 -translate-y-1/2 text-on-surface-variant/50 pointer-events-none">expand_more</span>
+                            
                         </div>
                     </div>
                     <!-- System Role -->
@@ -202,7 +202,7 @@
                                 <option value="superadmin">Superadmin</option>
                                 <option value="candidate">Candidate</option>
                             </select>
-                            <span class="material-symbols-outlined absolute right-3 top-1/2 -translate-y-1/2 text-on-surface-variant/50 pointer-events-none">expand_more</span>
+                            
                         </div>
                     </div>
                     <!-- Kuota Cuti Tahunan -->
@@ -286,7 +286,7 @@
                                 <option value="Laki-laki">Laki-laki</option>
                                 <option value="Perempuan">Perempuan</option>
                             </select>
-                            <span class="material-symbols-outlined absolute right-3 top-1/2 -translate-y-1/2 text-on-surface-variant/50 pointer-events-none">expand_more</span>
+                            
                         </div>
                     </div>
                     <!-- Status Pernikahan -->
@@ -300,7 +300,7 @@
                                 <option value="Cerai Hidup">Cerai Hidup</option>
                                 <option value="Cerai Mati">Cerai Mati</option>
                             </select>
-                            <span class="material-symbols-outlined absolute right-3 top-1/2 -translate-y-1/2 text-on-surface-variant/50 pointer-events-none">expand_more</span>
+                            
                         </div>
                     </div>
                     <div></div>
@@ -921,20 +921,15 @@
         if (pageNumbersContainer) {
             pageNumbersContainer.innerHTML = "";
             
-            var startPage = 1;
-            var endPage = totalPages;
-            
-            if (totalPages > 3) {
-                if (currentSuperAdminUserPage === 1) {
-                    startPage = 1;
-                    endPage = 3;
-                } else if (currentSuperAdminUserPage === totalPages) {
-                    startPage = totalPages - 2;
-                    endPage = totalPages;
-                } else {
-                    startPage = currentSuperAdminUserPage - 1;
-                    endPage = currentSuperAdminUserPage + 1;
-                }
+            var startPage = currentSuperAdminUserPage - 1;
+            var endPage = currentSuperAdminUserPage + 1;
+            if (startPage < 1) {
+                startPage = 1;
+                endPage = Math.min(3, totalPages);
+            }
+            if (endPage > totalPages) {
+                endPage = totalPages;
+                startPage = Math.max(1, totalPages - 2);
             }
             
             for (var p = startPage; p <= endPage; p++) {

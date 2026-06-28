@@ -59,7 +59,7 @@
                                 <option value="tls" selected>TLS</option>
                                 <option value="ssl">SSL</option>
                             </select>
-                            <span class="material-symbols-outlined absolute right-3 top-1/2 -translate-y-1/2 text-on-surface-variant/50 pointer-events-none">expand_more</span>
+                            
                         </div>
                     </div>
                 </div>

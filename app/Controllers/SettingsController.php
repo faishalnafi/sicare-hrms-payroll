@@ -18,6 +18,15 @@ class SettingsController {
     }
 
     /**
+     * Validate CSRF token from POST body, HTTP header, or JSON payload.
+     */
+    private function validateCsrf(?array $jsonInput = null): bool {
+        if (session_status() === PHP_SESSION_NONE) session_start();
+        $token = $_POST['csrf_token'] ?? $_SERVER['HTTP_X_CSRF_TOKEN'] ?? ($jsonInput['csrf_token'] ?? '');
+        return !empty($token) && hash_equals($_SESSION['csrf_token'] ?? '', $token);
+    }
+
+    /**
      * Get all settings as a key => value associative array.
      */
     public function getAll(): array {
@@ -67,6 +76,12 @@ class SettingsController {
 
         if (!isset($_SESSION['user_id']) || !in_array($_SESSION['role'], ['superadmin', 'admin', 'hr_ops'])) {
             echo json_encode(['success' => false, 'message' => 'Akses ditolak.']);
+            return;
+        }
+
+        // CSRF Token Validation
+        if (!$this->validateCsrf()) {
+            echo json_encode(['success' => false, 'message' => 'Token CSRF tidak valid atau kedaluwarsa. Silakan muat ulang halaman.']);
             return;
         }
 
@@ -223,6 +238,12 @@ class SettingsController {
             return;
         }
 
+        // CSRF Token Validation
+        if (!$this->validateCsrf()) {
+            echo json_encode(['success' => false, 'message' => 'Token CSRF tidak valid atau kedaluwarsa. Silakan muat ulang halaman.']);
+            return;
+        }
+
         $date = $_POST['holiday_date'] ?? '';
         $desc = trim($_POST['description'] ?? '');
 
@@ -262,6 +283,12 @@ class SettingsController {
             return;
         }
 
+        // CSRF Token Validation
+        if (!$this->validateCsrf()) {
+            echo json_encode(['success' => false, 'message' => 'Token CSRF tidak valid atau kedaluwarsa. Silakan muat ulang halaman.']);
+            return;
+        }
+
         $id = $_POST['id'] ?? '';
 
         if (empty($id)) {
@@ -288,6 +315,12 @@ class SettingsController {
 
         if (!isset($_SESSION['user_id']) || !in_array($_SESSION['role'], ['superadmin', 'admin', 'hr_ops'])) {
             echo json_encode(['success' => false, 'message' => 'Akses ditolak.']);
+            return;
+        }
+
+        // CSRF Token Validation
+        if (!$this->validateCsrf()) {
+            echo json_encode(['success' => false, 'message' => 'Token CSRF tidak valid atau kedaluwarsa. Silakan muat ulang halaman.']);
             return;
         }
 
@@ -426,6 +459,12 @@ class SettingsController {
         }
 
         $input = json_decode(file_get_contents('php://input'), true);
+
+        // CSRF Token Validation
+        if (!$this->validateCsrf($input)) {
+            echo json_encode(['success' => false, 'message' => 'Token CSRF tidak valid atau kedaluwarsa. Silakan muat ulang halaman.']);
+            return;
+        }
         $holidays = $input['holidays'] ?? [];
 
         if (!is_array($holidays)) {

@@ -87,7 +87,7 @@ function getEmployeePosition($email) {
     <!-- KPI Summary Row -->
     <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
         <!-- Card 1 -->
-        <div class="bg-surface-container-lowest rounded-2xl p-5 border border-outline-variant/15 shadow-sm hover:shadow-md transition-shadow">
+        <div class="stat-card-scale bg-surface-container-lowest rounded-2xl p-5 border border-outline-variant/15 shadow-sm">
             <div class="flex items-center justify-between">
                 <span class="text-[10px] font-bold text-on-surface-variant uppercase tracking-wider">Dana Diajukan</span>
                 <span class="material-symbols-outlined text-primary bg-primary/5 p-2 rounded-xl text-sm font-bold">monetization_on</span>
@@ -100,7 +100,7 @@ function getEmployeePosition($email) {
             </div>
         </div>
         <!-- Card 2 -->
-        <div class="bg-surface-container-lowest rounded-2xl p-5 border border-outline-variant/15 shadow-sm hover:shadow-md transition-shadow">
+        <div class="stat-card-scale bg-surface-container-lowest rounded-2xl p-5 border border-outline-variant/15 shadow-sm">
             <div class="flex items-center justify-between">
                 <span class="text-[10px] font-bold text-on-surface-variant uppercase tracking-wider">Pending Review</span>
                 <span class="material-symbols-outlined text-amber-600 bg-amber-50 p-2 rounded-xl text-sm font-bold <?= $pendingCount > 0 ? 'animate-pulse' : '' ?>">receipt_long</span>
@@ -113,7 +113,7 @@ function getEmployeePosition($email) {
             </div>
         </div>
         <!-- Card 3 -->
-        <div class="bg-surface-container-lowest rounded-2xl p-5 border border-outline-variant/15 shadow-sm hover:shadow-md transition-shadow">
+        <div class="stat-card-scale bg-surface-container-lowest rounded-2xl p-5 border border-outline-variant/15 shadow-sm">
             <div class="flex items-center justify-between">
                 <span class="text-[10px] font-bold text-on-surface-variant uppercase tracking-wider">Disetujui Bulan Ini</span>
                 <span class="material-symbols-outlined text-green-600 bg-green-50 p-2 rounded-xl text-sm font-bold">price_check</span>
@@ -126,7 +126,7 @@ function getEmployeePosition($email) {
             </div>
         </div>
         <!-- Card 4 -->
-        <div class="bg-surface-container-lowest rounded-2xl p-5 border border-outline-variant/15 shadow-sm hover:shadow-md transition-shadow">
+        <div class="stat-card-scale bg-surface-container-lowest rounded-2xl p-5 border border-outline-variant/15 shadow-sm">
             <div class="flex items-center justify-between">
                 <span class="text-[10px] font-bold text-on-surface-variant uppercase tracking-wider">Sisa Plafon Global</span>
                 <span class="material-symbols-outlined text-indigo-600 bg-indigo-50 p-2 rounded-xl text-sm font-bold">account_balance_wallet</span>
@@ -160,7 +160,7 @@ function getEmployeePosition($email) {
                 </div>
                 
                 <!-- Status Filter -->
-                <select id="reimbursementStatusFilter" onchange="filterReimbursementTable()" class="py-2 px-3 text-xs rounded-lg border border-outline-variant/50 bg-surface focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary font-semibold text-on-surface-variant">
+                <select id="reimbursementStatusFilter" onchange="filterReimbursementTable()" class="py-2 px-3 bg-none text-xs rounded-lg border border-outline-variant/50 bg-surface focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary font-semibold text-on-surface-variant">
                     <option value="">Semua Status</option>
                     <option value="pending">Pending Review</option>
                     <option value="approved">Disetujui</option>
@@ -168,7 +168,7 @@ function getEmployeePosition($email) {
                 </select>
 
                 <!-- Category Filter -->
-                <select id="reimbursementCategoryFilter" onchange="filterReimbursementTable()" class="py-2 px-3 text-xs rounded-lg border border-outline-variant/50 bg-surface focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary font-semibold text-on-surface-variant">
+                <select id="reimbursementCategoryFilter" onchange="filterReimbursementTable()" class="py-2 px-3 bg-none text-xs rounded-lg border border-outline-variant/50 bg-surface focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary font-semibold text-on-surface-variant">
                     <option value="">Semua Kategori</option>
                     <option value="medis">Kesehatan & Medis</option>
                     <option value="transport">Transportasi & Tol</option>

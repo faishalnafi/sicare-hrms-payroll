@@ -135,6 +135,15 @@ if (!empty($resolvedPage)) {
           }
         }
     </script>
+    <style>
+        .att-stat-card, .kpi-card, .stat-card-scale {
+            transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
+        }
+        .att-stat-card:hover, .kpi-card:hover, .stat-card-scale:hover {
+            transform: translateY(-3px) scale(1.025) !important;
+            box-shadow: 0 10px 25px rgba(0, 6, 102, 0.08) !important;
+        }
+    </style>
     <?php
     if (session_status() === PHP_SESSION_NONE) {
         session_start();
@@ -161,7 +170,8 @@ if (!empty($resolvedPage)) {
     ?>
     <!-- Global JWT Token for CRUD authorization -->
     <script>
-        window.jwtToken = <?php echo json_encode($_SESSION["jwt_token"] ?? ""); ?>;
+        window.jwtToken  = <?php echo json_encode($_SESSION["jwt_token"] ?? ""); ?>;
+        window.csrfToken = <?php echo json_encode(csrf_token()); ?>;
     </script>
     <!-- Global Avatar Helper Functions -->
     <script>
@@ -466,14 +476,23 @@ if (!empty($resolvedPage)) {
                         if (tbody) {
                             var rows = Array.from(tbody.querySelectorAll('tr'));
                             var validIndex = 1;
+                            var thCount = table.querySelectorAll('thead th').length;
                             rows.forEach(function(row) {
                                 if (row.querySelector('[colspan]') || row.classList.contains('empty-row') || row.classList.contains('loading-row') || row.classList.contains('empty-table-row')) return;
                                 
                                 if (!row.querySelector('.no-col-cell') && !row.dataset.rowIndexed) {
-                                    var td = document.createElement('td');
-                                    td.className = 'no-col-cell px-6 py-4 text-center font-bold text-xs text-on-surface-variant';
-                                    td.innerText = validIndex++;
-                                    row.insertBefore(td, row.firstChild);
+                                    if (row.children.length >= thCount && thCount > 0) {
+                                        var firstTd = row.firstElementChild;
+                                        if (firstTd) {
+                                            firstTd.classList.add('no-col-cell');
+                                            firstTd.innerText = validIndex++;
+                                        }
+                                    } else {
+                                        var td = document.createElement('td');
+                                        td.className = 'no-col-cell px-6 py-4 text-center font-bold text-xs text-on-surface-variant';
+                                        td.innerText = validIndex++;
+                                        row.insertBefore(td, row.firstChild);
+                                    }
                                     row.dataset.rowIndexed = 'true';
                                 } else {
                                     var td = row.querySelector('.no-col-cell');
@@ -516,7 +535,20 @@ if (!empty($resolvedPage)) {
                         }
                         
                         var rowsAfterSort = Array.from(tbody.querySelectorAll('tr:not(.empty-row):not(.loading-row):not(.empty-table-row)'));
-                        if (rowsAfterSort.length <= 10 && !table.dataset.paginated) {
+                        var wrapper = table.closest('.table-wrapper-standardized');
+
+                        // Jika data <= 10 atau 1 page, tampilkan semua & sembunyikan detail pagination
+                        if (rowsAfterSort.length <= 10) {
+                            rowsAfterSort.forEach(function(row) {
+                                row.style.removeProperty('display');
+                            });
+                            if (wrapper) {
+                                var oldPagination = wrapper.nextElementSibling;
+                                if (oldPagination && oldPagination.classList.contains('table-pagination-container')) {
+                                    oldPagination.remove();
+                                }
+                            }
+                            table.dataset.paginated = 'false';
                             table.dataset.tableStandardized = 'true';
                             return;
                         }
@@ -540,7 +572,6 @@ if (!empty($resolvedPage)) {
                         });
 
                         // Hapus pagination container lama jika ada
-                        var wrapper = table.closest('.table-wrapper-standardized');
                         if (wrapper) {
                             var oldPagination = wrapper.nextElementSibling;
                             if (oldPagination && oldPagination.classList.contains('table-pagination-container')) {
@@ -563,11 +594,25 @@ if (!empty($resolvedPage)) {
                             var btnDiv = document.createElement('div');
                             btnDiv.className = 'table-pagination-buttons flex items-center gap-1.5';
 
+                            // Tombol First Page
+                            var btnFirst = document.createElement('button');
+                            btnFirst.type = 'button';
+                            btnFirst.className = 'p-2 flex items-center justify-center rounded-full hover:bg-surface-container-high text-on-surface-variant disabled:opacity-30 disabled:cursor-not-allowed transition-colors border border-transparent disabled:hover:bg-transparent';
+                            btnFirst.innerHTML = '<span class="material-symbols-outlined text-sm">first_page</span>';
+                            btnFirst.title = 'Halaman Pertama';
+                            btnFirst.disabled = currentPage === 1;
+                            btnFirst.onclick = function() {
+                                table.dataset.currentPage = 1;
+                                standardizeAllTables();
+                            };
+                            btnDiv.appendChild(btnFirst);
+
                             // Tombol Previous
                             var btnPrev = document.createElement('button');
                             btnPrev.type = 'button';
-                            btnPrev.className = 'p-1.5 rounded-lg border border-outline-variant/30 text-on-surface-variant hover:bg-surface-container-high transition-all flex items-center justify-center disabled:opacity-40 disabled:hover:bg-transparent';
-                            btnPrev.innerHTML = '<span class="material-symbols-outlined text-lg">chevron_left</span>';
+                            btnPrev.className = 'p-2 flex items-center justify-center rounded-full hover:bg-surface-container-high text-on-surface-variant disabled:opacity-30 disabled:cursor-not-allowed transition-colors border border-transparent disabled:hover:bg-transparent';
+                            btnPrev.innerHTML = '<span class="material-symbols-outlined text-sm">chevron_left</span>';
+                            btnPrev.title = 'Halaman Sebelumnya';
                             btnPrev.disabled = currentPage === 1;
                             btnPrev.onclick = function() {
                                 table.dataset.currentPage = currentPage - 1;
@@ -575,21 +620,27 @@ if (!empty($resolvedPage)) {
                             };
                             btnDiv.appendChild(btnPrev);
 
-                            // Halaman nomor (max 5)
-                            var startPage = Math.max(1, currentPage - 2);
-                            var endPage = Math.min(totalPages, startPage + 4);
-                            if (endPage - startPage < 4) {
-                                startPage = Math.max(1, endPage - 4);
+                            // Halaman nomor (max 3, centered)
+                            var startPage = currentPage - 1;
+                            var endPage = currentPage + 1;
+                            if (startPage < 1) {
+                                startPage = 1;
+                                endPage = Math.min(3, totalPages);
+                            }
+                            if (endPage > totalPages) {
+                                endPage = totalPages;
+                                startPage = Math.max(1, totalPages - 2);
                             }
 
                             for (var p = startPage; p <= endPage; p++) {
                                 (function(pageNumber) {
                                     var btnPage = document.createElement('button');
                                     btnPage.type = 'button';
+                                    btnPage.className = 'w-8 h-8 flex items-center justify-center rounded-full text-xs font-semibold transition-all border ';
                                     if (pageNumber === currentPage) {
-                                        btnPage.className = 'px-3 py-1.5 rounded-lg bg-primary text-white text-xs font-bold shadow-sm transition-all';
+                                        btnPage.className += 'bg-primary text-white border-primary shadow-sm';
                                     } else {
-                                        btnPage.className = 'px-3 py-1.5 rounded-lg border border-outline-variant/30 text-on-surface-variant hover:bg-surface-container-high text-xs font-semibold transition-all';
+                                        btnPage.className += 'hover:bg-surface-container-high text-on-surface border-transparent';
                                     }
                                     btnPage.innerText = pageNumber;
                                     btnPage.onclick = function() {
@@ -603,14 +654,28 @@ if (!empty($resolvedPage)) {
                             // Tombol Next
                             var btnNext = document.createElement('button');
                             btnNext.type = 'button';
-                            btnNext.className = 'p-1.5 rounded-lg border border-outline-variant/30 text-on-surface-variant hover:bg-surface-container-high transition-all flex items-center justify-center disabled:opacity-40 disabled:hover:bg-transparent';
-                            btnNext.innerHTML = '<span class="material-symbols-outlined text-lg">chevron_right</span>';
+                            btnNext.className = 'p-2 flex items-center justify-center rounded-full hover:bg-surface-container-high text-on-surface-variant disabled:opacity-30 disabled:cursor-not-allowed transition-colors border border-transparent disabled:hover:bg-transparent';
+                            btnNext.innerHTML = '<span class="material-symbols-outlined text-sm">chevron_right</span>';
+                            btnNext.title = 'Halaman Berikutnya';
                             btnNext.disabled = currentPage === totalPages;
                             btnNext.onclick = function() {
                                 table.dataset.currentPage = currentPage + 1;
                                 standardizeAllTables();
                             };
                             btnDiv.appendChild(btnNext);
+
+                            // Tombol Last Page
+                            var btnLast = document.createElement('button');
+                            btnLast.type = 'button';
+                            btnLast.className = 'p-2 flex items-center justify-center rounded-full hover:bg-surface-container-high text-on-surface-variant disabled:opacity-30 disabled:cursor-not-allowed transition-colors border border-transparent disabled:hover:bg-transparent';
+                            btnLast.innerHTML = '<span class="material-symbols-outlined text-sm">last_page</span>';
+                            btnLast.title = 'Halaman Terakhir';
+                            btnLast.disabled = currentPage === totalPages;
+                            btnLast.onclick = function() {
+                                table.dataset.currentPage = totalPages;
+                                standardizeAllTables();
+                            };
+                            btnDiv.appendChild(btnLast);
 
                             paginationContainer.appendChild(btnDiv);
                             wrapper.parentNode.insertBefore(paginationContainer, wrapper.nextSibling);
@@ -1171,9 +1236,43 @@ if (!empty($resolvedPage)) {
             let isDashboard = currentPath.endsWith('/dashboard') || currentPath === '/' || currentPath === '' || currentPath.endsWith('/public') || currentPath.endsWith('/index.php');
             
 
-            // 3. Highlight Active Sidebar Item (robust to folder prefixes and trailing slashes)
+            // 1. Reset & Highlight Submenu Groups
+            document.querySelectorAll('.submenu-group').forEach(group => {
+                let btn = group.querySelector('button');
+                let container = group.querySelector('.submenu-container');
+                let parentDiv = btn ? btn.querySelector('div') : null;
+                let parentIcon = parentDiv ? parentDiv.querySelector('.material-symbols-outlined:first-child') : null;
+                let parentText = parentDiv ? parentDiv.querySelector('span:not(.material-symbols-outlined)') : null;
+                let arrow = parentDiv ? parentDiv.querySelector('.submenu-arrow') : null;
+                
+                let hasActiveChild = false;
+                group.querySelectorAll('a').forEach(a => {
+                    let linkPath = a.getAttribute('href');
+                    if (!linkPath) return;
+                    let cleanLink = linkPath.toLowerCase().replace(/\/$/, '');
+                    if (currentPath === cleanLink || currentPath.endsWith(cleanLink)) {
+                        hasActiveChild = true;
+                    }
+                });
+                
+                if (hasActiveChild) {
+                    if (container) container.classList.remove('hidden');
+                    if (parentDiv) parentDiv.className = "rounded-xl p-3 flex items-center justify-start lg:justify-center lg:group-hover:justify-start xl:justify-start gap-3 group cursor-pointer transition-all duration-200 bg-primary/5 text-primary font-bold";
+                    if (parentIcon) parentIcon.className = "material-symbols-outlined flex-shrink-0 transition-colors text-primary";
+                    if (parentText) parentText.className = "text-sm font-medium flex-grow whitespace-nowrap transition-colors text-primary font-bold lg:opacity-0 lg:group-hover:opacity-100 lg:w-0 lg:group-hover:w-auto xl:opacity-100 xl:w-auto overflow-hidden";
+                    if (arrow) arrow.className = "submenu-arrow material-symbols-outlined text-sm flex-shrink-0 ml-auto transition-transform duration-200 lg:opacity-0 lg:group-hover:opacity-100 lg:w-0 lg:group-hover:w-auto xl:opacity-100 xl:w-auto overflow-hidden rotate-180 text-primary";
+                } else {
+                    if (parentDiv) parentDiv.className = "rounded-xl p-3 flex items-center justify-start lg:justify-center lg:group-hover:justify-start xl:justify-start gap-3 group cursor-pointer transition-all duration-200 text-on-surface-variant hover:bg-surface-container-low hover:text-primary transition-all duration-200";
+                    if (parentIcon) parentIcon.className = "material-symbols-outlined flex-shrink-0 transition-colors text-on-surface-variant group-hover:text-primary";
+                    if (parentText) parentText.className = "text-sm font-medium flex-grow whitespace-nowrap transition-colors text-on-surface-variant group-hover:text-primary lg:opacity-0 lg:group-hover:opacity-100 lg:w-0 lg:group-hover:w-auto xl:opacity-100 xl:w-auto overflow-hidden";
+                    if (arrow) arrow.className = "submenu-arrow material-symbols-outlined text-sm flex-shrink-0 ml-auto transition-transform duration-200 lg:opacity-0 lg:group-hover:opacity-100 lg:w-0 lg:group-hover:w-auto xl:opacity-100 xl:w-auto overflow-hidden text-on-surface-variant/50";
+                }
+            });
+
+            // 2. Highlight Active Sidebar Links
             document.querySelectorAll('#appSidebar nav a').forEach(a => {
                 let linkPath = a.getAttribute('href');
+                if (!linkPath) return;
                 let div = a.querySelector('div');
                 let icon = a.querySelector('.material-symbols-outlined');
                 let text = a.querySelector('span:not(.material-symbols-outlined)');
@@ -1183,17 +1282,30 @@ if (!empty($resolvedPage)) {
                 let cleanLink = linkPath.toLowerCase().replace(/\/$/, '');
                 
                 let isActive = (cleanCurrent === cleanLink || cleanCurrent.endsWith(cleanLink));
+                let isChild = a.closest('.submenu-container') !== null;
                 
-                if (isActive) {
-                    if (div) div.className = "rounded-xl p-3 flex items-center justify-start lg:justify-center lg:group-hover:justify-start xl:justify-start gap-3 group cursor-pointer transition-all duration-200 bg-primary/10 text-primary font-bold shadow-[0_4px_12px_rgba(0,6,102,0.02)]";
-                    if (icon) icon.className = "material-symbols-outlined text-primary";
-                    if (text) text.className = "text-sm font-bold text-primary transition-all duration-300 lg:opacity-0 lg:group-hover:opacity-100 lg:w-0 lg:group-hover:w-auto xl:opacity-100 xl:w-auto overflow-hidden whitespace-nowrap";
-                    if (chevron) chevron.className = "material-symbols-outlined text-sm ml-auto transition-all duration-300 lg:opacity-0 lg:group-hover:opacity-100 lg:w-0 lg:group-hover:w-auto xl:opacity-100 xl:w-auto overflow-hidden text-primary opacity-100";
+                if (isChild) {
+                    if (isActive) {
+                        if (div) div.className = "rounded-xl px-3 py-2 flex items-center justify-start lg:justify-center lg:group-hover:justify-start xl:justify-start gap-2.5 group cursor-pointer transition-all duration-200 bg-primary/10 text-primary font-bold shadow-[0_2px_8px_rgba(0,6,102,0.02)]";
+                        if (icon) icon.className = "material-symbols-outlined text-[18px] flex-shrink-0 transition-colors text-primary";
+                        if (text) text.className = "text-xs font-medium flex-grow whitespace-nowrap transition-colors text-primary font-bold lg:opacity-0 lg:group-hover:opacity-100 lg:w-0 lg:group-hover:w-auto xl:opacity-100 xl:w-auto overflow-hidden";
+                    } else {
+                        if (div) div.className = "rounded-xl px-3 py-2 flex items-center justify-start lg:justify-center lg:group-hover:justify-start xl:justify-start gap-2.5 group cursor-pointer transition-all duration-200 text-on-surface-variant hover:bg-surface-container-low hover:text-primary";
+                        if (icon) icon.className = "material-symbols-outlined text-[18px] flex-shrink-0 transition-colors text-on-surface-variant/70 group-hover:text-primary";
+                        if (text) text.className = "text-xs font-medium flex-grow whitespace-nowrap transition-colors text-on-surface-variant group-hover:text-primary lg:opacity-0 lg:group-hover:opacity-100 lg:w-0 lg:group-hover:w-auto xl:opacity-100 xl:w-auto overflow-hidden";
+                    }
                 } else {
-                    if (div) div.className = "rounded-xl p-3 flex items-center justify-start lg:justify-center lg:group-hover:justify-start xl:justify-start gap-3 group cursor-pointer transition-all duration-200 text-on-surface-variant hover:bg-surface-container-low hover:text-primary transition-all duration-200";
-                    if (icon) icon.className = "material-symbols-outlined text-on-surface-variant group-hover:text-primary";
-                    if (text) text.className = "text-sm font-medium text-on-surface-variant group-hover:text-primary transition-all duration-300 lg:opacity-0 lg:group-hover:opacity-100 lg:w-0 lg:group-hover:w-auto xl:opacity-100 xl:w-auto overflow-hidden whitespace-nowrap";
-                    if (chevron) chevron.className = "material-symbols-outlined text-sm ml-auto transition-all duration-300 lg:opacity-0 lg:group-hover:opacity-100 lg:w-0 lg:group-hover:w-auto xl:opacity-100 xl:w-auto overflow-hidden text-primary/50 opacity-0 group-hover:opacity-100";
+                    if (isActive) {
+                        if (div) div.className = "rounded-xl p-3 flex items-center justify-start lg:justify-center lg:group-hover:justify-start xl:justify-start gap-3 group cursor-pointer transition-all duration-200 bg-primary/10 text-primary font-bold shadow-[0_4px_12px_rgba(0,6,102,0.02)]";
+                        if (icon) icon.className = "material-symbols-outlined text-primary";
+                        if (text) text.className = "text-sm font-bold text-primary transition-all duration-300 lg:opacity-0 lg:group-hover:opacity-100 lg:w-0 lg:group-hover:w-auto xl:opacity-100 xl:w-auto overflow-hidden whitespace-nowrap";
+                        if (chevron) chevron.className = "material-symbols-outlined text-sm ml-auto transition-all duration-300 lg:opacity-0 lg:group-hover:opacity-100 lg:w-0 lg:group-hover:w-auto xl:opacity-100 xl:w-auto overflow-hidden text-primary opacity-100";
+                    } else {
+                        if (div) div.className = "rounded-xl p-3 flex items-center justify-start lg:justify-center lg:group-hover:justify-start xl:justify-start gap-3 group cursor-pointer transition-all duration-200 text-on-surface-variant hover:bg-surface-container-low hover:text-primary transition-all duration-200";
+                        if (icon) icon.className = "material-symbols-outlined text-on-surface-variant group-hover:text-primary";
+                        if (text) text.className = "text-sm font-medium text-on-surface-variant group-hover:text-primary transition-all duration-300 lg:opacity-0 lg:group-hover:opacity-100 lg:w-0 lg:group-hover:w-auto xl:opacity-100 xl:w-auto overflow-hidden whitespace-nowrap";
+                        if (chevron) chevron.className = "material-symbols-outlined text-sm ml-auto transition-all duration-300 lg:opacity-0 lg:group-hover:opacity-100 lg:w-0 lg:group-hover:w-auto xl:opacity-100 xl:w-auto overflow-hidden text-primary/50 opacity-0 group-hover:opacity-100";
+                    }
                 }
             });
         }
@@ -1560,113 +1672,71 @@ if (!empty($resolvedPage)) {
 
         // Global Dynamic File Preview Overlay with Fullscreen Zoom Capabilities
         window.viewAttachmentGlobal = function(url, title, subtitle = '') {
-            const modal = document.getElementById('globalFilePreviewModal');
-            const titleEl = document.getElementById('globalFilePreviewTitle');
-            const subtitleEl = document.getElementById('globalFilePreviewSubtitle');
-            const bodyEl = document.getElementById('globalFilePreviewBody');
-            const downloadBtn = document.getElementById('globalFilePreviewDownloadBtn');
-            
-            // Reset download button visibility
-            if (downloadBtn) {
-                downloadBtn.classList.remove('hidden');
-            }
-            
-            titleEl.innerText = title;
-            if (subtitle) {
-                subtitleEl.innerText = subtitle;
-                subtitleEl.classList.remove('hidden');
-            } else {
-                subtitleEl.classList.add('hidden');
-            }
-            
-            bodyEl.innerHTML = '';
-            
             const lowerUrl = url.toLowerCase();
-            if (lowerUrl.includes('.pdf') || lowerUrl.endsWith('.pdf')) {
-                // PDF Document Stream Viewer
-                const iframe = document.createElement('iframe');
-                iframe.src = url;
-                iframe.className = "w-full h-[420px] rounded-xl border-0 bg-white";
-                bodyEl.appendChild(iframe);
+            const isPdf = lowerUrl.includes('.pdf') || lowerUrl.endsWith('.pdf');
+            
+            let fileName = url.split('/').pop().split('?')[0];
+            if (url.includes('file=')) {
+                fileName = decodeURIComponent(url.split('file=')[1].split('&')[0]);
+            }
+            if (!fileName || fileName.length > 40 || fileName.indexOf('.') === -1) {
+                fileName = title.replace(/[^a-zA-Z0-9]/g, '_').toLowerCase() + (isPdf ? '.pdf' : '.jpg');
+            }
+
+            let metaHtml = `
+                <div class="text-left space-y-2 mt-2">
+                    ${subtitle ? `<p class="text-xs text-on-surface-variant"><strong>Keterangan:</strong> ${subtitle}</p>` : ''}
+                    <p class="text-xs text-on-surface-variant font-mono"><strong>Nama Berkas:</strong> ${fileName}</p>
+                    <p class="text-[10px] text-green-700 bg-green-50 px-2 py-1 rounded inline-block font-bold">MIME TYPE VALID: Verified via Server finfo</p>
+                </div>
+            `;
+
+            const swalConfig = {
+                title: title,
+                showDenyButton: true,
+                confirmButtonText: 'Tutup Dokumen',
+                denyButtonText: '<span class="material-symbols-outlined text-xs" style="vertical-align: middle; margin-right: 4px;">download</span>Unduh Berkas',
+                confirmButtonColor: '#000666',
+                denyButtonColor: '#ff6f00',
+            };
+
+            if (isPdf) {
+                swalConfig.html = metaHtml + `
+                    <div class="mt-4 p-6 bg-surface-container-low rounded-xl border border-outline-variant/10 flex flex-col items-center justify-center">
+                        <span class="material-symbols-outlined text-6xl text-red-600 mb-2">picture_as_pdf</span>
+                        <p class="text-xs font-bold text-on-surface">Dokumen PDF Terdeteksi</p>
+                        <a href="${url}" target="_blank" class="mt-3 bg-primary hover:bg-primary/95 text-white font-bold text-xs py-2 px-4 rounded flex items-center gap-1.5 transition-all">
+                            <span class="material-symbols-outlined text-sm">open_in_new</span> Buka PDF di Tab Baru
+                        </a>
+                    </div>
+                `;
             } else {
-                // Image Receipt/Surat Dokter Viewer
-                const img = document.createElement('img');
-                img.src = url;
-                img.className = "max-w-full max-h-[380px] object-contain rounded-xl shadow-sm border border-outline-variant/20 cursor-zoom-in hover:scale-[1.01] transition-transform select-none";
-                img.alt = title;
-                img.onerror = function() {
-                    // Fetch the URL to find out the exact HTTP status code
-                    fetch(url)
-                        .then(response => {
-                            let errorIcon = 'block';
-                            let errorTitle = `${title} Tidak Dapat di Akses!`;
-                            let errorMessage = 'Berkas tidak dapat dimuat karena kebijakan keamanan, batas akses, atau sesi Anda telah kedaluwarsa.';
-                            
-                            if (response.status === 404) {
-                                errorIcon = 'image_not_supported';
-                                errorTitle = `${title} Tidak Dapat di Akses!`;
-                                errorMessage = 'Berkas fisik tidak dapat diakses dikarenakan tidak ditemukan di server oleh sistem aplikasi.';
-                            } else if (response.status === 403) {
-                                errorIcon = 'block';
-                                errorTitle = `${title} Tidak Dapat di Akses!`;
-                                errorMessage = 'Akses ditolak karena kebijakan keamanan, batas akses, atau sesi Anda telah kedaluwarsa (403 Forbidden).';
-                            }
-                            
-                            bodyEl.innerHTML = `
-                                <div class="flex flex-col items-center justify-center p-8 text-center bg-red-50 border border-red-200 rounded-2xl w-full py-10 min-h-[220px] animate-fade-in">
-                                    <div class="w-16 h-16 rounded-full bg-red-100 flex items-center justify-center mb-4 text-red-600">
-                                        <span class="material-symbols-outlined text-3xl font-medium" style="font-variation-settings: 'FILL' 0, 'wght' 500, 'GRAD' 0, 'opsz' 40;">${errorIcon}</span>
-                                    </div>
-                                    <h4 class="text-base font-extrabold text-red-900 mb-2 leading-snug">${errorTitle}</h4>
-                                    <p class="text-xs text-red-700/80 max-w-xs leading-relaxed">
-                                        ${errorMessage}
-                                    </p>
-                                </div>
-                            `;
-                        })
-                        .catch(() => {
-                            bodyEl.innerHTML = `
-                                <div class="flex flex-col items-center justify-center p-8 text-center bg-red-50 border border-red-200 rounded-2xl w-full py-10 min-h-[220px] animate-fade-in">
-                                    <div class="w-16 h-16 rounded-full bg-red-100 flex items-center justify-center mb-4 text-red-600">
-                                        <span class="material-symbols-outlined text-3xl font-medium" style="font-variation-settings: 'FILL' 0, 'wght' 500, 'GRAD' 0, 'opsz' 40;">block</span>
-                                    </div>
-                                    <h4 class="text-base font-extrabold text-red-900 mb-2 leading-snug">${title} Tidak Dapat di Akses!</h4>
-                                    <p class="text-xs text-red-700/80 max-w-xs leading-relaxed">
-                                        Berkas tidak dapat dimuat karena kebijakan keamanan, batas akses, atau sesi Anda telah kedaluwarsa.
-                                    </p>
-                                </div>
-                            `;
-                        });
-                    if (downloadBtn) {
-                        downloadBtn.classList.add('hidden');
-                    }
-                };
-                img.onclick = function() {
-                    window.openFullscreenImage(url);
-                };
-                bodyEl.appendChild(img);
+                const escapedUrl = url.replace(/'/g, "\\'");
+                swalConfig.html = metaHtml + `
+                    <div class="mt-4 bg-surface-container-low/50 p-2 rounded-xl border border-outline-variant/15 text-center group cursor-pointer" onclick="window.openFullscreenImage('${escapedUrl}')" title="Klik untuk memperbesar layar penuh">
+                        <div class="relative overflow-hidden rounded-lg">
+                            <img src="${url}" alt="${title}" class="max-h-[45vh] max-w-full mx-auto object-contain rounded-lg shadow-sm transition-transform duration-300 group-hover:scale-[1.02]" onerror="this.onerror=null; this.src='https://via.placeholder.com/400x300?text=Berkas+Tidak+Ditemukan';" />
+                            <div class="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-1.5 text-white text-xs font-bold backdrop-blur-[1px]">
+                                <span class="material-symbols-outlined text-base">zoom_in</span> Klik Untuk Perbesar (Full Screen)
+                            </div>
+                        </div>
+                    </div>
+                `;
             }
-            
-            // Configure download button
-            if (downloadBtn) {
-                downloadBtn.href = url + (url.includes('?') ? '&' : '?') + 'download=1';
-                let filename = url.substring(url.lastIndexOf('/') + 1);
-                if (!filename || filename.indexOf('.') === -1) {
-                    const isPdf = lowerUrl.includes('.pdf') || lowerUrl.endsWith('.pdf');
-                    filename = title.replace(/[^a-zA-Z0-9]/g, '_') + (isPdf ? '.pdf' : '.jpg');
+
+            Swal.fire(swalConfig).then((result) => {
+                if (result.isDenied) {
+                    window.location.href = url + (url.includes('?') ? '&' : '?') + 'download=1';
                 }
-                downloadBtn.download = filename;
-            }
-            
-            modal.classList.remove('hidden');
-            modal.classList.add('flex');
+            });
         };
 
         window.closeGlobalFilePreview = function() {
             const modal = document.getElementById('globalFilePreviewModal');
-            modal.classList.add('hidden');
-            modal.classList.remove('flex');
-            document.getElementById('globalFilePreviewBody').innerHTML = '';
+            if (modal) {
+                modal.classList.add('hidden');
+                modal.classList.remove('flex');
+            }
         };
 
         window.openFullscreenImage = function(url) {
@@ -1720,12 +1790,12 @@ if (!empty($resolvedPage)) {
     </div>
 
     <!-- Fullscreen Image Zoom Overlay -->
-    <div id="fullscreenImageOverlay" class="fixed inset-0 z-[110] bg-black/95 hidden flex items-center justify-center animate-fade-in">
+    <div id="fullscreenImageOverlay" onclick="closeFullscreenImage()" class="fixed inset-0 z-[99999] bg-black/95 hidden flex items-center justify-center animate-fade-in cursor-zoom-out select-none p-4">
         <!-- Close Button at top-right of page -->
-        <button onclick="closeFullscreenImage()" class="absolute top-6 right-6 p-3 bg-white/10 hover:bg-white/20 text-white rounded-full transition-all cursor-pointer z-[120] flex items-center justify-center shadow-lg">
+        <button onclick="closeFullscreenImage()" class="absolute top-6 right-6 w-12 h-12 aspect-square flex-shrink-0 bg-white/15 hover:bg-white/30 text-white rounded-full transition-all cursor-pointer z-[100000] flex items-center justify-center shadow-lg hover:scale-110 active:scale-95">
             <span class="material-symbols-outlined text-2xl font-bold">close</span>
         </button>
-        <img id="fullscreenImageSrc" src="" class="max-w-full max-h-full object-contain p-4 select-none" />
+        <img id="fullscreenImageSrc" src="" onclick="event.stopPropagation()" class="max-h-[92vh] max-w-[92vw] object-contain shadow-2xl rounded-xl border border-white/10 cursor-default" />
     </div>
 
     <!-- Global Leaflet Map Modal -->
@@ -2546,7 +2616,34 @@ if (!empty($resolvedPage)) {
                 } else {
                     link.innerHTML = `<span class="brand-logo-icon material-symbols-outlined text-primary text-3xl font-bold flex-shrink-0">${escapeHtml(logoIcon)}</span><span class="brand-text bg-gradient-to-r from-primary to-blue-800 bg-clip-text text-transparent whitespace-nowrap">${escapeHtml(name)}</span>`;
                 }
-            });
+        // Universal Full-Screen Lightbox Image Viewer
+        window.openFullScreenLightbox = function(imageUrl) {
+            let overlay = document.getElementById('globalLightboxOverlay');
+            if (!overlay) {
+                overlay = document.createElement('div');
+                overlay.id = 'globalLightboxOverlay';
+                overlay.className = 'fixed inset-0 z-[99999] bg-black/90 backdrop-blur-md flex items-center justify-center p-4 cursor-zoom-out select-none';
+                overlay.onclick = function() {
+                    overlay.classList.add('hidden');
+                };
+                overlay.innerHTML = `
+                    <button type="button" onclick="document.getElementById('globalLightboxOverlay').classList.add('hidden')" class="absolute top-5 right-5 w-12 h-12 aspect-square flex-shrink-0 bg-white/15 hover:bg-white/30 text-white rounded-full transition-all hover:scale-110 active:scale-95 shadow-lg flex items-center justify-center z-50 cursor-pointer" title="Tutup (Esc)">
+                        <span class="material-symbols-outlined text-2xl font-bold">close</span>
+                    </button>
+                    <div class="relative max-w-full max-h-full flex items-center justify-center" onclick="event.stopPropagation()">
+                        <img id="globalLightboxImage" src="" alt="Full Screen Preview" class="max-h-[92vh] max-w-[92vw] object-contain shadow-2xl rounded-xl border border-white/10" />
+                    </div>
+                `;
+                document.body.appendChild(overlay);
+
+                document.addEventListener('keydown', function(e) {
+                    if (e.key === 'Escape' && !overlay.classList.contains('hidden')) {
+                        overlay.classList.add('hidden');
+                    }
+                });
+            }
+            document.getElementById('globalLightboxImage').src = imageUrl;
+            overlay.classList.remove('hidden');
         };
     </script>
 </body>

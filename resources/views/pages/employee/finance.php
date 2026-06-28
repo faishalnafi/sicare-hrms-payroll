@@ -369,11 +369,13 @@ $latestBaseSalary = $latest ? $latest['base_salary'] : $baseSalary;
     <!-- Bento Grid Metrik Keuangan -->
     <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
         <!-- Bento Card 1: Last Salary Received -->
-        <div class="bg-surface-container-lowest rounded-2xl p-6 border border-outline-variant/15 shadow-[0_20px_40px_rgba(0,6,102,0.03)] relative overflow-hidden group">
-            <div class="absolute -top-12 -right-12 w-32 h-32 bg-primary/5 rounded-full blur-xl group-hover:bg-primary/10 transition-colors duration-300"></div>
+        <div class="bg-surface-container-lowest rounded-2xl p-6 border border-outline-variant/15 shadow-[0_20px_40px_rgba(0,6,102,0.03)] hover:shadow-[0_25px_50px_rgba(0,6,102,0.08)] hover:border-emerald-500/20 transition-all duration-300 relative overflow-hidden group">
+            <div class="absolute -top-12 -right-12 w-40 h-40 bg-emerald-600/20 rounded-full blur-2xl group-hover:bg-emerald-600/40 group-hover:scale-125 transition-all duration-500 pointer-events-none"></div>
             <div class="flex items-center justify-between">
                 <span class="text-xs font-bold text-on-surface-variant uppercase tracking-wider">Gaji Bersih Bulan Ini</span>
-                <span class="material-symbols-outlined text-primary text-2xl bg-primary/5 p-2 rounded-xl">payments</span>
+                <div class="w-12 h-12 flex items-center justify-center rounded-2xl bg-emerald-500/10 text-emerald-700 group-hover:scale-110 group-hover:bg-emerald-500/20 transition-all duration-300 shadow-sm">
+                    <span class="material-symbols-outlined text-2xl">payments</span>
+                </div>
             </div>
             <div class="mt-4">
                 <?php if ($hasApprovedPayroll): ?>
@@ -401,11 +403,13 @@ $latestBaseSalary = $latest ? $latest['base_salary'] : $baseSalary;
         </div>
 
         <!-- Bento Card 2: Payroll Bank Account -->
-        <div class="bg-surface-container-lowest rounded-2xl p-6 border border-outline-variant/15 shadow-[0_20px_40px_rgba(0,6,102,0.03)] relative overflow-hidden group">
-            <div class="absolute -top-12 -right-12 w-32 h-32 bg-blue-600/5 rounded-full blur-xl group-hover:bg-blue-600/10 transition-colors duration-300"></div>
+        <div class="bg-surface-container-lowest rounded-2xl p-6 border border-outline-variant/15 shadow-[0_20px_40px_rgba(0,6,102,0.03)] hover:shadow-[0_25px_50px_rgba(0,6,102,0.08)] hover:border-blue-500/20 transition-all duration-300 relative overflow-hidden group">
+            <div class="absolute -top-12 -right-12 w-40 h-40 bg-blue-600/15 rounded-full blur-2xl group-hover:bg-blue-600/30 group-hover:scale-125 transition-all duration-500 pointer-events-none"></div>
             <div class="flex items-center justify-between">
                 <span class="text-xs font-bold text-on-surface-variant uppercase tracking-wider">Rekening Penerima Payroll</span>
-                <span class="material-symbols-outlined text-blue-700 text-2xl bg-blue-500/5 p-2 rounded-xl">account_balance</span>
+                <div class="w-12 h-12 flex items-center justify-center rounded-2xl bg-blue-500/10 text-blue-700 group-hover:scale-110 group-hover:bg-blue-500/20 transition-all duration-300 shadow-sm">
+                    <span class="material-symbols-outlined text-2xl">account_balance</span>
+                </div>
             </div>
             <div class="mt-4">
                 <?php if (!$isBankEmpty): ?>
@@ -432,11 +436,13 @@ $latestBaseSalary = $latest ? $latest['base_salary'] : $baseSalary;
         </div>
 
         <!-- Bento Card 3: Social & Tax Membership -->
-        <div class="bg-surface-container-lowest rounded-2xl p-6 border border-outline-variant/15 shadow-[0_20px_40px_rgba(0,6,102,0.03)] relative overflow-hidden group">
-            <div class="absolute -top-12 -right-12 w-32 h-32 bg-indigo-600/5 rounded-full blur-xl group-hover:bg-indigo-600/10 transition-colors duration-300"></div>
+        <div class="bg-surface-container-lowest rounded-2xl p-6 border border-outline-variant/15 shadow-[0_20px_40px_rgba(0,6,102,0.03)] hover:shadow-[0_25px_50px_rgba(0,6,102,0.08)] hover:border-indigo-500/20 transition-all duration-300 relative overflow-hidden group">
+            <div class="absolute -top-12 -right-12 w-40 h-40 bg-indigo-600/15 rounded-full blur-2xl group-hover:bg-indigo-600/30 group-hover:scale-125 transition-all duration-500 pointer-events-none"></div>
             <div class="flex items-center justify-between">
                 <span class="text-xs font-bold text-on-surface-variant uppercase tracking-wider">Proteksi Sosial & Pajak</span>
-                <span class="material-symbols-outlined text-indigo-700 text-2xl bg-indigo-500/5 p-2 rounded-xl">verified_user</span>
+                <div class="w-12 h-12 flex items-center justify-center rounded-2xl bg-indigo-500/10 text-indigo-700 group-hover:scale-110 group-hover:bg-indigo-500/20 transition-all duration-300 shadow-sm">
+                    <span class="material-symbols-outlined text-2xl">verified_user</span>
+                </div>
             </div>
             <div class="mt-3 space-y-2">
                 <div class="flex justify-between items-center text-xs">

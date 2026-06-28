@@ -69,12 +69,12 @@ $pendingRequests = $reqQuery->fetchAll();
     <div class="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
         <!-- Left Column: Profile Card -->
         <div class="lg:col-span-4 space-y-6">
-            <div class="bg-surface-container-lowest rounded-2xl p-6 border border-outline-variant/15 shadow-[0_20px_40px_rgba(0,6,102,0.03)] text-center relative overflow-hidden group">
-                <div class="absolute -top-16 -right-16 w-56 h-56 bg-primary/5 rounded-full blur-2xl group-hover:bg-primary/10 group-hover:scale-110 transition-all duration-500"></div>
+            <div class="bg-surface-container-lowest rounded-2xl p-6 border border-outline-variant/15 shadow-[0_20px_40px_rgba(0,6,102,0.03)] hover:shadow-[0_25px_50px_rgba(0,6,102,0.08)] hover:border-blue-500/20 transition-all duration-300 text-center relative overflow-hidden group">
+                <div class="absolute -top-12 -right-12 w-48 h-48 bg-blue-600/20 rounded-full blur-2xl group-hover:bg-blue-600/40 group-hover:scale-125 transition-all duration-500 pointer-events-none"></div>
                 
                 <div class="relative flex flex-col items-center">
-                    <div class="relative mb-4">
-                        <img referrerpolicy="no-referrer" alt="Foto Profil" class="w-32 h-32 rounded-full object-cover border-4 border-surface shadow-md bg-white" src="<?php echo htmlspecialchars($profilePic); ?>" onerror="window.handleAvatarError(this, '<?= $hash ?>')"/>
+                    <div class="relative mb-4 w-36 h-36 rounded-full flex items-center justify-center p-1 bg-gradient-to-tr from-blue-600/30 via-blue-500/10 to-transparent shadow-sm shrink-0">
+                        <img referrerpolicy="no-referrer" alt="Foto Profil" class="w-full h-full aspect-square shrink-0 rounded-full object-cover border-4 border-white shadow-inner bg-white" src="<?php echo htmlspecialchars($profilePic); ?>" onerror="window.handleAvatarError(this, '<?= $hash ?>')"/>
                         <button onclick="Swal.fire({title: 'Ubah Foto Profil', text: 'Unggah foto profil baru divalidasi aman via server. Maks 10MB.', icon: 'info', confirmButtonColor: '#000666'})" class="hidden absolute bottom-1 right-1 bg-primary text-white p-2 rounded-full shadow-lg hover:scale-110 active:scale-95 transition-all">
                             <span class="material-symbols-outlined text-sm">photo_camera</span>
                         </button>
@@ -446,7 +446,7 @@ $pendingRequests = $reqQuery->fetchAll();
                         <option value="pajak_asuransi">Pajak & Asuransi (NPWP, BPJS TK, BPJS Kes)</option>
                         <option value="data_pribadi">Data Pribadi (Tanggal Lahir, Status Pernikahan)</option>
                     </select>
-                    <span class="material-symbols-outlined absolute right-3 top-3 pointer-events-none text-on-surface-variant/60 text-lg">expand_more</span>
+                    
                 </div>
             </div>
 
@@ -457,7 +457,7 @@ $pendingRequests = $reqQuery->fetchAll();
                     <select id="correctionField" class="w-full bg-surface-container-low border-none rounded-lg px-4 py-3 focus:bg-surface-container-lowest focus:ring-0 focus:border-b-2 focus:border-primary transition-all font-semibold text-xs text-on-surface appearance-none cursor-pointer">
                         <!-- Will be populated dynamically via Javascript -->
                     </select>
-                    <span class="material-symbols-outlined absolute right-3 top-3 pointer-events-none text-on-surface-variant/60 text-lg">expand_more</span>
+                    
                 </div>
             </div>
 
@@ -827,6 +827,7 @@ $pendingRequests = $reqQuery->fetchAll();
                 formData.append('password', password);
                 formData.append('home_latitude', homeLat);
                 formData.append('home_longitude', homeLng);
+                formData.append('csrf_token', window.csrfToken);
 
                 fetch('/employee/profile/save', {
                     method: 'POST',
@@ -890,12 +891,21 @@ $pendingRequests = $reqQuery->fetchAll();
         formData.append('new_value', newValue);
         formData.append('reason', reason);
         formData.append('file', fileInput.files[0]);
+        formData.append('csrf_token', window.csrfToken);
 
         fetch('/employee/profile/correction', {
             method: 'POST',
             body: formData
         })
-        .then(response => response.json())
+        .then(async response => {
+            const text = await response.text();
+            try {
+                return JSON.parse(text);
+            } catch (e) {
+                console.error("Server raw output:", text);
+                throw new Error("Respon server tidak valid: " + text.substring(0, 100));
+            }
+        })
         .then(data => {
             closeCorrectionModal();
             if (data.success) {
@@ -912,14 +922,20 @@ $pendingRequests = $reqQuery->fetchAll();
                     icon: 'success',
                     confirmButtonColor: '#000666',
                     confirmButtonText: 'Selesai'
+                }).then(() => {
+                    if (window.loadPage) {
+                        window.loadPage('/employee/profile');
+                    } else {
+                        window.location.reload();
+                    }
                 });
             } else {
-                Swal.fire('Gagal!', data.message, 'error');
+                Swal.fire('Gagal!', data.message || 'Terjadi kesalahan saat menyimpan pengajuan.', 'error');
             }
         })
         .catch(err => {
             closeCorrectionModal();
-            Swal.fire('Error!', 'Terjadi kesalahan jaringan atau koneksi ditolak server.', 'error');
+            Swal.fire('Error!', err.message || 'Terjadi kesalahan jaringan atau koneksi ditolak server.', 'error');
         });
     }
 

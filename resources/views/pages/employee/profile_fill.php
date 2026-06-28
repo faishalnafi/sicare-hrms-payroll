@@ -106,7 +106,7 @@ $employeeId = !empty($dbUser['employee_id']) ? $dbUser['employee_id'] : '-';
                             <option value="Laki-Laki">Laki-Laki</option>
                             <option value="Perempuan">Perempuan</option>
                         </select>
-                        <span class="material-symbols-outlined absolute right-3 top-3 pointer-events-none text-on-surface-variant/60 text-lg">expand_more</span>
+                        
                     </div>
                 </div>
 
@@ -120,7 +120,7 @@ $employeeId = !empty($dbUser['employee_id']) ? $dbUser['employee_id'] : '-';
                             <option value="Cerai Hidup">Cerai Hidup</option>
                             <option value="Cerai Mati">Cerai Mati</option>
                         </select>
-                        <span class="material-symbols-outlined absolute right-3 top-3 pointer-events-none text-on-surface-variant/60 text-lg">expand_more</span>
+                        
                     </div>
                 </div>
 

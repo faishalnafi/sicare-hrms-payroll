@@ -107,7 +107,7 @@ function getMoodBadge($mood) {
                         <option value="<?= $ap ?>" <?= $ap === $selectedPeriod ? 'selected' : '' ?>><?= $ap ?></option>
                     <?php endforeach; ?>
                 </select>
-                <span class="material-symbols-outlined absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-on-surface-variant text-sm">arrow_drop_down</span>
+                
             </div>
         </div>
     </div>

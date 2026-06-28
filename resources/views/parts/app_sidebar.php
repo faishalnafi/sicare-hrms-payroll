@@ -107,6 +107,77 @@ if (isset($menus) && is_array($menus)) {
     });
 }
 
+// Reorganize menu for Superadmin role
+if ($sessRole === 'superadmin') {
+    $menus = [
+        [
+            'title' => 'Dashboard',
+            'icon' => 'dashboard',
+            'link' => '/superadmin/dashboard'
+        ],
+        [
+            'title' => 'Apps',
+            'icon' => 'apps',
+            'link' => '/superadmin/apps'
+        ],
+        [
+            'title' => 'Pengaturan',
+            'icon' => 'settings',
+            'id' => 'submenu-settings',
+            'children' => [
+                ['title' => 'Umum', 'link' => '/superadmin/settings', 'icon' => 'tune'],
+                ['title' => 'Sistem', 'link' => '/superadmin/system-settings', 'icon' => 'settings_applications']
+            ]
+        ],
+        [
+            'title' => 'Persetujuan',
+            'icon' => 'fact_check',
+            'id' => 'submenu-approvals',
+            'children' => [
+                ['title' => 'Executive', 'link' => '/superadmin/approvals/executive', 'icon' => 'shield_person'],
+                ['title' => 'Manager', 'link' => '/superadmin/approvals/manager', 'icon' => 'badge'],
+                ['title' => 'HR Ops', 'link' => '/superadmin/approvals/hrops', 'icon' => 'manage_accounts'],
+                ['title' => 'Recruiter', 'link' => '/superadmin/approvals/recruiter', 'icon' => 'work_history']
+            ]
+        ],
+        [
+            'title' => 'Struktur Departemen',
+            'icon' => 'account_tree',
+            'link' => '/superadmin/departments'
+        ],
+        [
+            'title' => 'Manajemen Pengguna',
+            'icon' => 'group',
+            'link' => '/superadmin/users'
+        ],
+        [
+            'title' => 'Audit Log & Keamanan',
+            'icon' => 'security',
+            'link' => '/superadmin/audit'
+        ],
+        [
+            'title' => 'Refleksi',
+            'icon' => 'psychology',
+            'link' => '/superadmin/reflection'
+        ],
+        [
+            'title' => 'Changelogs',
+            'icon' => 'history',
+            'id' => 'submenu-changelogs',
+            'children' => [
+                ['title' => 'Pembaruan', 'link' => '/superadmin/update', 'icon' => 'system_update'],
+                ['title' => 'Rilis', 'link' => '/changelogs', 'icon' => 'published_with_changes'],
+                ['title' => 'Pedoman', 'link' => '/changelogs/guide', 'icon' => 'menu_book']
+            ]
+        ],
+        [
+            'title' => 'API',
+            'icon' => 'api',
+            'link' => '/superadmin/api'
+        ]
+    ];
+}
+
 $requestUri = parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH);
 $currentUri = '/' . trim($requestUri, '/');
 ?>
@@ -140,8 +211,28 @@ $currentUri = '/' . trim($requestUri, '/');
     scrollbar-color: rgba(0, 6, 102, 0.15) transparent;
 }
 </style>
+<script>
+window.toggleSidebarSubmenu = function(id) {
+    const el = document.getElementById(id);
+    const btn = document.getElementById('btn-' + id);
+    if (!el) return;
+    const isHidden = el.classList.contains('hidden');
+    if (isHidden) {
+        el.classList.remove('hidden');
+        if (btn) {
+            const arrow = btn.querySelector('.submenu-arrow');
+            if (arrow) arrow.classList.add('rotate-180');
+        }
+    } else {
+        el.classList.add('hidden');
+        if (btn) {
+            const arrow = btn.querySelector('.submenu-arrow');
+            if (arrow) arrow.classList.remove('rotate-180');
+        }
+    }
+};
+</script>
 <aside id="appSidebar" class="fixed top-0 left-0 h-screen lg:top-4 lg:h-[calc(100vh-2rem)] w-72 lg:w-20 lg:hover:w-72 xl:w-72 bg-surface-container-lowest border-r lg:border border-outline-variant/15 lg:rounded-2xl flex flex-col justify-between py-6 px-4 lg:px-2 lg:hover:px-4 xl:px-4 z-40 -translate-x-full lg:translate-x-0 transition-all duration-300 ease-in-out shadow-[4px_4px_30px_rgba(0,6,102,0.05)] group">
-    <!-- Brand Logo, Desktop Toggle and Mobile Close Button -->
     <!-- Brand Logo, Desktop Toggle and Mobile Close Button -->
     <div class="brand-logo-container flex items-center justify-between px-3 lg:px-2 lg:group-hover:px-3 xl:px-3 mb-6 flex-shrink-0">
         <a href="/<?= $roleFolder ?>/dashboard" data-spa class="brand-logo-link text-2xl font-black text-primary font-headline tracking-tight flex items-center gap-2.5 hover:opacity-90 transition-opacity">
@@ -166,6 +257,51 @@ $currentUri = '/' . trim($requestUri, '/');
     <nav class="flex-grow overflow-y-auto space-y-1.5 px-1 pr-2 -mr-2 scrollbar-thin scrollbar-thumb-surface-container-high scrollbar-track-transparent">
         <?php foreach($menus as $menu): 
             $cleanUri = rtrim($currentUri, '/');
+
+            // Submenu parent rendering
+            if (isset($menu['children']) && is_array($menu['children'])) {
+                $hasActiveChild = false;
+                foreach ($menu['children'] as $child) {
+                    $cLink = rtrim($child['link'], '/');
+                    if ($cleanUri === $cLink || str_ends_with($cleanUri, $cLink)) {
+                        $hasActiveChild = true;
+                        break;
+                    }
+                }
+                $parentActiveClass = $hasActiveChild 
+                    ? 'bg-primary/5 text-primary font-bold' 
+                    : 'text-on-surface-variant hover:bg-surface-container-low hover:text-primary transition-all duration-200';
+        ?>
+            <div class="submenu-group">
+                <button type="button" id="btn-<?= htmlspecialchars($menu['id']) ?>" onclick="window.toggleSidebarSubmenu('<?= htmlspecialchars($menu['id']) ?>')" class="w-full text-left block" data-tooltip="<?= htmlspecialchars($menu['title']) ?>">
+                    <div class="rounded-xl p-3 flex items-center justify-start lg:justify-center lg:group-hover:justify-start xl:justify-start gap-3 group cursor-pointer transition-all duration-200 <?= $parentActiveClass ?>">
+                        <span class="material-symbols-outlined flex-shrink-0 transition-colors <?= $hasActiveChild ? 'text-primary' : 'text-on-surface-variant group-hover:text-primary' ?>"><?= htmlspecialchars($menu['icon']) ?></span>
+                        <span class="text-sm font-medium flex-grow whitespace-nowrap transition-colors <?= $hasActiveChild ? 'text-primary font-bold' : 'text-on-surface-variant group-hover:text-primary' ?> lg:opacity-0 lg:group-hover:opacity-100 lg:w-0 lg:group-hover:w-auto xl:opacity-100 xl:w-auto overflow-hidden"><?= htmlspecialchars($menu['title']) ?></span>
+                        <span class="submenu-arrow material-symbols-outlined text-sm flex-shrink-0 ml-auto transition-transform duration-200 lg:opacity-0 lg:group-hover:opacity-100 lg:w-0 lg:group-hover:w-auto xl:opacity-100 xl:w-auto overflow-hidden text-on-surface-variant/50 <?= $hasActiveChild ? 'rotate-180 text-primary' : '' ?>">expand_more</span>
+                    </div>
+                </button>
+                <div id="<?= htmlspecialchars($menu['id']) ?>" class="submenu-container <?= $hasActiveChild ? '' : 'hidden' ?> pl-9 lg:pl-0 lg:group-hover:pl-9 xl:pl-9 space-y-1 mt-1 transition-all">
+                    <?php foreach($menu['children'] as $child): 
+                        $cleanChildLink = rtrim($child['link'], '/');
+                        $isChildActive = ($cleanUri === $cleanChildLink || str_ends_with($cleanUri, $cleanChildLink));
+                        $childActiveClass = $isChildActive 
+                            ? 'bg-primary/10 text-primary font-bold shadow-[0_2px_8px_rgba(0,6,102,0.02)]' 
+                            : 'text-on-surface-variant hover:bg-surface-container-low hover:text-primary';
+                    ?>
+                    <a href="<?= htmlspecialchars($child['link']) ?>" data-spa class="block" data-tooltip="<?= htmlspecialchars($child['title']) ?>">
+                        <div class="rounded-xl px-3 py-2 flex items-center justify-start lg:justify-center lg:group-hover:justify-start xl:justify-start gap-2.5 group cursor-pointer transition-all duration-200 <?= $childActiveClass ?>">
+                            <span class="material-symbols-outlined text-[18px] flex-shrink-0 transition-colors <?= $isChildActive ? 'text-primary' : 'text-on-surface-variant/70 group-hover:text-primary' ?>"><?= htmlspecialchars($child['icon']) ?></span>
+                            <span class="text-xs font-medium flex-grow whitespace-nowrap transition-colors <?= $isChildActive ? 'text-primary font-bold' : 'text-on-surface-variant group-hover:text-primary' ?> lg:opacity-0 lg:group-hover:opacity-100 lg:w-0 lg:group-hover:w-auto xl:opacity-100 xl:w-auto overflow-hidden"><?= htmlspecialchars($child['title']) ?></span>
+                        </div>
+                    </a>
+                    <?php endforeach; ?>
+                </div>
+            </div>
+        <?php 
+                continue;
+            }
+
+            // Standard flat menu rendering
             $cleanLink = rtrim($menu['link'], '/');
             $isActive = ($cleanUri === $cleanLink || str_ends_with($cleanUri, $cleanLink));
             

@@ -87,7 +87,7 @@ for ($y = $year; $y >= $year - 1; $y--) {
                         <option value="<?= $ap ?>" <?= $ap === $selectedPeriod ? 'selected' : '' ?>><?= $ap ?></option>
                     <?php endforeach; ?>
                 </select>
-                <span class="material-symbols-outlined absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-on-surface-variant text-sm">arrow_drop_down</span>
+                
             </div>
         </div>
     </div>
@@ -104,7 +104,7 @@ for ($y = $year; $y >= $year - 1; $y--) {
     <!-- Aggregate Analytics Dashboard Grid -->
     <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
         <!-- Average Workload Card -->
-        <div class="bg-surface-container-lowest rounded-2xl p-5 border border-outline-variant/15 shadow-sm space-y-3">
+        <div class="stat-card-scale bg-surface-container-lowest rounded-2xl p-5 border border-outline-variant/15 shadow-sm space-y-3">
             <div class="flex items-center justify-between">
                 <span class="text-[10px] font-bold text-on-surface-variant uppercase tracking-wider">Beban Kerja Rata-Rata</span>
                 <span class="material-symbols-outlined text-primary bg-primary/5 p-2 rounded-lg text-sm">speed</span>
@@ -119,7 +119,7 @@ for ($y = $year; $y >= $year - 1; $y--) {
         </div>
 
         <!-- Average Core Values Card -->
-        <div class="bg-surface-container-lowest rounded-2xl p-5 border border-outline-variant/15 shadow-sm space-y-3">
+        <div class="stat-card-scale bg-surface-container-lowest rounded-2xl p-5 border border-outline-variant/15 shadow-sm space-y-3">
             <div class="flex items-center justify-between">
                 <span class="text-[10px] font-bold text-on-surface-variant uppercase tracking-wider">Implementasi Budaya (Values)</span>
                 <span class="material-symbols-outlined text-amber-500 bg-amber-50 p-2 rounded-lg text-sm">stars</span>
@@ -134,7 +134,7 @@ for ($y = $year; $y >= $year - 1; $y--) {
         </div>
 
         <!-- Submission Status Card -->
-        <div class="bg-surface-container-lowest rounded-2xl p-5 border border-outline-variant/15 shadow-sm space-y-3">
+        <div class="stat-card-scale bg-surface-container-lowest rounded-2xl p-5 border border-outline-variant/15 shadow-sm space-y-3">
             <div class="flex items-center justify-between">
                 <span class="text-[10px] font-bold text-on-surface-variant uppercase tracking-wider">Status Partisipasi</span>
                 <span class="material-symbols-outlined text-blue-600 bg-blue-50 p-2 rounded-lg text-sm">assignment_turned_in</span>
@@ -152,7 +152,7 @@ for ($y = $year; $y >= $year - 1; $y--) {
         </div>
 
         <!-- Mood / Sentimen Indeks -->
-        <div class="bg-surface-container-lowest rounded-2xl p-5 border border-outline-variant/15 shadow-sm space-y-3">
+        <div class="stat-card-scale bg-surface-container-lowest rounded-2xl p-5 border border-outline-variant/15 shadow-sm space-y-3">
             <div class="flex items-center justify-between">
                 <span class="text-[10px] font-bold text-on-surface-variant uppercase tracking-wider">Indeks Mood Dominan</span>
                 <span class="material-symbols-outlined text-green-600 bg-green-50 p-2 rounded-lg text-sm">mood</span>

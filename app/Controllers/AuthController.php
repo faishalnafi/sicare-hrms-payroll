@@ -537,6 +537,13 @@ class AuthController {
             return;
         }
 
+        // CSRF Token Validation
+        $csrfToken = $_POST['csrf_token'] ?? $_SERVER['HTTP_X_CSRF_TOKEN'] ?? '';
+        if (empty($csrfToken) || !hash_equals($_SESSION['csrf_token'] ?? '', $csrfToken)) {
+            echo json_encode(["success" => false, "message" => "Token CSRF tidak valid atau kedaluwarsa. Silakan muat ulang halaman."]);
+            return;
+        }
+
         $userId = $_SESSION["user_id"];
         $email = $_POST["email"] ?? "";
         $phone = $_POST["no_telepon"] ?? "";

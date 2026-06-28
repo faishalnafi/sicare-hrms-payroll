@@ -7,7 +7,7 @@ use PDO;
 
 class EmployeeMasterController {
     
-    private function checkAccess() {
+    private function checkAccess(bool $requireCsrf = false) {
         // Safe session start: only start if not already active
         if (session_status() === PHP_SESSION_NONE) {
             session_start();
@@ -25,6 +25,14 @@ class EmployeeMasterController {
             http_response_code(403);
             echo json_encode(['success' => false, 'message' => 'Unauthorized access']);
             exit;
+        }
+        if ($requireCsrf) {
+            $token = $_POST['csrf_token'] ?? $_SERVER['HTTP_X_CSRF_TOKEN'] ?? '';
+            if (empty($token) || !hash_equals($_SESSION['csrf_token'] ?? '', $token)) {
+                header('Content-Type: application/json');
+                echo json_encode(['success' => false, 'message' => 'Token CSRF tidak valid atau kedaluwarsa. Silakan muat ulang halaman.']);
+                exit;
+            }
         }
     }
 
@@ -144,7 +152,7 @@ class EmployeeMasterController {
     }
 
     public function save() {
-        $this->checkAccess();
+        $this->checkAccess(true);
         header('Content-Type: application/json');
 
         if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
@@ -457,7 +465,7 @@ class EmployeeMasterController {
     }
 
     public function delete() {
-        $this->checkAccess();
+        $this->checkAccess(true);
         header('Content-Type: application/json');
 
         $id = $_POST['id'] ?? '';
@@ -510,7 +518,7 @@ class EmployeeMasterController {
     }
 
     public function deletePermanent() {
-        $this->checkAccess();
+        $this->checkAccess(true);
         header('Content-Type: application/json');
 
         if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
@@ -570,7 +578,7 @@ class EmployeeMasterController {
     }
 
     public function restore() {
-        $this->checkAccess();
+        $this->checkAccess(true);
         header('Content-Type: application/json');
 
         if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
@@ -612,7 +620,7 @@ class EmployeeMasterController {
     }
 
     public function toggleSuspend() {
-        $this->checkAccess();
+        $this->checkAccess(true);
         header('Content-Type: application/json');
 
         if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
@@ -690,6 +698,12 @@ class EmployeeMasterController {
             return;
         }
 
+        $csrfToken = $_POST['csrf_token'] ?? $_SERVER['HTTP_X_CSRF_TOKEN'] ?? '';
+        if (empty($csrfToken) || !hash_equals($_SESSION['csrf_token'] ?? '', $csrfToken)) {
+            echo json_encode(['success' => false, 'message' => 'Token CSRF tidak valid. Mohon muat ulang halaman.']);
+            return;
+        }
+
         $userId = $_POST['user_id'] ?? '';
         if (empty($userId)) {
             echo json_encode(['success' => false, 'message' => 'ID pengguna wajib diisi.']);
@@ -748,8 +762,8 @@ class EmployeeMasterController {
             return;
         }
 
-        $csrfToken = $_POST['csrf_token'] ?? '';
-        if (empty($csrfToken) || $csrfToken !== ($_SESSION['csrf_token'] ?? '')) {
+        $csrfToken = $_POST['csrf_token'] ?? $_SERVER['HTTP_X_CSRF_TOKEN'] ?? '';
+        if (empty($csrfToken) || !hash_equals($_SESSION['csrf_token'] ?? '', $csrfToken)) {
             echo json_encode(['success' => false, 'message' => 'CSRF Token tidak valid. Mohon muat ulang halaman.']);
             return;
         }
@@ -835,8 +849,8 @@ class EmployeeMasterController {
             return;
         }
 
-        $csrfToken = $_POST['csrf_token'] ?? '';
-        if (empty($csrfToken) || $csrfToken !== ($_SESSION['csrf_token'] ?? '')) {
+        $csrfToken = $_POST['csrf_token'] ?? $_SERVER['HTTP_X_CSRF_TOKEN'] ?? '';
+        if (empty($csrfToken) || !hash_equals($_SESSION['csrf_token'] ?? '', $csrfToken)) {
             echo json_encode(['success' => false, 'message' => 'CSRF Token tidak valid. Mohon muat ulang halaman.']);
             return;
         }
@@ -949,7 +963,7 @@ class EmployeeMasterController {
     }
 
     public function emptyTrash() {
-        $this->checkAccess();
+        $this->checkAccess(true);
         header('Content-Type: application/json');
 
         if ($_SERVER['REQUEST_METHOD'] !== 'POST') {

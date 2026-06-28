@@ -109,7 +109,7 @@ function formatIndonesianDate($dateStr) {
     <!-- KPI Summary Row -->
     <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
         <!-- Card 1 -->
-        <div class="bg-surface-container-lowest rounded-2xl p-5 border border-outline-variant/15 shadow-sm hover:shadow-md transition-shadow">
+        <div class="stat-card-scale bg-surface-container-lowest rounded-2xl p-5 border border-outline-variant/15 shadow-sm">
             <div class="flex items-center justify-between">
                 <span class="text-[10px] font-bold text-on-surface-variant uppercase tracking-wider">Menunggu Persetujuan</span>
                 <span class="material-symbols-outlined text-amber-600 bg-amber-50 p-2 rounded-xl text-sm font-bold <?= $pendingCount > 0 ? 'animate-pulse' : '' ?>">pending_actions</span>
@@ -122,7 +122,7 @@ function formatIndonesianDate($dateStr) {
             </div>
         </div>
         <!-- Card 2 -->
-        <div class="bg-surface-container-lowest rounded-2xl p-5 border border-outline-variant/15 shadow-sm hover:shadow-md transition-shadow">
+        <div class="stat-card-scale bg-surface-container-lowest rounded-2xl p-5 border border-outline-variant/15 shadow-sm">
             <div class="flex items-center justify-between">
                 <span class="text-[10px] font-bold text-on-surface-variant uppercase tracking-wider">Sedang Cuti Hari Ini</span>
                 <span class="material-symbols-outlined text-indigo-600 bg-indigo-50 p-2 rounded-xl text-sm font-bold">flight_takeoff</span>
@@ -135,7 +135,7 @@ function formatIndonesianDate($dateStr) {
             </div>
         </div>
         <!-- Card 3 -->
-        <div class="bg-surface-container-lowest rounded-2xl p-5 border border-outline-variant/15 shadow-sm hover:shadow-md transition-shadow">
+        <div class="stat-card-scale bg-surface-container-lowest rounded-2xl p-5 border border-outline-variant/15 shadow-sm">
             <div class="flex items-center justify-between">
                 <span class="text-[10px] font-bold text-on-surface-variant uppercase tracking-wider">Disetujui Bulan Ini</span>
                 <span class="material-symbols-outlined text-green-600 bg-green-50 p-2 rounded-xl text-sm font-bold">verified</span>
@@ -148,7 +148,7 @@ function formatIndonesianDate($dateStr) {
             </div>
         </div>
         <!-- Card 4 -->
-        <div class="bg-surface-container-lowest rounded-2xl p-5 border border-outline-variant/15 shadow-sm hover:shadow-md transition-shadow">
+        <div class="stat-card-scale bg-surface-container-lowest rounded-2xl p-5 border border-outline-variant/15 shadow-sm">
             <div class="flex items-center justify-between">
                 <span class="text-[10px] font-bold text-on-surface-variant uppercase tracking-wider">Kuota Cuti Perusahaan</span>
                 <span class="material-symbols-outlined text-primary bg-primary/5 p-2 rounded-xl text-sm font-bold">calendar_month</span>

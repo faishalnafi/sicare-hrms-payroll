@@ -119,7 +119,7 @@ function initials($fn, $ln) {
 
     <!-- ── KPI Cards ── -->
     <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <div class="bg-surface-container-lowest rounded-xl p-5 border border-outline-variant/15 shadow-sm hover:shadow-md transition-shadow">
+        <div class="stat-card-scale bg-surface-container-lowest rounded-xl p-5 border border-outline-variant/15 shadow-sm">
             <div class="flex items-center justify-between">
                 <span class="text-[10px] font-bold text-on-surface-variant uppercase tracking-wider">Karyawan Aktif</span>
                 <span class="material-symbols-outlined text-primary bg-primary/5 p-2 rounded-lg">groups</span>
@@ -129,7 +129,7 @@ function initials($fn, $ln) {
                 <p class="text-[11px] text-emerald-600 font-semibold mt-1 flex items-center gap-1"><span class="material-symbols-outlined text-xs">verified</span> Data terintegrasi</p>
             </div>
         </div>
-        <div class="bg-surface-container-lowest rounded-xl p-5 border border-outline-variant/15 shadow-sm hover:shadow-md transition-shadow">
+        <div class="stat-card-scale bg-surface-container-lowest rounded-xl p-5 border border-outline-variant/15 shadow-sm">
             <div class="flex items-center justify-between">
                 <span class="text-[10px] font-bold text-on-surface-variant uppercase tracking-wider">Hadir Hari Ini</span>
                 <span class="material-symbols-outlined text-emerald-600 bg-emerald-50 p-2 rounded-lg">check_circle</span>
@@ -142,7 +142,7 @@ function initials($fn, $ln) {
                 </p>
             </div>
         </div>
-        <div class="bg-surface-container-lowest rounded-xl p-5 border border-outline-variant/15 shadow-sm hover:shadow-md transition-shadow">
+        <div class="stat-card-scale bg-surface-container-lowest rounded-xl p-5 border border-outline-variant/15 shadow-sm">
             <div class="flex items-center justify-between">
                 <span class="text-[10px] font-bold text-on-surface-variant uppercase tracking-wider">Terlambat</span>
                 <span class="material-symbols-outlined text-amber-600 bg-amber-50 p-2 rounded-lg">schedule</span>
@@ -152,7 +152,7 @@ function initials($fn, $ln) {
                 <p class="text-[11px] text-amber-600 font-semibold mt-1 flex items-center gap-1"><span class="material-symbols-outlined text-xs">error</span> Perlu monitoring</p>
             </div>
         </div>
-        <div class="bg-surface-container-lowest rounded-xl p-5 border border-outline-variant/15 shadow-sm hover:shadow-md transition-shadow">
+        <div class="stat-card-scale bg-surface-container-lowest rounded-xl p-5 border border-outline-variant/15 shadow-sm">
             <div class="flex items-center justify-between">
                 <span class="text-[10px] font-bold text-on-surface-variant uppercase tracking-wider">Absen / Cuti / Izin</span>
                 <span class="material-symbols-outlined text-red-600 bg-red-50 p-2 rounded-lg">logout</span>

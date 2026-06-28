@@ -25,6 +25,12 @@ class DepartmentController {
             echo json_encode(['success' => false, 'message' => 'Hanya Admin atau Superadmin yang dapat mengelola struktur departemen.']);
             exit;
         }
+        $token = $_POST['csrf_token'] ?? $_SERVER['HTTP_X_CSRF_TOKEN'] ?? '';
+        if (empty($token) || !hash_equals($_SESSION['csrf_token'] ?? '', $token)) {
+            header('Content-Type: application/json');
+            echo json_encode(['success' => false, 'message' => 'Token CSRF tidak valid atau kedaluwarsa. Silakan muat ulang halaman.']);
+            exit;
+        }
     }
 
     public function save() {

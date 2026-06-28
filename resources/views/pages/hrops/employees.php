@@ -45,14 +45,14 @@
                             <option value="superadmin">Superadmin</option>
                             <option value="candidate">Candidate</option>
                         </select>
-                        <span class="material-symbols-outlined absolute right-3 top-1/2 -translate-y-1/2 text-on-surface-variant/50 pointer-events-none">expand_more</span>
+                        
                     </div>
                 </div>
             </div>
         </div>
 
         <div class="overflow-x-auto">
-            <table class="w-full text-left border-collapse">
+            <table class="w-full text-left border-collapse table-standardized" data-has-custom-pagination="true">
                 <thead>
                     <tr class="bg-surface text-on-surface-variant border-b border-outline-variant/15">
                         <th class="py-4 px-6 text-[11px] font-bold uppercase tracking-wider">Profil</th>
@@ -76,13 +76,28 @@
         </div>
         
         <!-- Pagination Controls -->
-        <div id="employeePagination" class="px-6 py-4 border-t border-outline-variant/15 flex items-center justify-end bg-surface-container-low/30 hidden">
-            <div class="flex items-center gap-2">
-                <button id="employeePrevBtn" onclick="prevEmployeePage()" class="p-2 flex items-center justify-center rounded-full hover:bg-surface-container-high text-on-surface-variant disabled:opacity-30 disabled:cursor-not-allowed transition-colors border border-transparent disabled:hover:bg-transparent">
+        <div id="employeePagination" class="px-6 py-4 border-t border-outline-variant/15 flex items-center justify-between bg-surface-container-low/30 hidden">
+            <div id="employeePaginationInfo" class="table-pagination-info text-sm text-on-surface-variant font-medium"></div>
+            <div class="flex items-center gap-1.5">
+                <!-- First Page -->
+                <button id="employeeFirstBtn" onclick="window.firstEmployeePage()" class="p-2 flex items-center justify-center rounded-full hover:bg-surface-container-high text-on-surface-variant disabled:opacity-30 disabled:cursor-not-allowed transition-colors border border-transparent disabled:hover:bg-transparent" title="Halaman Pertama">
+                    <span class="material-symbols-outlined text-sm">first_page</span>
+                </button>
+                <!-- Prev Page -->
+                <button id="employeePrevBtn" onclick="window.prevEmployeePage()" class="p-2 flex items-center justify-center rounded-full hover:bg-surface-container-high text-on-surface-variant disabled:opacity-30 disabled:cursor-not-allowed transition-colors border border-transparent disabled:hover:bg-transparent" title="Halaman Sebelumnya">
                     <span class="material-symbols-outlined text-sm">chevron_left</span>
                 </button>
-                <button id="employeeNextBtn" onclick="nextEmployeePage()" class="p-2 flex items-center justify-center rounded-full hover:bg-surface-container-high text-on-surface-variant disabled:opacity-30 disabled:cursor-not-allowed transition-colors border border-transparent disabled:hover:bg-transparent">
+                
+                <!-- Page numbers container -->
+                <div id="employeePageNumbers" class="flex items-center gap-1"></div>
+
+                <!-- Next Page -->
+                <button id="employeeNextBtn" onclick="window.nextEmployeePage()" class="p-2 flex items-center justify-center rounded-full hover:bg-surface-container-high text-on-surface-variant disabled:opacity-30 disabled:cursor-not-allowed transition-colors border border-transparent disabled:hover:bg-transparent" title="Halaman Berikutnya">
                     <span class="material-symbols-outlined text-sm">chevron_right</span>
+                </button>
+                <!-- Last Page -->
+                <button id="employeeLastBtn" onclick="window.lastEmployeePage()" class="p-2 flex items-center justify-center rounded-full hover:bg-surface-container-high text-on-surface-variant disabled:opacity-30 disabled:cursor-not-allowed transition-colors border border-transparent disabled:hover:bg-transparent" title="Halaman Terakhir">
+                    <span class="material-symbols-outlined text-sm">last_page</span>
                 </button>
             </div>
         </div>
@@ -136,7 +151,7 @@
                             <option value="">Tanpa Departemen</option>
                             <!-- Populated dynamically -->
                         </select>
-                        <span class="material-symbols-outlined absolute right-3 top-1/2 -translate-y-1/2 text-on-surface-variant/50 pointer-events-none">expand_more</span>
+                        
                     </div>
                 </div>
                 
@@ -164,7 +179,7 @@
                             <option value="admin">Admin</option>
                             <option value="candidate">Candidate</option>
                         </select>
-                        <span class="material-symbols-outlined absolute right-3 top-1/2 -translate-y-1/2 text-on-surface-variant/50 pointer-events-none">expand_more</span>
+                        
                     </div>
                 </div>
 
@@ -226,6 +241,7 @@
     let employeesData = [];
     let departmentsData = [];
     let currentEmployeePage = 1;
+    let totalEmployeePages = 1;
     const itemsPerEmployeePage = 10;
 
     window.stubImportExport = function(action) {
@@ -387,6 +403,8 @@
             }
         }
 
+        totalEmployeePages = totalPages;
+
         const pagination = document.getElementById('employeePagination');
         if (totalItems === 0 || totalPages <= 1) {
             pagination.classList.add('hidden');
@@ -394,19 +412,92 @@
             pagination.classList.remove('hidden');
         }
 
-        document.getElementById('employeePrevBtn').disabled = currentEmployeePage === 1;
-        document.getElementById('employeeNextBtn').disabled = currentEmployeePage === totalPages || totalPages === 0;
+        // Info text
+        const infoEl = document.getElementById('employeePaginationInfo');
+        if (infoEl) {
+            const startShow = totalItems === 0 ? 0 : startIdx + 1;
+            const endShow = endIdx;
+            infoEl.textContent = 'Menampilkan data ' + startShow + ' sampai ' + endShow + ' dari ' + totalItems;
+        }
+
+        // Disabled states
+        const firstBtn = document.getElementById('employeeFirstBtn');
+        const prevBtn = document.getElementById('employeePrevBtn');
+        const nextBtn = document.getElementById('employeeNextBtn');
+        const lastBtn = document.getElementById('employeeLastBtn');
+
+        if (firstBtn) firstBtn.disabled = currentEmployeePage === 1;
+        if (prevBtn) prevBtn.disabled = currentEmployeePage === 1;
+        if (nextBtn) nextBtn.disabled = currentEmployeePage === totalPages || totalPages === 0;
+        if (lastBtn) lastBtn.disabled = currentEmployeePage === totalPages || totalPages === 0;
+
+        // Page number buttons (max 3 centered)
+        const pageNumbersContainer = document.getElementById('employeePageNumbers');
+        if (pageNumbersContainer) {
+            pageNumbersContainer.innerHTML = '';
+
+            let startPage = currentEmployeePage - 1;
+            let endPage = currentEmployeePage + 1;
+            if (startPage < 1) {
+                startPage = 1;
+                endPage = Math.min(3, totalPages);
+            }
+            if (endPage > totalPages) {
+                endPage = totalPages;
+                startPage = Math.max(1, totalPages - 2);
+            }
+
+            for (let p = startPage; p <= endPage; p++) {
+                (function(pageNum) {
+                    const btn = document.createElement('button');
+                    btn.type = 'button';
+                    btn.className = 'w-8 h-8 flex items-center justify-center rounded-full text-xs font-semibold transition-all border ';
+                    if (pageNum === currentEmployeePage) {
+                        btn.className += 'bg-primary text-white border-primary shadow-sm';
+                    } else {
+                        btn.className += 'hover:bg-surface-container-high text-on-surface border-transparent';
+                    }
+                    btn.textContent = pageNum;
+                    btn.onclick = function() {
+                        currentEmployeePage = pageNum;
+                        renderEmployeeTable();
+                    };
+                    pageNumbersContainer.appendChild(btn);
+                })(p);
+            }
+        }
     }
 
     document.getElementById('employeeSearchInput').addEventListener('input', () => { currentEmployeePage = 1; renderEmployeeTable(); });
     document.getElementById('employeeRoleFilter').addEventListener('change', () => { currentEmployeePage = 1; renderEmployeeTable(); });
 
+    window.firstEmployeePage = function() {
+        if (currentEmployeePage > 1) {
+            currentEmployeePage = 1;
+            renderEmployeeTable();
+        }
+    };
+
     window.prevEmployeePage = function() {
-        if (currentEmployeePage > 1) { currentEmployeePage--; renderEmployeeTable(); }
-    }
+        if (currentEmployeePage > 1) {
+            currentEmployeePage--;
+            renderEmployeeTable();
+        }
+    };
+
     window.nextEmployeePage = function() {
-        currentEmployeePage++; renderEmployeeTable();
-    }
+        if (currentEmployeePage < totalEmployeePages) {
+            currentEmployeePage++;
+            renderEmployeeTable();
+        }
+    };
+
+    window.lastEmployeePage = function() {
+        if (currentEmployeePage < totalEmployeePages) {
+            currentEmployeePage = totalEmployeePages;
+            renderEmployeeTable();
+        }
+    };
 
     window.openEmployeeModal = function() {
         document.getElementById('employeeForm').reset();

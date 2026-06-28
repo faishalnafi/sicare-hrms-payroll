@@ -2,14 +2,32 @@
 // HR Operations Verification Queue Dashboard
 $db = \App\Config\Database::getInstance()->getConnection();
 
-// Fetch counts
-$stmt = $db->query("SELECT status, COUNT(*) as count FROM employee_data_correction_requests GROUP BY status");
+// Fetch counts (strictly joining active users to align 100% with table data)
+$stmt = $db->query("
+    SELECT r.status, COUNT(*) as count 
+    FROM employee_data_correction_requests r
+    JOIN users u ON r.user_id = u.id
+    GROUP BY r.status
+");
 $statusCounts = $stmt->fetchAll(PDO::FETCH_KEY_PAIR);
 
 $pendingCount = $statusCounts['pending'] ?? 0;
 $approvedCount = $statusCounts['approved'] ?? 0;
 $rejectedCount = $statusCounts['rejected'] ?? 0;
 $totalCount = array_sum($statusCounts);
+
+// Calculate SLA average in hours for processed requests
+$slaStmt = $db->query("SELECT TIMESTAMPDIFF(MINUTE, created_at, updated_at) as diff_mins FROM employee_data_correction_requests WHERE status IN ('approved', 'rejected') AND updated_at IS NOT NULL");
+$diffs = $slaStmt->fetchAll(PDO::FETCH_COLUMN);
+$avgSlaHours = 1.2;
+if (!empty($diffs) && count($diffs) > 0) {
+    $validDiffs = array_filter($diffs, fn($d) => $d !== null && $d >= 0);
+    if (!empty($validDiffs)) {
+        $avgMins = array_sum($validDiffs) / count($validDiffs);
+        $avgSlaHours = round($avgMins / 60, 1);
+        if ($avgSlaHours < 0.1) $avgSlaHours = 0.1;
+    }
+}
 
 // Fetch all rows
 $stmt = $db->query("
@@ -88,7 +106,7 @@ function getCategoryColor($category) {
     <!-- KPI Summary Row -->
     <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
         <!-- KPI Card 1: Pending -->
-        <div class="bg-surface-container-lowest rounded-2xl p-5 border border-outline-variant/15 shadow-sm hover:shadow-md transition-shadow">
+        <div class="stat-card-scale bg-surface-container-lowest rounded-2xl p-5 border border-outline-variant/15 shadow-sm">
             <div class="flex items-center justify-between">
                 <span class="text-xs font-bold text-on-surface-variant uppercase tracking-wider">Antrean Pending</span>
                 <span class="material-symbols-outlined text-amber-600 bg-amber-50 p-2 rounded-xl font-bold <?= $pendingCount > 0 ? 'animate-pulse' : '' ?>">pending_actions</span>
@@ -102,13 +120,13 @@ function getCategoryColor($category) {
         </div>
 
         <!-- KPI Card 2: Approved -->
-        <div class="bg-surface-container-lowest rounded-2xl p-5 border border-outline-variant/15 shadow-sm hover:shadow-md transition-shadow">
+        <div class="stat-card-scale bg-surface-container-lowest rounded-2xl p-5 border border-outline-variant/15 shadow-sm">
             <div class="flex items-center justify-between">
                 <span class="text-xs font-bold text-on-surface-variant uppercase tracking-wider">Disetujui Bulan Ini</span>
                 <span class="material-symbols-outlined text-green-600 bg-green-50 p-2 rounded-xl">task_alt</span>
             </div>
             <div class="mt-4">
-                <h3 class="text-3xl font-black text-green-700"><?= $approvedCount ?> <span class="text-xs font-semibold text-green-600">Data Terupdate</span></h3>
+                <h3 class="text-3xl font-black text-green-700" id="kpiApprovedCount"><?= $approvedCount ?> <span class="text-xs font-semibold text-green-600">Data Terupdate</span></h3>
                 <p class="text-[11px] text-green-600 font-semibold mt-1 flex items-center gap-1">
                     <span class="material-symbols-outlined text-xs">sync</span> Sinkronisasi payroll otomatis aktif
                 </p>
@@ -116,13 +134,13 @@ function getCategoryColor($category) {
         </div>
 
         <!-- KPI Card 3: Rejected -->
-        <div class="bg-surface-container-lowest rounded-2xl p-5 border border-outline-variant/15 shadow-sm hover:shadow-md transition-shadow">
+        <div class="stat-card-scale bg-surface-container-lowest rounded-2xl p-5 border border-outline-variant/15 shadow-sm">
             <div class="flex items-center justify-between">
                 <span class="text-xs font-bold text-on-surface-variant uppercase tracking-wider">Ditolak Bulan Ini</span>
                 <span class="material-symbols-outlined text-red-600 bg-red-50 p-2 rounded-xl">cancel</span>
             </div>
             <div class="mt-4">
-                <h3 class="text-3xl font-black text-red-700"><?= $rejectedCount ?> <span class="text-xs font-semibold text-red-600">Pengajuan</span></h3>
+                <h3 class="text-3xl font-black text-red-700" id="kpiRejectedCount"><?= $rejectedCount ?> <span class="text-xs font-semibold text-red-600">Pengajuan</span></h3>
                 <p class="text-[11px] text-red-600 font-semibold mt-1 flex items-center gap-1">
                     <span class="material-symbols-outlined text-xs">error</span> Berkas tidak valid / terpotong
                 </p>
@@ -130,13 +148,13 @@ function getCategoryColor($category) {
         </div>
 
         <!-- KPI Card 4: SLA Time -->
-        <div class="bg-surface-container-lowest rounded-2xl p-5 border border-outline-variant/15 shadow-sm hover:shadow-md transition-shadow">
+        <div class="stat-card-scale bg-surface-container-lowest rounded-2xl p-5 border border-outline-variant/15 shadow-sm">
             <div class="flex items-center justify-between">
                 <span class="text-xs font-bold text-on-surface-variant uppercase tracking-wider">Rata-rata Durasi SLA</span>
                 <span class="material-symbols-outlined text-primary bg-primary/5 p-2 rounded-xl">speed</span>
             </div>
             <div class="mt-4">
-                <h3 class="text-3xl font-black text-primary">1.2 <span class="text-xs font-semibold text-on-surface-variant">Jam</span></h3>
+                <h3 class="text-3xl font-black text-primary" id="kpiSlaCount"><?= number_format($avgSlaHours, 1) ?> <span class="text-xs font-semibold text-on-surface-variant">Jam</span></h3>
                 <p class="text-[11px] text-on-surface-variant font-semibold mt-1 flex items-center gap-1">
                     <span class="material-symbols-outlined text-xs">rocket_launch</span> Target di bawah 24 jam kerja
                 </p>
@@ -164,7 +182,7 @@ function getCategoryColor($category) {
                 </div>
                 
                 <!-- Category Filter -->
-                <select id="verificationCategoryFilter" onchange="filterVerificationTable()" class="py-2 px-3 text-xs rounded-lg border border-outline-variant/50 bg-surface focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary font-medium text-on-surface-variant">
+                <select id="verificationCategoryFilter" onchange="filterVerificationTable()" class="py-2 px-3 bg-none text-xs rounded-lg border border-outline-variant/50 bg-surface focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary font-medium text-on-surface-variant">
                     <option value="">Semua Kategori</option>
                     <option value="kependudukan">Kependudukan</option>
                     <option value="finansial">Finansial</option>
@@ -173,7 +191,7 @@ function getCategoryColor($category) {
                 </select>
 
                 <!-- Status Filter -->
-                <select id="verificationStatusFilter" onchange="filterVerificationTable()" class="py-2 px-3 text-xs rounded-lg border border-outline-variant/50 bg-surface focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary font-medium text-on-surface-variant">
+                <select id="verificationStatusFilter" onchange="filterVerificationTable()" class="py-2 px-3 bg-none text-xs rounded-lg border border-outline-variant/50 bg-surface focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary font-medium text-on-surface-variant">
                     <option value="">Semua Status</option>
                     <option value="pending">Pending</option>
                     <option value="approved">Disetujui</option>
@@ -184,7 +202,7 @@ function getCategoryColor($category) {
 
         <!-- Table View -->
         <div class="overflow-x-auto">
-            <table class="w-full text-left border-collapse">
+            <table class="min-w-[1200px] w-full text-left border-collapse">
                 <thead>
                     <tr class="bg-surface text-on-surface-variant border-b border-outline-variant/15">
                         <th class="py-4 px-6 text-[11px] font-bold uppercase tracking-wider">Karyawan</th>
@@ -305,8 +323,10 @@ function getCategoryColor($category) {
 </div>
 
 <script>
-    // Keep track of pending requests in dashboard
+    // Keep track of counts in dashboard
     let pendingCount = <?= $pendingCount ?>;
+    let approvedCount = <?= $approvedCount ?>;
+    let rejectedCount = <?= $rejectedCount ?>;
 
     // Search and category/status filter logic
     window.filterVerificationTable = function filterVerificationTable() {
@@ -371,11 +391,17 @@ function getCategoryColor($category) {
                 </div>
             `;
         } else {
-            swalConfig.html = htmlContent;
-            swalConfig.imageUrl = fileUrl;
-            swalConfig.imageWidth = 500;
-            swalConfig.imageHeight = 330;
-            swalConfig.imageAlt = title;
+            const escapedUrl = fileUrl.replace(/'/g, "\\'");
+            swalConfig.html = htmlContent + `
+                <div class="mt-4 bg-surface-container-low/50 p-2 rounded-xl border border-outline-variant/15 text-center group cursor-pointer" onclick="window.openFullscreenImage('${escapedUrl}')" title="Klik untuk memperbesar layar penuh">
+                    <div class="relative overflow-hidden rounded-lg">
+                        <img src="${fileUrl}" alt="${title}" class="max-h-[45vh] max-w-full mx-auto object-contain rounded-lg shadow-sm transition-transform duration-300 group-hover:scale-[1.02]" />
+                        <div class="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-1.5 text-white text-xs font-bold backdrop-blur-[1px]">
+                            <span class="material-symbols-outlined text-base">zoom_in</span> Klik Untuk Perbesar (Full Screen)
+                        </div>
+                    </div>
+                </div>
+            `;
         }
 
         Swal.fire(swalConfig).then((result) => {
@@ -438,9 +464,12 @@ function getCategoryColor($category) {
                         `;
                         actionTd.innerHTML = `<span class="text-xs text-on-surface-variant/40 font-bold italic pr-2">Selesai</span>`;
 
-                        // Decrement pending count
-                        pendingCount--;
+                        // Update stat counters
+                        pendingCount = Math.max(0, pendingCount - 1);
+                        approvedCount++;
                         document.getElementById('kpiPendingCount').innerHTML = `${pendingCount} <span class="text-xs font-semibold text-amber-600">Pengajuan</span>`;
+                        const appEl = document.getElementById('kpiApprovedCount');
+                        if (appEl) appEl.innerHTML = `${approvedCount} <span class="text-xs font-semibold text-green-600">Data Terupdate</span>`;
 
                         Swal.fire({
                             title: 'Data Berhasil Diperbarui!',
@@ -521,9 +550,12 @@ function getCategoryColor($category) {
                             </button>
                         `;
 
-                        // Decrement pending count
-                        pendingCount--;
+                        // Update stat counters
+                        pendingCount = Math.max(0, pendingCount - 1);
+                        rejectedCount++;
                         document.getElementById('kpiPendingCount').innerHTML = `${pendingCount} <span class="text-xs font-semibold text-amber-600">Pengajuan</span>`;
+                        const rejEl = document.getElementById('kpiRejectedCount');
+                        if (rejEl) rejEl.innerHTML = `${rejectedCount} <span class="text-xs font-semibold text-red-600">Pengajuan</span>`;
 
                         Swal.fire({
                             title: 'Pengajuan Ditolak',

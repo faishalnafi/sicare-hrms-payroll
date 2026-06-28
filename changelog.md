@@ -4,6 +4,67 @@ All public releases of the siCare HRMS Payroll system are listed here.
 
 ---
 
+## Version local-26.06.00025 (Enterprise) - Mono
+*Compiled Date: 2026-06-28 | Migration: stg -> production*
+
+### Security
+- Penerapan proteksi CSRF Token terpusat menggunakan timing-safe hash_equals() pada 13 backend controller (CorrectionController, LeaveController, ReimbursementController, SettingsController, PayrollController, DepartmentController, ApprovalController, AuthController, EmployeeMasterController, ReflectionController, AttendanceController, AuditLogController, DashboardController).
+- Migrasi penyimpanan JWT Secret Key dari hardcoded string ke environment variable (JWT_SECRET) pada file .env dengan mekanisme fallback otomatis berbasis APP_KEY.
+- Pengetatan validasi tipe berkas unggahan berbasis binary MIME type (finfo_file) dan pembatasan akses download berkas legal/nota di luar webroot.
+
+### Added
+- Injeksi variabel JavaScript global window.csrfToken pada layouts/app.php untuk menangani proteksi CSRF otomatis pada seluruh request AJAX FormData.
+- Kalkulasi otomatis SLA (Service Level Agreement) penanganan verifikasi dokumen dalam satuan jam pada header modul HR Ops Verifications.
+- Penyediaan update real-time via AJAX pada konter statistik KPI HR Ops saat permohonan disetujui atau ditolak tanpa reload halaman.
+
+### Fixed
+- Penyelarasan kalkulasi angka statistik KPI (Antrean, Disetujui, Ditolak) pada modul HR Ops Verifications agar sesuai 1-to-1 dengan filter data bulanan di tabel.
+
+### Changed
+- Pembaruan file .env.example untuk menyelaraskan seluruh variabel sistem terbaru tanpa menyertakan nilai kredensial sensitif.
+
+### Removed
+- Pembersihan berkas draf, log temporer, script eksperimen, dan file contoh yang tidak digunakan dari root repositori (old_sidebar.php, test.php, scratch_query_menus.php, tomcat-web.xml.example, checklog.*, tracker.*).
+
+### Database (Migration 000009 & 000010)
+- Konsolidasi seluruh skema database ke dalam migration file formal: 16 tabel (termasuk departments, approval_requests, employment_history, dll).
+- Sinkronisasi kolom tambahan tabel users (20 kolom), departments (5 kolom limit reimbursement), employee_attendance (work_mode, clock_out_status, work_mode_out), login_logs (status), employee_payroll (overtime, other_deduction), changelogs (repo_type, alias_name).
+- Seed data default untuk tabel departments (11 departemen utama) dan global_settings (27 konfigurasi standar sistem).
+
+---
+
+
+## Version local-26.06.00024 (Enterprise) - Mono
+*Compiled Date: 2026-06-27 | Migration: stg -> production*
+
+### Changed
+- Menyelaraskan tampilan visual halaman placeholder coming_soon.php agar sama persis 1-to-1 dengan gambar acuan (ikon construction polos tanpa lingkaran latar).
+
+---
+
+
+## Version local-26.06.00023 (Enterprise) - Mono
+*Compiled Date: 2026-06-27 | Migration: stg -> production*
+
+### Changed
+- Standardisasi global pagination tabel di layouts/app.php agar memiliki tombol First/Last, info data di kiri, dan max 3 page numbers.
+- Penyelarasan pagination di superadmin/audit.php, hrops/employees.php, employee/leaves.php, employee/attendance.php, dan dashboard/index.php.
+- Merapikan dan menyusun ulang struktur menu navigasi role Superadmin menjadi 10 item spesifik dengan fitur submenu collapsible accordion di app_sidebar.php.
+- Menambahkan routing superadmin/departments dan registrasi route unbuilt (Apps, API, Persetujuan Multi-role) ke coming_soon.php.
+
+---
+
+
+## Version local-26.06.00022 (Enterprise) - Mono
+*Compiled Date: 2026-06-27 | Migration: stg -> production*
+
+### Changed
+- Standardisasi global pagination tabel di layouts/app.php agar memiliki tombol First/Last, info data di kiri, dan max 3 page numbers.
+- Penyelarasan pagination di superadmin/audit.php, hrops/employees.php, employee/leaves.php, employee/attendance.php, dan dashboard/index.php.
+
+---
+
+
 ## Version local-26.06.00021 (Enterprise) - Mono
 *Compiled Date: 2026-06-26 | Migration: stg -> production*
 

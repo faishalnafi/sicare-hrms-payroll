@@ -152,8 +152,8 @@ function getCategoryLabel($category) {
     <!-- Bento Grid KPI Summary -->
     <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
         <!-- Card Plafon Global -->
-        <div class="bg-gradient-to-br from-primary to-blue-900 text-white rounded-2xl p-5 shadow-md flex flex-col justify-between min-h-[140px] relative overflow-hidden">
-            <div class="absolute right-0 bottom-0 opacity-10 translate-x-2 translate-y-2">
+        <div class="bg-gradient-to-br from-primary to-blue-900 text-white rounded-2xl p-5 shadow-md flex flex-col justify-between min-h-[140px] relative overflow-hidden group">
+            <div class="absolute right-0 bottom-0 opacity-10 translate-x-2 translate-y-2 group-hover:scale-110 transition-transform duration-500">
                 <span class="material-symbols-outlined text-9xl">account_balance_wallet</span>
             </div>
             <div class="flex items-center justify-between z-10">
@@ -169,7 +169,7 @@ function getCategoryLabel($category) {
         </div>
 
         <!-- Card Terbayar -->
-        <div class="bg-surface-container-lowest rounded-2xl p-5 border border-outline-variant/15 shadow-sm hover:shadow-md transition-shadow flex flex-col justify-between min-h-[140px]">
+        <div class="stat-card-scale bg-surface-container-lowest rounded-2xl p-5 border border-outline-variant/15 shadow-sm flex flex-col justify-between min-h-[140px]">
             <div class="flex items-center justify-between">
                 <span class="text-[10px] font-bold text-on-surface-variant uppercase tracking-wider">Total Cair (Disetujui)</span>
                 <span class="material-symbols-outlined text-green-600 bg-green-50 p-2 rounded-lg text-sm font-bold">price_check</span>
@@ -183,7 +183,7 @@ function getCategoryLabel($category) {
         </div>
 
         <!-- Card Pending -->
-        <div class="bg-surface-container-lowest rounded-2xl p-5 border border-outline-variant/15 shadow-sm hover:shadow-md transition-shadow flex flex-col justify-between min-h-[140px]">
+        <div class="stat-card-scale bg-surface-container-lowest rounded-2xl p-5 border border-outline-variant/15 shadow-sm flex flex-col justify-between min-h-[140px]">
             <div class="flex items-center justify-between">
                 <span class="text-[10px] font-bold text-on-surface-variant uppercase tracking-wider">Pending Review</span>
                 <span class="material-symbols-outlined text-amber-600 bg-amber-50 p-2 rounded-lg text-sm font-bold <?= $totalPending > 0 ? 'animate-pulse' : '' ?>">hourglass_empty</span>
@@ -203,7 +203,7 @@ function getCategoryLabel($category) {
             $deptColor = $isDeptLimitReached ? 'text-red-700' : 'text-purple-750';
             $deptBadgeColor = $isDeptLimitReached ? 'text-red-650 bg-red-50 border-red-200' : 'text-purple-650 bg-purple-50 border-purple-200';
         ?>
-        <div class="bg-surface-container-lowest rounded-2xl p-5 border border-outline-variant/15 shadow-sm hover:shadow-md transition-shadow flex flex-col justify-between min-h-[140px]">
+        <div class="stat-card-scale bg-surface-container-lowest rounded-2xl p-5 border border-outline-variant/15 shadow-sm flex flex-col justify-between min-h-[140px]">
             <div class="flex items-center justify-between">
                 <span class="text-[10px] font-bold text-on-surface-variant uppercase tracking-wider">Plafon <?= htmlspecialchars($deptInfo['name']) ?></span>
                 <span class="material-symbols-outlined text-lg p-2 rounded-lg <?= $deptBadgeColor ?>">domain</span>
@@ -216,7 +216,7 @@ function getCategoryLabel($category) {
             </div>
         </div>
         <?php else: ?>
-        <div class="bg-surface-container-lowest rounded-2xl p-5 border border-outline-variant/15 shadow-sm hover:shadow-md transition-shadow flex flex-col justify-between min-h-[140px]">
+        <div class="stat-card-scale bg-surface-container-lowest rounded-2xl p-5 border border-outline-variant/15 shadow-sm flex flex-col justify-between min-h-[140px]">
             <div class="flex items-center justify-between">
                 <span class="text-[10px] font-bold text-on-surface-variant uppercase tracking-wider">SLA Proses</span>
                 <span class="material-symbols-outlined text-primary bg-primary/5 p-2 rounded-lg text-sm font-bold">speed</span>
@@ -256,7 +256,7 @@ function getCategoryLabel($category) {
                 $percent = ($limit > 0) ? round(($rem / $limit) * 100) : 0;
                 $barPercent = min(100, max(0, $percent));
             ?>
-            <div class="bg-surface-container-lowest rounded-xl p-4 border border-outline-variant/15 shadow-sm hover:shadow-md transition-shadow space-y-3">
+            <div class="stat-card-scale bg-surface-container-lowest rounded-xl p-4 border border-outline-variant/15 shadow-sm space-y-3">
                 <div class="flex items-center gap-2.5">
                     <span class="material-symbols-outlined text-lg p-2 rounded-lg <?= getCategoryColor($cat) ?>"><?= $icons[$cat] ?></span>
                     <div>
@@ -297,7 +297,7 @@ function getCategoryLabel($category) {
                         <option value="operasional">Alat Kerja & Operasional</option>
                         <option value="makan">Makan & Bisnis</option>
                     </select>
-                    <span class="material-symbols-outlined absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none text-on-surface-variant/70 text-sm">arrow_drop_down</span>
+                    
                 </div>
                 <div class="relative">
                     <select id="employeeStatusFilter" onchange="filterClaimsTable()" class="py-2 pl-3 pr-8 appearance-none text-xs rounded-lg border border-outline-variant/50 bg-surface focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary font-semibold text-on-surface-variant w-full">
@@ -306,7 +306,7 @@ function getCategoryLabel($category) {
                         <option value="approved">Disetujui</option>
                         <option value="rejected">Ditolak</option>
                     </select>
-                    <span class="material-symbols-outlined absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none text-on-surface-variant/70 text-sm">arrow_drop_down</span>
+                    
                 </div>
             </div>
         </div>
@@ -726,6 +726,7 @@ function getCategoryLabel($category) {
 
                 const formData = new FormData();
                 formData.append('claim_id', id);
+                formData.append('csrf_token', window.csrfToken);
 
                 fetch('/employee/reimbursements/cancel', {
                     method: 'POST',
@@ -789,6 +790,7 @@ function getCategoryLabel($category) {
                 Swal.showLoading();
             }
         });
+        formData.append('csrf_token', window.csrfToken);
 
         fetch('/employee/reimbursements/submit', {
             method: 'POST',
