@@ -21,7 +21,7 @@ if (isset($_SESSION['user_id'])) {
 
 if (empty($profilePic)) {
     $hash = md5(strtolower(trim($sessEmail)));
-    $profilePic = "https://www.gravatar.com/avatar/{$hash}?d=404&s=200";
+    $profilePic = "https://www.gravatar.com/avatar/{$hash}?d=identicon&s=200";
 }
 ?>
 <header class="w-full top-0 sticky z-30 bg-[#f8f9fa]/95 backdrop-blur-sm border-b border-outline-variant/20 shadow-sm">
@@ -60,7 +60,7 @@ if (empty($profilePic)) {
                     <p class="text-sm font-semibold text-on-surface"><?php echo htmlspecialchars($sessName); ?></p>
                 </div>
                 <?php $sessEmailHash = md5(strtolower(trim($sessEmail))); ?>
-                <img alt="User Avatar" class="w-10 h-10 rounded-full border-2 border-primary/20 shadow-sm object-cover bg-white" src="<?php echo htmlspecialchars($profilePic); ?>" onerror="window.handleAvatarError(this, '<?= $sessEmailHash ?>')" />
+                <img referrerpolicy="no-referrer" alt="User Avatar" class="w-10 h-10 rounded-full border-2 border-primary/20 shadow-sm object-cover bg-white" src="<?php echo htmlspecialchars($profilePic); ?>" onerror="window.handleAvatarError(this, '<?= $sessEmailHash ?>')" />
             </div>
         </div>
     </div>

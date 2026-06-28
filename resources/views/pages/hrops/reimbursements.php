@@ -87,7 +87,7 @@ function getEmployeePosition($email) {
     <!-- KPI Summary Row -->
     <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
         <!-- Card 1 -->
-        <div class="bg-surface-container-lowest rounded-2xl p-5 border border-outline-variant/15 shadow-sm hover:shadow-md transition-shadow">
+        <div class="stat-card-scale bg-surface-container-lowest rounded-2xl p-5 border border-outline-variant/15 shadow-sm">
             <div class="flex items-center justify-between">
                 <span class="text-[10px] font-bold text-on-surface-variant uppercase tracking-wider">Dana Diajukan</span>
                 <span class="material-symbols-outlined text-primary bg-primary/5 p-2 rounded-xl text-sm font-bold">monetization_on</span>
@@ -100,7 +100,7 @@ function getEmployeePosition($email) {
             </div>
         </div>
         <!-- Card 2 -->
-        <div class="bg-surface-container-lowest rounded-2xl p-5 border border-outline-variant/15 shadow-sm hover:shadow-md transition-shadow">
+        <div class="stat-card-scale bg-surface-container-lowest rounded-2xl p-5 border border-outline-variant/15 shadow-sm">
             <div class="flex items-center justify-between">
                 <span class="text-[10px] font-bold text-on-surface-variant uppercase tracking-wider">Pending Review</span>
                 <span class="material-symbols-outlined text-amber-600 bg-amber-50 p-2 rounded-xl text-sm font-bold <?= $pendingCount > 0 ? 'animate-pulse' : '' ?>">receipt_long</span>
@@ -113,7 +113,7 @@ function getEmployeePosition($email) {
             </div>
         </div>
         <!-- Card 3 -->
-        <div class="bg-surface-container-lowest rounded-2xl p-5 border border-outline-variant/15 shadow-sm hover:shadow-md transition-shadow">
+        <div class="stat-card-scale bg-surface-container-lowest rounded-2xl p-5 border border-outline-variant/15 shadow-sm">
             <div class="flex items-center justify-between">
                 <span class="text-[10px] font-bold text-on-surface-variant uppercase tracking-wider">Disetujui Bulan Ini</span>
                 <span class="material-symbols-outlined text-green-600 bg-green-50 p-2 rounded-xl text-sm font-bold">price_check</span>
@@ -126,7 +126,7 @@ function getEmployeePosition($email) {
             </div>
         </div>
         <!-- Card 4 -->
-        <div class="bg-surface-container-lowest rounded-2xl p-5 border border-outline-variant/15 shadow-sm hover:shadow-md transition-shadow">
+        <div class="stat-card-scale bg-surface-container-lowest rounded-2xl p-5 border border-outline-variant/15 shadow-sm">
             <div class="flex items-center justify-between">
                 <span class="text-[10px] font-bold text-on-surface-variant uppercase tracking-wider">Sisa Plafon Global</span>
                 <span class="material-symbols-outlined text-indigo-600 bg-indigo-50 p-2 rounded-xl text-sm font-bold">account_balance_wallet</span>
@@ -160,7 +160,7 @@ function getEmployeePosition($email) {
                 </div>
                 
                 <!-- Status Filter -->
-                <select id="reimbursementStatusFilter" onchange="filterReimbursementTable()" class="py-2 px-3 text-xs rounded-lg border border-outline-variant/50 bg-surface focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary font-semibold text-on-surface-variant">
+                <select id="reimbursementStatusFilter" onchange="filterReimbursementTable()" class="py-2 px-3 bg-none text-xs rounded-lg border border-outline-variant/50 bg-surface focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary font-semibold text-on-surface-variant">
                     <option value="">Semua Status</option>
                     <option value="pending">Pending Review</option>
                     <option value="approved">Disetujui</option>
@@ -168,7 +168,7 @@ function getEmployeePosition($email) {
                 </select>
 
                 <!-- Category Filter -->
-                <select id="reimbursementCategoryFilter" onchange="filterReimbursementTable()" class="py-2 px-3 text-xs rounded-lg border border-outline-variant/50 bg-surface focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary font-semibold text-on-surface-variant">
+                <select id="reimbursementCategoryFilter" onchange="filterReimbursementTable()" class="py-2 px-3 bg-none text-xs rounded-lg border border-outline-variant/50 bg-surface focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary font-semibold text-on-surface-variant">
                     <option value="">Semua Kategori</option>
                     <option value="medis">Kesehatan & Medis</option>
                     <option value="transport">Transportasi & Tol</option>
@@ -206,7 +206,7 @@ function getEmployeePosition($email) {
                         $claimLastName = (string)($claim['last_name'] ?? '');
                         $fullname = trim($claimFirstName . ' ' . $claimLastName);
                         $hash = md5(strtolower(trim($claim['email'] ?? '')));
-                        $avatarUrl = !empty($claim['profile_picture']) ? $claim['profile_picture'] : "https://www.gravatar.com/avatar/{$hash}?d=404&s=120";
+                        $avatarUrl = !empty($claim['profile_picture']) ? $claim['profile_picture'] : "https://www.gravatar.com/avatar/{$hash}?d=identicon&s=120";
                     ?>
                     <tr class="hover:bg-surface-container-low/30 transition-colors" data-name="<?= htmlspecialchars(strtolower($fullname)) ?>" data-status="<?= htmlspecialchars($claim['status']) ?>" data-category="<?= htmlspecialchars($claim['category']) ?>">
                         <td class="py-4 px-6">
@@ -278,17 +278,7 @@ function getEmployeePosition($email) {
             </table>
         </div>
 
-        <!-- Pagination / Footer Info -->
-        <div class="bg-surface-container-lowest p-6 border-t border-outline-variant/15 flex flex-col md:flex-row justify-between items-center gap-4 text-xs font-bold text-on-surface-variant">
-            <div>
-                Menampilkan <span id="displayedCount"><?= count($claims) ?></span> dari <?= count($claims) ?> data klaim reimbursement
-            </div>
-            <div class="flex items-center gap-1">
-                <button class="w-8 h-8 rounded-lg bg-surface border border-outline-variant/30 flex items-center justify-center hover:bg-surface-container-high transition-colors" disabled><span class="material-symbols-outlined text-sm">chevron_left</span></button>
-                <button class="w-8 h-8 rounded-lg bg-primary text-white flex items-center justify-center shadow-sm">1</button>
-                <button class="w-8 h-8 rounded-lg bg-surface border border-outline-variant/30 flex items-center justify-center hover:bg-surface-container-high transition-colors" disabled><span class="material-symbols-outlined text-sm">chevron_right</span></button>
-            </div>
-        </div>
+
     </div>
 </div>
 

@@ -54,7 +54,7 @@ function getGravatarTeam($email, $profilePic = null) {
         return $profilePic;
     }
     $hash = md5(strtolower(trim($email)));
-    return "https://www.gravatar.com/avatar/{$hash}?d=404&s=150";
+    return "https://www.gravatar.com/avatar/{$hash}?d=identicon&s=150";
 }
 
 // Helper to format clean WhatsApp link
@@ -718,12 +718,20 @@ function getWhatsAppLinkTeam($phone) {
                     let metodeHtml = '<span class="text-on-surface-variant/30 text-xs">—</span>';
                     if (r.location_method) {
                         let icon = 'location_on';
+                        let colorClass = 'text-amber-600';
+                        let iconColor = 'text-amber-500';
                         if (r.location_method === 'WIFI') {
                             icon = 'wifi';
+                            colorClass = 'text-primary';
+                            iconColor = 'text-primary';
+                        } else if (r.location_method === 'POP') {
+                            icon = 'laptop';
+                            colorClass = 'text-blue-600';
+                            iconColor = 'text-blue-500';
                         }
                         metodeHtml = `
-                            <span class="inline-flex items-center gap-1 text-[10px] font-extrabold text-amber-600">
-                                <span class="material-symbols-outlined text-xs text-amber-500">${icon}</span>
+                            <span class="inline-flex items-center gap-1 text-[10px] font-extrabold ${colorClass}">
+                                <span class="material-symbols-outlined text-xs ${iconColor}">${icon}</span>
                                 ${escapeHtml(r.location_method)}
                             </span>
                         `;

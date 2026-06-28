@@ -231,54 +231,67 @@ class AttendanceController {
         $distM  = null;
         $distHomeM = null;
 
-        // Enforce GPS check for everyone
-        if ($lat === null || $lng === null) {
+        // Determine location method and check if device has physical GPS
+        $userAgent = $_SERVER['HTTP_USER_AGENT'] ?? '';
+        $isMobile = preg_match('/Mobile|Android|BlackBerry|iPhone|iPad|iPod|Opera Mini|IEMobile/i', $userAgent);
+        $isPop = !$isMobile || ($lat === null || $lng === null);
+
+        // Enforce GPS check only if NOT POP
+        if (!$isPop && ($lat === null || $lng === null)) {
             echo json_encode(['success' => false, 'message' => 'Gagal mendeteksi lokasi. Presensi wajib menggunakan GPS. Pastikan izin lokasi aktif pada perangkat Anda.']);
             return;
         }
 
-        $method = $this->isWifiIp($ipAddr) ? 'WIFI' : 'GPS';
-        $distM  = $this->haversine($this->officeLat(), $this->officeLng(), $lat, $lng);
-        if ($homeLat !== null && $homeLng !== null) {
-            $distHomeM = $this->haversine($homeLat, $homeLng, $lat, $lng);
+        $method = $this->isWifiIp($ipAddr) ? 'WIFI' : ($isPop ? 'POP' : 'GPS');
+        
+        if ($lat !== null && $lng !== null) {
+            $distM  = $this->haversine($this->officeLat(), $this->officeLng(), $lat, $lng);
+            if ($homeLat !== null && $homeLng !== null) {
+                $distHomeM = $this->haversine($homeLat, $homeLng, $lat, $lng);
+            }
         }
 
         // Overlap Priority: WFH takes precedence over WFO
         if ($distHomeM !== null && $distHomeM <= $this->homeRadiusM()) {
             $workMode = 'WFH';
-        } elseif ($distM <= $this->radiusM() || $method === 'WIFI') {
+        } elseif ($method === 'WIFI' || ($distM !== null && $distM <= $this->radiusM())) {
             $workMode = 'WFO';
         } else {
             // Outside both office and home radius — check WFA eligibility
-            if (!$this->wfaAllowed()) {
+            if ($method !== 'POP' && !$this->wfaAllowed()) {
                 $homeMsg = $distHomeM !== null ? " dan luar radius rumah Anda (" . $this->formatDistance($distHomeM) . ", batas WFH: " . $this->formatDistance($this->homeRadiusM()) . ")" : "";
                 echo json_encode([
                     'success' => false,
-                    'message' => "Anda berada di luar radius kantor (" . $this->formatDistance($distM) . ", batas WFO: " . $this->formatDistance($this->radiusM()) . "){$homeMsg}, sedangkan Work From Anywhere/Cabin/Home (WFA/WFC/WFH) tidak diizinkan saat ini. Clock-In ditolak."
+                    'message' => "Anda berada di luar radius kantor (" . ($distM !== null ? $this->formatDistance($distM) : 'N/A') . ", batas WFO: " . $this->formatDistance($this->radiusM()) . "){$homeMsg}, sedangkan Work From Anywhere/Cabin/Home (WFA/WFC/WFH) tidak diizinkan saat ini. Clock-In ditolak."
                 ]);
                 return;
             }
-            // Check WFA day restriction
-            $wfaDays = $this->wfaDays();
-            if (!empty($wfaDays)) {
-                $todayCode = date('D'); // Mon, Tue, Wed…
-                if (!in_array($todayCode, $wfaDays)) {
-                    $dayTranslations = [
-                        'Mon' => 'Senin', 'Tue' => 'Selasa', 'Wed' => 'Rabu',
-                        'Thu' => 'Kamis', 'Fri' => 'Jumat', 'Sat' => 'Sabtu', 'Sun' => 'Minggu'
-                    ];
-                    $allowedIndo = array_map(fn($d) => $dayTranslations[$d] ?? $d, $wfaDays);
-                    $allowed = implode(', ', $allowedIndo);
-                    $todayIndo = $dayTranslations[$todayCode] ?? $todayCode;
-                    $homeMsg = $distHomeM !== null ? " dan rumah Anda (" . $this->formatDistance($distHomeM) . ")" : "";
-                    echo json_encode([
-                        'success' => false,
-                        'message' => "WFA/WFC/WFH hanya diizinkan pada hari: {$allowed}. Hari ini ({$todayIndo}) Anda berada di luar radius kantor (" . $this->formatDistance($distM) . "){$homeMsg}, sehingga Anda wajib bekerja dari Kantor (WFO) atau Rumah (WFH)."
-                    ]);
-                    return;
+            
+            if ($method === 'POP' && !$this->wfaAllowed()) {
+                $workMode = 'WFO';
+            } else {
+                // Check WFA day restriction
+                $wfaDays = $this->wfaDays();
+                if (!empty($wfaDays) && $method !== 'POP') {
+                    $todayCode = date('D'); // Mon, Tue, Wed…
+                    if (!in_array($todayCode, $wfaDays)) {
+                        $dayTranslations = [
+                            'Mon' => 'Senin', 'Tue' => 'Selasa', 'Wed' => 'Rabu',
+                            'Thu' => 'Kamis', 'Fri' => 'Jumat', 'Sat' => 'Sabtu', 'Sun' => 'Minggu'
+                        ];
+                        $allowedIndo = array_map(fn($d) => $dayTranslations[$d] ?? $d, $wfaDays);
+                        $allowed = implode(', ', $allowedIndo);
+                        $todayIndo = $dayTranslations[$todayCode] ?? $todayCode;
+                        $homeMsg = $distHomeM !== null ? " dan rumah Anda (" . $this->formatDistance($distHomeM) . ")" : "";
+                        echo json_encode([
+                            'success' => false,
+                            'message' => "WFA/WFC/WFH hanya diizinkan pada hari: {$allowed}. Hari ini ({$todayIndo}) Anda berada di luar radius kantor (" . ($distM !== null ? $this->formatDistance($distM) : 'N/A') . "){$homeMsg}, sehingga Anda wajib bekerja dari Kantor (WFO) atau Rumah (WFH)."
+                        ]);
+                        return;
+                    }
                 }
+                $workMode = 'WFA';
             }
-            $workMode = 'WFA';
         }
 
         // ── Determine attendance status with grace period ─────────────────
@@ -400,8 +413,13 @@ class AttendanceController {
         $lng = isset($_POST['lng']) ? (float)$_POST['lng'] : null;
         $ipAddr = $_SERVER['HTTP_X_REAL_IP'] ?? $_SERVER['REMOTE_ADDR'] ?? '0.0.0.0';
 
-        // Enforce GPS check for everyone at clock-out
-        if ($lat === null || $lng === null) {
+        // Determine location method and check if device has physical GPS at clock-out
+        $userAgent = $_SERVER['HTTP_USER_AGENT'] ?? '';
+        $isMobile = preg_match('/Mobile|Android|BlackBerry|iPhone|iPad|iPod|Opera Mini|IEMobile/i', $userAgent);
+        $isPop = !$isMobile || ($lat === null || $lng === null);
+
+        // Enforce GPS check only if NOT POP
+        if (!$isPop && ($lat === null || $lng === null)) {
             echo json_encode(['success' => false, 'message' => 'Gagal mendeteksi lokasi. Clock-Out wajib menggunakan GPS. Pastikan izin lokasi aktif pada perangkat Anda.']);
             return;
         }
@@ -413,20 +431,25 @@ class AttendanceController {
         $homeLat = $user && $user['home_latitude'] !== null ? (float)$user['home_latitude'] : null;
         $homeLng = $user && $user['home_longitude'] !== null ? (float)$user['home_longitude'] : null;
 
-        $distM = $this->haversine($this->officeLat(), $this->officeLng(), $lat, $lng);
+        $distM = null;
         $distHomeM = null;
-        if ($homeLat !== null && $homeLng !== null) {
-            $distHomeM = $this->haversine($homeLat, $homeLng, $lat, $lng);
+        if ($lat !== null && $lng !== null) {
+            $distM = $this->haversine($this->officeLat(), $this->officeLng(), $lat, $lng);
+            if ($homeLat !== null && $homeLng !== null) {
+                $distHomeM = $this->haversine($homeLat, $homeLng, $lat, $lng);
+            }
         }
 
-        $method = str_starts_with($ipAddr, $this->wifiPrefix()) ? 'WIFI' : 'GPS';
+        $method = str_starts_with($ipAddr, $this->wifiPrefix()) ? 'WIFI' : ($isPop ? 'POP' : 'GPS');
 
         // Determine clock-out mode with exact same precedence/rules
         $workModeOut = 'WFA';
         if ($distHomeM !== null && $distHomeM <= $this->homeRadiusM()) {
             $workModeOut = 'WFH';
-        } elseif ($distM <= $this->radiusM() || $method === 'WIFI') {
+        } elseif ($method === 'WIFI' || ($distM !== null && $distM <= $this->radiusM())) {
             $workModeOut = 'WFO';
+        } elseif ($method === 'POP') {
+            $workModeOut = 'WFO'; // fallback for POP
         }
 
         $workModeIn = $existing['work_mode'];
@@ -675,7 +698,7 @@ class AttendanceController {
     private function backfillAllEmployees() {
         try {
             // Get all user IDs of role 'employee'
-            $stmt = $this->db->query("SELECT id FROM users WHERE role = 'employee'");
+            $stmt = $this->db->query("SELECT id FROM users WHERE role = 'employee' AND is_deleted = 0");
             $userIds = $stmt->fetchAll(PDO::FETCH_COLUMN);
             
             foreach ($userIds as $userId) {

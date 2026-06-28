@@ -28,3 +28,7 @@ Homestead.json
 .env.production
 .phpactor.json
 auth.json
+
+# Cache and framework storage
+/storage/framework/cache/*
+!/storage/framework/cache/.gitkeep

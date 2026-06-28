@@ -7,7 +7,7 @@ use PDO;
 
 class ApprovalController {
     
-    private function checkAccess() {
+    private function checkAccess(bool $requireCsrf = false) {
         if (session_status() === PHP_SESSION_NONE) {
             session_start();
         }
@@ -25,6 +25,14 @@ class ApprovalController {
             http_response_code(403);
             echo json_encode(['success' => false, 'message' => 'Access denied: Executive or Superadmin role required.']);
             exit;
+        }
+        if ($requireCsrf) {
+            $token = $_POST['csrf_token'] ?? $_SERVER['HTTP_X_CSRF_TOKEN'] ?? '';
+            if (empty($token) || !hash_equals($_SESSION['csrf_token'] ?? '', $token)) {
+                header('Content-Type: application/json');
+                echo json_encode(['success' => false, 'message' => 'Token CSRF tidak valid atau kedaluwarsa. Silakan muat ulang halaman.']);
+                exit;
+            }
         }
     }
 
@@ -66,7 +74,7 @@ class ApprovalController {
     }
 
     public function approve() {
-        $this->checkAccess();
+        $this->checkAccess(true);
         header('Content-Type: application/json');
 
         if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
@@ -176,7 +184,7 @@ class ApprovalController {
     }
 
     public function reject() {
-        $this->checkAccess();
+        $this->checkAccess(true);
         header('Content-Type: application/json');
 
         if ($_SERVER['REQUEST_METHOD'] !== 'POST') {

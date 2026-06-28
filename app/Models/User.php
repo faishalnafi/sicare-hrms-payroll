@@ -32,6 +32,13 @@ class User {
         $id = $this->generateUuid();
         $hash = password_hash($password, PASSWORD_BCRYPT);
         
+        if (empty($profilePicture)) {
+            if (!function_exists('resolveProfilePicture')) {
+                require_once __DIR__ . '/../helpers.php';
+            }
+            $profilePicture = resolveProfilePicture($email);
+        }
+        
         $stmt = $this->db->prepare("INSERT INTO users (id, first_name, last_name, email, profile_picture, password_hash, role) VALUES (:id, :first_name, :last_name, :email, :profile_picture, :password_hash, 'candidate')");
         
         $success = $stmt->execute([

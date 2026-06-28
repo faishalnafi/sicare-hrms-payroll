@@ -66,7 +66,7 @@
     </div>
 
     <div class="overflow-x-auto">
-        <table class="w-full text-left border-collapse">
+        <table class="w-full text-left border-collapse table-standardized" data-has-custom-pagination="true">
             <thead>
                 <tr class="bg-surface text-on-surface-variant border-b border-outline-variant/10">
                     <th class="py-3.5 px-6 text-[10px] font-bold uppercase tracking-wider">Tanggal &amp; Waktu</th>
@@ -166,9 +166,30 @@
     </div>
 
     <!-- Pagination Controls -->
-    <div id="loginLogsPagination" class="px-6 py-4 border-t border-outline-variant/10 flex items-center justify-end bg-surface-container-low/30 gap-2 hidden">
-        <button id="btnPrevLoginLogs" type="button" class="p-1.5 rounded-lg border border-outline-variant/20 text-on-surface hover:bg-surface-container-high transition-colors disabled:opacity-30 disabled:cursor-not-allowed"><span class="material-symbols-outlined text-sm">chevron_left</span></button>
-        <button id="btnNextLoginLogs" type="button" class="p-1.5 rounded-lg border border-outline-variant/20 text-on-surface hover:bg-surface-container-high transition-colors disabled:opacity-30 disabled:cursor-not-allowed"><span class="material-symbols-outlined text-sm">chevron_right</span></button>
+    <div id="loginLogsPagination" class="px-6 py-4 border-t border-outline-variant/10 flex items-center justify-between bg-surface-container-low/30 hidden">
+        <div id="loginLogsPaginationInfo" class="table-pagination-info text-sm text-on-surface-variant font-medium"></div>
+        <div class="flex items-center gap-1.5">
+            <!-- First Page -->
+            <button id="btnLoginLogsFirstPage" onclick="window.firstLoginLogsPage()" class="p-2 flex items-center justify-center rounded-full hover:bg-surface-container-high text-on-surface-variant disabled:opacity-30 disabled:cursor-not-allowed transition-colors border border-transparent disabled:hover:bg-transparent" title="Halaman Pertama">
+                <span class="material-symbols-outlined text-sm">first_page</span>
+            </button>
+            <!-- Prev Page -->
+            <button id="btnPrevLoginLogs" onclick="window.prevLoginLogsPage()" class="p-2 flex items-center justify-center rounded-full hover:bg-surface-container-high text-on-surface-variant disabled:opacity-30 disabled:cursor-not-allowed transition-colors border border-transparent disabled:hover:bg-transparent" title="Halaman Sebelumnya">
+                <span class="material-symbols-outlined text-sm">chevron_left</span>
+            </button>
+            
+            <!-- Page numbers container -->
+            <div id="loginLogsPageNumbers" class="flex items-center gap-1"></div>
+
+            <!-- Next Page -->
+            <button id="btnNextLoginLogs" onclick="window.nextLoginLogsPage()" class="p-2 flex items-center justify-center rounded-full hover:bg-surface-container-high text-on-surface-variant disabled:opacity-30 disabled:cursor-not-allowed transition-colors border border-transparent disabled:hover:bg-transparent" title="Halaman Berikutnya">
+                <span class="material-symbols-outlined text-sm">chevron_right</span>
+            </button>
+            <!-- Last Page -->
+            <button id="btnLoginLogsLastPage" onclick="window.lastLoginLogsPage()" class="p-2 flex items-center justify-center rounded-full hover:bg-surface-container-high text-on-surface-variant disabled:opacity-30 disabled:cursor-not-allowed transition-colors border border-transparent disabled:hover:bg-transparent" title="Halaman Terakhir">
+                <span class="material-symbols-outlined text-sm">last_page</span>
+            </button>
+        </div>
     </div>
 </div>
 
@@ -396,10 +417,14 @@
             const rows = Array.from(document.querySelectorAll('.login-log-row'));
             const rowsPerPage = 10;
             let currentPage = 1;
+            let totalPages = Math.ceil(rows.length / rowsPerPage) || 1;
             
             function renderPagination() {
-                const totalPages = Math.ceil(rows.length / rowsPerPage);
-                if (totalPages <= 1) return;
+                if (totalPages <= 1) {
+                    document.getElementById('loginLogsPagination').classList.add('hidden');
+                    rows.forEach(row => { row.style.display = ''; });
+                    return;
+                }
                 
                 document.getElementById('loginLogsPagination').classList.remove('hidden');
                 
@@ -414,15 +439,96 @@
                     }
                 });
                 
-                document.getElementById('btnPrevLoginLogs').disabled = currentPage === 1;
-                document.getElementById('btnNextLoginLogs').disabled = currentPage === totalPages;
+                // Info text
+                const infoEl = document.getElementById('loginLogsPaginationInfo');
+                if (infoEl) {
+                    const startShow = rows.length === 0 ? 0 : start + 1;
+                    const endShow = Math.min(end, rows.length);
+                    infoEl.textContent = 'Menampilkan data ' + startShow + ' sampai ' + endShow + ' dari ' + rows.length;
+                }
+
+                // Disabled states
+                const firstBtn = document.getElementById('btnLoginLogsFirstPage');
+                const prevBtn = document.getElementById('btnPrevLoginLogs');
+                const nextBtn = document.getElementById('btnNextLoginLogs');
+                const lastBtn = document.getElementById('btnLoginLogsLastPage');
+
+                if (firstBtn) firstBtn.disabled = currentPage === 1;
+                if (prevBtn) prevBtn.disabled = currentPage === 1;
+                if (nextBtn) nextBtn.disabled = currentPage === totalPages;
+                if (lastBtn) lastBtn.disabled = currentPage === totalPages;
+
+                // Page numbers (max 3 centered)
+                const pageNumbersContainer = document.getElementById('loginLogsPageNumbers');
+                if (pageNumbersContainer) {
+                    pageNumbersContainer.innerHTML = '';
+
+                    let startPage = 1;
+                    let endPage = totalPages;
+
+                    if (totalPages > 3) {
+                        if (currentPage === 1) {
+                            startPage = 1;
+                            endPage = 3;
+                        } else if (currentPage === totalPages) {
+                            startPage = totalPages - 2;
+                            endPage = totalPages;
+                        } else {
+                            startPage = currentPage - 1;
+                            endPage = currentPage + 1;
+                        }
+                    }
+
+                    for (let p = startPage; p <= endPage; p++) {
+                        (function(pageNum) {
+                            const btn = document.createElement('button');
+                            btn.type = 'button';
+                            btn.className = 'w-8 h-8 flex items-center justify-center rounded-full text-xs font-semibold transition-all border ';
+                            if (pageNum === currentPage) {
+                                btn.className += 'bg-primary text-white border-primary shadow-sm';
+                            } else {
+                                btn.className += 'hover:bg-surface-container-high text-on-surface border-transparent';
+                            }
+                            btn.textContent = pageNum;
+                            btn.onclick = function() {
+                                currentPage = pageNum;
+                                renderPagination();
+                            };
+                            pageNumbersContainer.appendChild(btn);
+                        })(p);
+                    }
+                }
             }
             
-            if (rows.length > rowsPerPage) {
-                document.getElementById('btnPrevLoginLogs').addEventListener('click', () => { if (currentPage > 1) { currentPage--; renderPagination(); } });
-                document.getElementById('btnNextLoginLogs').addEventListener('click', () => { if (currentPage < Math.ceil(rows.length / rowsPerPage)) { currentPage++; renderPagination(); } });
-                renderPagination();
-            }
+            window.firstLoginLogsPage = function() {
+                if (currentPage > 1) {
+                    currentPage = 1;
+                    renderPagination();
+                }
+            };
+
+            window.prevLoginLogsPage = function() {
+                if (currentPage > 1) {
+                    currentPage--;
+                    renderPagination();
+                }
+            };
+
+            window.nextLoginLogsPage = function() {
+                if (currentPage < totalPages) {
+                    currentPage++;
+                    renderPagination();
+                }
+            };
+
+            window.lastLoginLogsPage = function() {
+                if (currentPage < totalPages) {
+                    currentPage = totalPages;
+                    renderPagination();
+                }
+            };
+
+            renderPagination();
         })();
     })();
 </script>

@@ -108,7 +108,7 @@ function getMoodBadgeSA($mood) {
                         <option value="<?= $ap ?>" <?= $ap === $selectedPeriod ? 'selected' : '' ?>><?= $ap ?></option>
                     <?php endforeach; ?>
                 </select>
-                <span class="material-symbols-outlined absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-on-surface-variant text-sm">arrow_drop_down</span>
+                
             </div>
         </div>
     </div>
@@ -116,7 +116,7 @@ function getMoodBadgeSA($mood) {
     <!-- Aggregate Analytics Dashboard Grid -->
     <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
         <!-- Average Workload Card -->
-        <div class="bg-surface-container-lowest rounded-2xl p-5 border border-outline-variant/15 shadow-sm space-y-3">
+        <div class="stat-card-scale bg-surface-container-lowest rounded-2xl p-5 border border-outline-variant/15 shadow-sm space-y-3">
             <div class="flex items-center justify-between">
                 <span class="text-[10px] font-bold text-on-surface-variant uppercase tracking-wider">Beban Kerja Rata-Rata</span>
                 <span class="material-symbols-outlined text-primary bg-primary/5 p-2 rounded-lg text-sm">speed</span>
@@ -131,7 +131,7 @@ function getMoodBadgeSA($mood) {
         </div>
 
         <!-- Average Core Values Card -->
-        <div class="bg-surface-container-lowest rounded-2xl p-5 border border-outline-variant/15 shadow-sm space-y-3">
+        <div class="stat-card-scale bg-surface-container-lowest rounded-2xl p-5 border border-outline-variant/15 shadow-sm space-y-3">
             <div class="flex items-center justify-between">
                 <span class="text-[10px] font-bold text-on-surface-variant uppercase tracking-wider">Implementasi Budaya (Values)</span>
                 <span class="material-symbols-outlined text-amber-500 bg-amber-50 p-2 rounded-lg text-sm">stars</span>
@@ -146,7 +146,7 @@ function getMoodBadgeSA($mood) {
         </div>
 
         <!-- Submission Status Card -->
-        <div class="bg-surface-container-lowest rounded-2xl p-5 border border-outline-variant/15 shadow-sm space-y-3">
+        <div class="stat-card-scale bg-surface-container-lowest rounded-2xl p-5 border border-outline-variant/15 shadow-sm space-y-3">
             <div class="flex items-center justify-between">
                 <span class="text-[10px] font-bold text-on-surface-variant uppercase tracking-wider">Status Partisipasi</span>
                 <span class="material-symbols-outlined text-blue-600 bg-blue-50 p-2 rounded-lg text-sm">assignment_turned_in</span>
@@ -168,7 +168,7 @@ function getMoodBadgeSA($mood) {
         </div>
 
         <!-- Mood / Sentimen Indeks -->
-        <div class="bg-surface-container-lowest rounded-2xl p-5 border border-outline-variant/15 shadow-sm space-y-3">
+        <div class="stat-card-scale bg-surface-container-lowest rounded-2xl p-5 border border-outline-variant/15 shadow-sm space-y-3">
             <div class="flex items-center justify-between">
                 <span class="text-[10px] font-bold text-on-surface-variant uppercase tracking-wider">Indeks Mood Dominan</span>
                 <span class="material-symbols-outlined text-green-600 bg-green-50 p-2 rounded-lg text-sm">mood</span>
@@ -229,14 +229,14 @@ function getMoodBadgeSA($mood) {
                     <?php else: ?>
                         <?php foreach ($reflections as $ref): 
                             $mood = getMoodBadgeSA($ref['mood_rating']);
-                            $searchStr = strtolower($ref['first_name'] . ' ' . $ref['last_name'] . ' ' . ($ref['employee_id'] ?? '') . ' ' . ($ref['job_title'] ?? '') . ' ' . ($ref['department_name'] ?? '') . ' ' . $ref['status']);
+                            $searchStr = strtolower($ref['first_name'] . ' ' . $ref['last_name'] . ' ' . ($ref['employee_id'] ?? '') . ' ' . ($ref['job_title'] ?? '') . ' ' . ($ref['department_name'] ?? '') . ' ' . ($ref['status']));
                         ?>
                             <tr class="reflection-row hover:bg-surface-container-low/30 transition-colors" data-search="<?= htmlspecialchars($searchStr) ?>">
                                 <td class="py-4 px-6">
                                     <div class="flex items-center gap-3">
                                         <?php 
                                         $hash = md5(strtolower(trim($ref['email'])));
-                                        $avatar = !empty($ref['profile_picture']) ? $ref['profile_picture'] : "https://www.gravatar.com/avatar/{$hash}?d=404&s=150";
+                                        $avatar = !empty($ref['profile_picture']) ? $ref['profile_picture'] : "https://www.gravatar.com/avatar/{$hash}?d=identicon&s=150";
                                         ?>
                                         <img src="<?= htmlspecialchars($avatar) ?>" alt="Avatar" class="w-10 h-10 rounded-full object-cover border" onerror="window.handleAvatarError(this, '<?= $hash ?>')" />
                                         <div>

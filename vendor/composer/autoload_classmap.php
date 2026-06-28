@@ -6,6 +6,23 @@ $vendorDir = dirname(__DIR__);
 $baseDir = dirname($vendorDir);
 
 return array(
+    'App\\Config\\Database' => $baseDir . '/app/Config/Database.php',
+    'App\\Config\\Migration' => $baseDir . '/app/Config/Migration.php',
+    'App\\Config\\Migrator' => $baseDir . '/app/Config/Migrator.php',
+    'App\\Controllers\\ApprovalController' => $baseDir . '/app/Controllers/ApprovalController.php',
+    'App\\Controllers\\AttendanceController' => $baseDir . '/app/Controllers/AttendanceController.php',
+    'App\\Controllers\\AuthController' => $baseDir . '/app/Controllers/AuthController.php',
+    'App\\Controllers\\CorrectionController' => $baseDir . '/app/Controllers/CorrectionController.php',
+    'App\\Controllers\\DashboardController' => $baseDir . '/app/Controllers/DashboardController.php',
+    'App\\Controllers\\DepartmentController' => $baseDir . '/app/Controllers/DepartmentController.php',
+    'App\\Controllers\\EmployeeMasterController' => $baseDir . '/app/Controllers/EmployeeMasterController.php',
+    'App\\Controllers\\LeaveController' => $baseDir . '/app/Controllers/LeaveController.php',
+    'App\\Controllers\\PayrollController' => $baseDir . '/app/Controllers/PayrollController.php',
+    'App\\Controllers\\ReflectionController' => $baseDir . '/app/Controllers/ReflectionController.php',
+    'App\\Controllers\\ReimbursementController' => $baseDir . '/app/Controllers/ReimbursementController.php',
+    'App\\Controllers\\SettingsController' => $baseDir . '/app/Controllers/SettingsController.php',
+    'App\\Models\\User' => $baseDir . '/app/Models/User.php',
+    'App\\Session\\UnifiedSessionHandler' => $baseDir . '/app/Session/UnifiedSessionHandler.php',
     'Attribute' => $vendorDir . '/symfony/polyfill-php80/Resources/stubs/Attribute.php',
     'Composer\\InstalledVersions' => $vendorDir . '/composer/InstalledVersions.php',
     'Dotenv\\Dotenv' => $vendorDir . '/vlucas/phpdotenv/src/Dotenv.php',

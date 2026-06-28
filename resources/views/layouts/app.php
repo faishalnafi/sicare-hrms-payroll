@@ -135,16 +135,50 @@ if (!empty($resolvedPage)) {
           }
         }
     </script>
+    <style>
+        .att-stat-card, .kpi-card, .stat-card-scale {
+            transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
+        }
+        .att-stat-card:hover, .kpi-card:hover, .stat-card-scale:hover {
+            transform: translateY(-3px) scale(1.025) !important;
+            box-shadow: 0 10px 25px rgba(0, 6, 102, 0.08) !important;
+        }
+    </style>
+    <?php
+    if (session_status() === PHP_SESSION_NONE) {
+        session_start();
+    }
+    if (isset($_SESSION["user_id"]) && empty($_SESSION["jwt_token"])) {
+        try {
+            $db = \App\Config\Database::getInstance()->getConnection();
+            $stmt = $db->prepare("SELECT id, first_name, last_name, email, role FROM users WHERE id = ? LIMIT 1");
+            $stmt->execute([$_SESSION["user_id"]]);
+            $user = $stmt->fetch(\PDO::FETCH_ASSOC);
+            if ($user) {
+                $jwtPayload = [
+                    "user_id" => $user["id"],
+                    "name" => $user["first_name"] . " " . $user["last_name"],
+                    "email" => $user["email"],
+                    "role" => $user["role"]
+                ];
+                $_SESSION["jwt_token"] = \App\Config\JwtHelper::createToken($jwtPayload);
+            }
+        } catch (\Exception $e) {
+            // Fail-safe fallback
+        }
+    }
+    ?>
+    <!-- Global JWT Token for CRUD authorization -->
+    <script>
+        window.jwtToken  = <?php echo json_encode($_SESSION["jwt_token"] ?? ""); ?>;
+        window.csrfToken = <?php echo json_encode(csrf_token()); ?>;
+    </script>
     <!-- Global Avatar Helper Functions -->
     <script>
         // Global Avatar Fallback Error Handler
         window.handleAvatarError = function(img, emailHash) {
-            if (img.src.indexOf('d=404') !== -1) {
-                img.src = 'https://www.gravatar.com/avatar/' + emailHash + '?d=identicon&s=200';
-                img.onerror = null;
-            } else {
-                img.src = 'https://www.gravatar.com/avatar/' + emailHash + '?d=404&s=200';
-            }
+            img.src = 'https://www.gravatar.com/avatar/' + emailHash + '?d=identicon&s=200';
+            img.onerror = null;
         };
 
         // Global MD5 helper for non-letter Gravatar avatars
@@ -262,6 +296,465 @@ if (!empty($resolvedPage)) {
             var temp = wordToHex(a) + wordToHex(b) + wordToHex(c) + wordToHex(d);
             return temp.toLowerCase();
         };
+
+        // Global DOM table sorter for static/PHP-rendered tables
+        window.sortDomTable = function(thElement, columnIndex, dataType) {
+            var table = thElement.closest('table');
+            var tbody = table.querySelector('tbody');
+            var rows = Array.from(tbody.querySelectorAll('tr:not(.empty-row):not(.loading-row):not(.empty-table-row)'));
+            
+            var dir = thElement.getAttribute('data-sort-dir') === 'asc' ? 'desc' : 'asc';
+            thElement.setAttribute('data-sort-dir', dir);
+            
+            // Reset and update sort direction classes
+            var headers = thElement.parentNode.querySelectorAll('th');
+            headers.forEach(function(th) {
+                th.classList.remove('sort-active-asc', 'sort-active-desc');
+            });
+            thElement.classList.add(dir === 'asc' ? 'sort-active-asc' : 'sort-active-desc');
+            
+            rows.sort(function(rowA, rowB) {
+                var cellA = rowA.cells[columnIndex];
+                var cellB = rowB.cells[columnIndex];
+                
+                var valA = cellA ? cellA.innerText.trim() : '';
+                var valB = cellB ? cellB.innerText.trim() : '';
+                
+                if (dataType === 'number') {
+                    var numA = parseFloat(valA.replace(/[^\d.-]/g, '')) || 0;
+                    var numB = parseFloat(valB.replace(/[^\d.-]/g, '')) || 0;
+                    return dir === 'asc' ? numA - numB : numB - numA;
+                } else if (dataType === 'date') {
+                    var parseDateVal = function(s) {
+                        if (!s) return 0;
+                        s = s.trim();
+                        // Support DD/MM/YYYY HH:MM:SS or DD-MM-YYYY HH:MM:SS
+                        var match = s.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})(?:\s+(\d{1,2}):(\d{1,2})(?::(\d{1,2}))?)?/);
+                        if (match) {
+                            var day = parseInt(match[1]);
+                            var month = parseInt(match[2]) - 1;
+                            var year = parseInt(match[3]);
+                            var hour = parseInt(match[4]) || 0;
+                            var minute = parseInt(match[5]) || 0;
+                            var second = parseInt(match[6]) || 0;
+                            return new Date(year, month, day, hour, minute, second).getTime();
+                        }
+                        var monthsMap = {
+                            'januari': 0, 'februari': 1, 'maret': 2, 'april': 3, 'mei': 4, 'juni': 5,
+                            'juli': 6, 'agustus': 7, 'september': 8, 'oktober': 9, 'november': 10, 'desember': 11
+                        };
+                        var parts = s.toLowerCase().replace(/,/g, '').split(/\s+/);
+                        if (parts.length >= 3) {
+                            var day = parseInt(parts[0]) || 1;
+                            var month = monthsMap[parts[1]] !== undefined ? monthsMap[parts[1]] : (parseInt(parts[1]) - 1 || 0);
+                            var year = parseInt(parts[2]) || 1970;
+                            return new Date(year, month, day).getTime();
+                        }
+                        var d = Date.parse(s);
+                        return isNaN(d) ? 0 : d;
+                    };
+                    return dir === 'asc' ? parseDateVal(valA) - parseDateVal(valB) : parseDateVal(valB) - parseDateVal(valA);
+                } else {
+                    return dir === 'asc' ? valA.localeCompare(valB) : valB.localeCompare(valA);
+                }
+            });
+            
+            // Re-append rows in sorted order
+            rows.forEach(function(row) {
+                tbody.appendChild(row);
+            });
+            
+            // Re-index the sequence number if there is a 'No' column!
+            var hasNoColumn = table.querySelector('thead th.no-col') !== null;
+            if (hasNoColumn) {
+                var startIdx = 1;
+                rows.forEach(function(row) {
+                    if (row.cells[0]) {
+                        row.cells[0].innerText = startIdx++;
+                    }
+                });
+            }
+        };
+
+        // Automatic Table Standardizer Framework
+        // Automatic Table Standardizer Framework
+        (function() {
+            var isStandardizing = false;
+
+            function standardizeAllTables() {
+                if (isStandardizing) return;
+                isStandardizing = true;
+
+                try {
+                    document.querySelectorAll('table').forEach(function(table) {
+                        // 1. Ensure table has table-standardized class
+                        table.classList.add('table-standardized');
+
+                        // 2. Ensure parent has proper responsive wrapper
+                        var parent = table.parentNode;
+                        if (parent && !parent.classList.contains('overflow-x-auto') && !parent.classList.contains('table-wrapper-standardized')) {
+                            var wrapper = document.createElement('div');
+                            wrapper.className = 'table-wrapper-standardized overflow-x-auto w-full max-w-full rounded-2xl border border-outline-variant/15';
+                            parent.insertBefore(wrapper, table);
+                            wrapper.appendChild(table);
+                            parent = wrapper;
+                        }
+                        if (parent) {
+                            parent.classList.add('table-wrapper-standardized');
+                            parent.style.setProperty('overflow-x', 'auto', 'important');
+                            parent.style.setProperty('width', '100%', 'important');
+                            parent.style.setProperty('max-width', '100%', 'important');
+                        }
+
+                        // 3. Ensure thead has 'No' column & clean header titles
+                        if (table.dataset.headersProcessed !== 'true') {
+                            var thead = table.querySelector('thead');
+                            if (thead) {
+                                var headerRows = thead.querySelectorAll('tr');
+                                headerRows.forEach(function(hr) {
+                                    if (!hr.querySelector('.no-col')) {
+                                        var th = document.createElement('th');
+                                        th.className = 'no-col w-12 text-center py-4 px-6 text-[10px] font-extrabold uppercase tracking-wider select-none';
+                                        th.innerText = 'No';
+                                        hr.insertBefore(th, hr.firstChild);
+                                    }
+
+                                    // Add/recreate sort arrows to other headers
+                                    var headers = Array.from(hr.querySelectorAll('th:not(.no-col)'));
+                                    headers.forEach(function(th, idx) {
+                                        // Clone th and remove any sort icon containers to get clean title
+                                        var tempTh = th.cloneNode(true);
+                                        var oldIcons = tempTh.querySelector('.sort-icon-container');
+                                        if (oldIcons) oldIcons.remove();
+                                        
+                                        var title = tempTh.innerText.trim();
+                                        if (!title) return;
+
+                                        // Split header with parenthesis into exactly two lines
+                                        var parenMatch = title.match(/^([^(]+)\s*(\([^)]+\))$/);
+                                        var innerHtml = '';
+                                        if (parenMatch) {
+                                            var mainText = parenMatch[1].trim();
+                                            var parenText = parenMatch[2].trim();
+                                            innerHtml = '<div class="flex flex-col text-left">' +
+                                                            '<span class="whitespace-nowrap">' + mainText + '</span>' +
+                                                            '<span class="text-[9px] font-normal text-on-surface-variant/70 normal-case whitespace-nowrap">' + parenText + '</span>' +
+                                                        '</div>';
+                                        } else {
+                                            innerHtml = '<span class="whitespace-nowrap">' + title + '</span>';
+                                        }
+
+                                        th.innerHTML = '<div class="flex items-center ' + (th.classList.contains('text-right') || th.style.textAlign === 'right' ? 'justify-end' : '') + ' gap-1">' + 
+                                            innerHtml + 
+                                            '<span class="sort-icon-container"></span></div>';
+
+                                        var dataType = 'string';
+                                        var lowerTitle = title.toLowerCase();
+                                        if (lowerTitle.indexOf('gaji') !== -1 || lowerTitle.indexOf('jumlah') !== -1 || lowerTitle.indexOf('nominal') !== -1 || lowerTitle.indexOf('durasi') !== -1 || lowerTitle.indexOf('kuota') !== -1 || lowerTitle.indexOf('total') !== -1 || lowerTitle.indexOf('potongan') !== -1) {
+                                            dataType = 'number';
+                                        } else if (lowerTitle.indexOf('tanggal') !== -1 || lowerTitle.indexOf('waktu') !== -1 || lowerTitle.indexOf('periode') !== -1 || lowerTitle.indexOf('clock') !== -1) {
+                                            dataType = 'date';
+                                        }
+
+                                        if (!th.getAttribute('onclick')) {
+                                            th.addEventListener('click', function() {
+                                                window.sortDomTable(th, idx + 1, dataType);
+                                            });
+                                            th.classList.add('cursor-pointer', 'select-none');
+                                        }
+                                    });
+                                });
+                            }
+                            table.dataset.headersProcessed = 'true';
+                        }
+
+                        // 4. Force inline nowrap on all cells and descendants to ensure max 2 lines
+                        // Note: Handled efficiently via CSS rules to prevent layout thrashing
+
+                        // 5. Prepend No cell to tbody rows
+                        var tbody = table.querySelector('tbody');
+                        if (tbody) {
+                            var rows = Array.from(tbody.querySelectorAll('tr'));
+                            var validIndex = 1;
+                            var thCount = table.querySelectorAll('thead th').length;
+                            rows.forEach(function(row) {
+                                if (row.querySelector('[colspan]') || row.classList.contains('empty-row') || row.classList.contains('loading-row') || row.classList.contains('empty-table-row')) return;
+                                
+                                if (!row.querySelector('.no-col-cell') && !row.dataset.rowIndexed) {
+                                    if (row.children.length >= thCount && thCount > 0) {
+                                        var firstTd = row.firstElementChild;
+                                        if (firstTd) {
+                                            firstTd.classList.add('no-col-cell');
+                                            firstTd.innerText = validIndex++;
+                                        }
+                                    } else {
+                                        var td = document.createElement('td');
+                                        td.className = 'no-col-cell px-6 py-4 text-center font-bold text-xs text-on-surface-variant';
+                                        td.innerText = validIndex++;
+                                        row.insertBefore(td, row.firstChild);
+                                    }
+                                    row.dataset.rowIndexed = 'true';
+                                } else {
+                                    var td = row.querySelector('.no-col-cell');
+                                    if (td) {
+                                        td.innerText = validIndex++;
+                                    }
+                                }
+                            });
+                        }
+
+                        // 6. Default Sort Logic (jika belum disort)
+                        var validRows = Array.from(tbody.querySelectorAll('tr:not(.empty-row):not(.loading-row):not(.empty-table-row)'));
+                        if (table.dataset.defaultSorted !== 'true' && validRows.length > 0) {
+                            var firstDataHeader = table.querySelector('thead th:not(.no-col)');
+                            if (firstDataHeader) {
+                                var dataType = 'string';
+                                var title = firstDataHeader.innerText.trim();
+                                var lowerTitle = title.toLowerCase();
+                                if (lowerTitle.indexOf('gaji') !== -1 || lowerTitle.indexOf('jumlah') !== -1 || lowerTitle.indexOf('nominal') !== -1 || lowerTitle.indexOf('durasi') !== -1 || lowerTitle.indexOf('kuota') !== -1 || lowerTitle.indexOf('total') !== -1 || lowerTitle.indexOf('potongan') !== -1) {
+                                    dataType = 'number';
+                                } else if (lowerTitle.indexOf('tanggal') !== -1 || lowerTitle.indexOf('waktu') !== -1 || lowerTitle.indexOf('periode') !== -1 || lowerTitle.indexOf('clock') !== -1) {
+                                    dataType = 'date';
+                                }
+
+                                // Tentukan arah default
+                                var defaultDir = (dataType === 'string') ? 'asc' : 'desc';
+                                // Atur agar window.sortDomTable menghasilkan defaultDir
+                                firstDataHeader.setAttribute('data-sort-dir', defaultDir === 'asc' ? 'desc' : 'asc');
+                                
+                                // Jalankan sort
+                                window.sortDomTable(firstDataHeader, 1, dataType);
+                            }
+                            table.dataset.defaultSorted = 'true';
+                        }
+
+                        // 7. Global Pagination (max 10 rows per page)
+                        if (table.classList.contains('no-pagination') || table.dataset.hasCustomPagination === 'true') {
+                            table.dataset.tableStandardized = 'true';
+                            return;
+                        }
+                        
+                        var rowsAfterSort = Array.from(tbody.querySelectorAll('tr:not(.empty-row):not(.loading-row):not(.empty-table-row)'));
+                        var wrapper = table.closest('.table-wrapper-standardized');
+
+                        // Jika data <= 10 atau 1 page, tampilkan semua & sembunyikan detail pagination
+                        if (rowsAfterSort.length <= 10) {
+                            rowsAfterSort.forEach(function(row) {
+                                row.style.removeProperty('display');
+                            });
+                            if (wrapper) {
+                                var oldPagination = wrapper.nextElementSibling;
+                                if (oldPagination && oldPagination.classList.contains('table-pagination-container')) {
+                                    oldPagination.remove();
+                                }
+                            }
+                            table.dataset.paginated = 'false';
+                            table.dataset.tableStandardized = 'true';
+                            return;
+                        }
+                        
+                        table.dataset.paginated = 'true';
+                        var currentPage = parseInt(table.dataset.currentPage) || 1;
+                        var totalRows = rowsAfterSort.length;
+                        var totalPages = Math.ceil(totalRows / 10) || 1;
+                        if (currentPage > totalPages) currentPage = totalPages;
+                        table.dataset.currentPage = currentPage;
+
+                        // Tampilkan baris sesuai halaman aktif
+                        rowsAfterSort.forEach(function(row, idx) {
+                            var start = (currentPage - 1) * 10;
+                            var end = start + 10;
+                            if (idx >= start && idx < end) {
+                                row.style.removeProperty('display');
+                            } else {
+                                row.style.setProperty('display', 'none', 'important');
+                            }
+                        });
+
+                        // Hapus pagination container lama jika ada
+                        if (wrapper) {
+                            var oldPagination = wrapper.nextElementSibling;
+                            if (oldPagination && oldPagination.classList.contains('table-pagination-container')) {
+                                oldPagination.remove();
+                            }
+
+                            // Buat pagination container baru
+                            var paginationContainer = document.createElement('div');
+                            paginationContainer.className = 'table-pagination-container flex flex-col sm:flex-row items-center justify-between gap-4 px-6 py-4 border-t border-outline-variant/15 bg-surface-container-low/30 rounded-b-2xl mt-[-1px]';
+
+                            var startIdx = totalRows === 0 ? 0 : (currentPage - 1) * 10 + 1;
+                            var endIdx = Math.min(currentPage * 10, totalRows);
+                            var infoText = 'Menampilkan data ' + startIdx + ' sampai ' + endIdx + ' dari ' + totalRows;
+
+                            var infoDiv = document.createElement('div');
+                            infoDiv.className = 'table-pagination-info text-sm text-on-surface-variant font-medium';
+                            infoDiv.innerText = infoText;
+                            paginationContainer.appendChild(infoDiv);
+
+                            var btnDiv = document.createElement('div');
+                            btnDiv.className = 'table-pagination-buttons flex items-center gap-1.5';
+
+                            // Tombol First Page
+                            var btnFirst = document.createElement('button');
+                            btnFirst.type = 'button';
+                            btnFirst.className = 'p-2 flex items-center justify-center rounded-full hover:bg-surface-container-high text-on-surface-variant disabled:opacity-30 disabled:cursor-not-allowed transition-colors border border-transparent disabled:hover:bg-transparent';
+                            btnFirst.innerHTML = '<span class="material-symbols-outlined text-sm">first_page</span>';
+                            btnFirst.title = 'Halaman Pertama';
+                            btnFirst.disabled = currentPage === 1;
+                            btnFirst.onclick = function() {
+                                table.dataset.currentPage = 1;
+                                standardizeAllTables();
+                            };
+                            btnDiv.appendChild(btnFirst);
+
+                            // Tombol Previous
+                            var btnPrev = document.createElement('button');
+                            btnPrev.type = 'button';
+                            btnPrev.className = 'p-2 flex items-center justify-center rounded-full hover:bg-surface-container-high text-on-surface-variant disabled:opacity-30 disabled:cursor-not-allowed transition-colors border border-transparent disabled:hover:bg-transparent';
+                            btnPrev.innerHTML = '<span class="material-symbols-outlined text-sm">chevron_left</span>';
+                            btnPrev.title = 'Halaman Sebelumnya';
+                            btnPrev.disabled = currentPage === 1;
+                            btnPrev.onclick = function() {
+                                table.dataset.currentPage = currentPage - 1;
+                                standardizeAllTables();
+                            };
+                            btnDiv.appendChild(btnPrev);
+
+                            // Halaman nomor (max 3, centered)
+                            var startPage = currentPage - 1;
+                            var endPage = currentPage + 1;
+                            if (startPage < 1) {
+                                startPage = 1;
+                                endPage = Math.min(3, totalPages);
+                            }
+                            if (endPage > totalPages) {
+                                endPage = totalPages;
+                                startPage = Math.max(1, totalPages - 2);
+                            }
+
+                            for (var p = startPage; p <= endPage; p++) {
+                                (function(pageNumber) {
+                                    var btnPage = document.createElement('button');
+                                    btnPage.type = 'button';
+                                    btnPage.className = 'w-8 h-8 flex items-center justify-center rounded-full text-xs font-semibold transition-all border ';
+                                    if (pageNumber === currentPage) {
+                                        btnPage.className += 'bg-primary text-white border-primary shadow-sm';
+                                    } else {
+                                        btnPage.className += 'hover:bg-surface-container-high text-on-surface border-transparent';
+                                    }
+                                    btnPage.innerText = pageNumber;
+                                    btnPage.onclick = function() {
+                                        table.dataset.currentPage = pageNumber;
+                                        standardizeAllTables();
+                                    };
+                                    btnDiv.appendChild(btnPage);
+                                })(p);
+                            }
+
+                            // Tombol Next
+                            var btnNext = document.createElement('button');
+                            btnNext.type = 'button';
+                            btnNext.className = 'p-2 flex items-center justify-center rounded-full hover:bg-surface-container-high text-on-surface-variant disabled:opacity-30 disabled:cursor-not-allowed transition-colors border border-transparent disabled:hover:bg-transparent';
+                            btnNext.innerHTML = '<span class="material-symbols-outlined text-sm">chevron_right</span>';
+                            btnNext.title = 'Halaman Berikutnya';
+                            btnNext.disabled = currentPage === totalPages;
+                            btnNext.onclick = function() {
+                                table.dataset.currentPage = currentPage + 1;
+                                standardizeAllTables();
+                            };
+                            btnDiv.appendChild(btnNext);
+
+                            // Tombol Last Page
+                            var btnLast = document.createElement('button');
+                            btnLast.type = 'button';
+                            btnLast.className = 'p-2 flex items-center justify-center rounded-full hover:bg-surface-container-high text-on-surface-variant disabled:opacity-30 disabled:cursor-not-allowed transition-colors border border-transparent disabled:hover:bg-transparent';
+                            btnLast.innerHTML = '<span class="material-symbols-outlined text-sm">last_page</span>';
+                            btnLast.title = 'Halaman Terakhir';
+                            btnLast.disabled = currentPage === totalPages;
+                            btnLast.onclick = function() {
+                                table.dataset.currentPage = totalPages;
+                                standardizeAllTables();
+                            };
+                            btnDiv.appendChild(btnLast);
+
+                            paginationContainer.appendChild(btnDiv);
+                            wrapper.parentNode.insertBefore(paginationContainer, wrapper.nextSibling);
+                        }
+                        
+                        table.dataset.tableStandardized = 'true';
+                    });
+                } finally {
+                    isStandardizing = false;
+                }
+            }
+
+            window.standardizeAllTables = standardizeAllTables;
+
+            if (document.readyState === 'loading') {
+                document.addEventListener('DOMContentLoaded', standardizeAllTables);
+            } else {
+                standardizeAllTables();
+            }
+
+            var standardizeTimeout;
+            var tableObserver = new MutationObserver(function(mutations) {
+                if (isStandardizing) return;
+                var needsUpdate = false;
+                for (var i = 0; i < mutations.length; i++) {
+                    var added = mutations[i].addedNodes;
+                    for (var j = 0; j < added.length; j++) {
+                        var node = added[j];
+                        if (node.nodeType === 1) {
+                            if (node.classList.contains('table-pagination-container') || 
+                                node.closest('.table-pagination-container') ||
+                                node.classList.contains('sort-icon-container')) {
+                                continue;
+                            }
+                            needsUpdate = true;
+                            break;
+                        }
+                    }
+                    if (needsUpdate) break;
+                }
+                if (needsUpdate) {
+                    clearTimeout(standardizeTimeout);
+                    standardizeTimeout = setTimeout(standardizeAllTables, 30);
+                }
+            });
+            tableObserver.observe(document.body, { childList: true, subtree: true });
+
+            // Wheel event listener for horizontal table scroll
+            document.addEventListener('wheel', function(e) {
+                var wrapper = e.target.closest('.table-wrapper-standardized');
+                if (wrapper) {
+                    if (wrapper.scrollWidth > wrapper.clientWidth) {
+                        e.preventDefault();
+                        wrapper.scrollLeft += e.deltaY;
+                    }
+                }
+            }, { passive: false });
+
+            // Dynamic scrolling indicator for premium scrollbar visibility
+            (function() {
+                var scrollTimeout;
+                window.addEventListener('scroll', function(e) {
+                    var target = e.target;
+                    if (target === document) {
+                        document.documentElement.classList.add('is-scrolling');
+                    } else if (target && target.classList) {
+                        target.classList.add('is-scrolling');
+                    }
+                    
+                    clearTimeout(scrollTimeout);
+                    scrollTimeout = setTimeout(function() {
+                        document.documentElement.classList.remove('is-scrolling');
+                        document.querySelectorAll('.is-scrolling').forEach(function(el) {
+                            el.classList.remove('is-scrolling');
+                        });
+                    }, 1000);
+                }, { capture: true, passive: true });
+            })();
+        })();
     </script>
     <style>
         :root {
@@ -403,101 +896,66 @@ if (!empty($resolvedPage)) {
                 justify-content: center !important;
             }
 
-            /* Enable overflow visible for collapsed sidebar elements to allow tooltips to show */
+            /* Enable overflow hidden/scroll for collapsed sidebar to keep bounds clean, nav remains scrollable */
             html.sync-sidebar-collapsed #appSidebar,
             #appSidebar.sidebar-collapsed {
-                overflow: visible !important;
+                overflow: hidden !important;
             }
             html.sync-sidebar-collapsed #appSidebar nav,
             #appSidebar.sidebar-collapsed nav {
-                overflow: visible !important;
+                overflow-y: auto !important;
+                overflow-x: hidden !important;
             }
             html.sync-sidebar-collapsed #appSidebar > div,
             #appSidebar.sidebar-collapsed > div {
                 overflow: visible !important;
             }
+        }
 
-            /* Tooltip container element relative positioning */
-            html.sync-sidebar-collapsed #appSidebar a[data-tooltip],
-            #appSidebar.sidebar-collapsed a[data-tooltip],
-            html.sync-sidebar-collapsed #appSidebar button[data-tooltip],
-            #appSidebar.sidebar-collapsed button[data-tooltip] {
-                position: relative !important;
-            }
-
-            /* The Floating Tooltip Box */
-            html.sync-sidebar-collapsed #appSidebar a[data-tooltip]::after,
-            #appSidebar.sidebar-collapsed a[data-tooltip]::after,
-            html.sync-sidebar-collapsed #appSidebar button[data-tooltip]::after,
-            #appSidebar.sidebar-collapsed button[data-tooltip]::after {
-                content: attr(data-tooltip);
-                position: absolute;
-                left: calc(100% + 12px);
-                top: 50%;
-                transform: translateY(-50%) scale(0.9);
-                background-color: rgba(25, 28, 29, 0.95);
-                backdrop-filter: blur(8px);
-                -webkit-backdrop-filter: blur(8px);
-                color: #ffffff;
-                padding: 6px 12px;
-                border-radius: 8px;
-                font-size: 12px;
-                font-weight: 600;
-                white-space: nowrap;
-                opacity: 0;
-                pointer-events: none;
-                transition: opacity 0.15s cubic-bezier(0.4, 0, 0.2, 1), transform 0.15s cubic-bezier(0.4, 0, 0.2, 1);
-                box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-                border: 1px solid rgba(255, 255, 255, 0.1);
-                z-index: 100;
-            }
-
-            /* The Tooltip Indicator Arrow */
-            html.sync-sidebar-collapsed #appSidebar a[data-tooltip]::before,
-            #appSidebar.sidebar-collapsed a[data-tooltip]::before,
-            html.sync-sidebar-collapsed #appSidebar button[data-tooltip]::before,
-            #appSidebar.sidebar-collapsed button[data-tooltip]::before {
-                content: "";
-                position: absolute;
-                left: calc(100% + 6px);
-                top: 50%;
-                transform: translateY(-50%) scale(0.9);
-                border-width: 5px;
-                border-style: solid;
-                border-color: transparent rgba(25, 28, 29, 0.95) transparent transparent;
-                opacity: 0;
-                pointer-events: none;
-                transition: opacity 0.15s cubic-bezier(0.4, 0, 0.2, 1), transform 0.15s cubic-bezier(0.4, 0, 0.2, 1);
-                z-index: 100;
-            }
-
-            /* Custom red glassmorphism for logout button tooltip */
-            html.sync-sidebar-collapsed #appSidebar button[data-tooltip]::after,
-            #appSidebar.sidebar-collapsed button[data-tooltip]::after {
-                background-color: rgba(186, 26, 26, 0.95) !important;
-                border: 1px solid rgba(255, 255, 255, 0.15) !important;
-            }
-            html.sync-sidebar-collapsed #appSidebar button[data-tooltip]::before,
-            #appSidebar.sidebar-collapsed button[data-tooltip]::before {
-                border-color: transparent rgba(186, 26, 26, 0.95) transparent transparent !important;
-            }
-
-            /* Show Tooltip & Arrow on Hover */
-            html.sync-sidebar-collapsed #appSidebar a[data-tooltip]:hover::after,
-            #appSidebar.sidebar-collapsed a[data-tooltip]:hover::after,
-            html.sync-sidebar-collapsed #appSidebar button[data-tooltip]:hover::after,
-            #appSidebar.sidebar-collapsed button[data-tooltip]:hover::after {
-                opacity: 1;
-                transform: translateY(-50%) scale(1);
-            }
-
-            html.sync-sidebar-collapsed #appSidebar a[data-tooltip]:hover::before,
-            #appSidebar.sidebar-collapsed a[data-tooltip]:hover::before,
-            html.sync-sidebar-collapsed #appSidebar button[data-tooltip]:hover::before,
-            #appSidebar.sidebar-collapsed button[data-tooltip]:hover::before {
-                opacity: 1;
-                transform: translateY(-50%) scale(1);
-            }
+        /* Floating Tooltip styling (placed outside desktop media query for clean global access) */
+        #sidebar-floating-tooltip {
+            position: fixed;
+            pointer-events: none;
+            background-color: rgba(25, 28, 29, 0.95);
+            backdrop-filter: blur(8px);
+            -webkit-backdrop-filter: blur(8px);
+            color: #ffffff;
+            padding: 6px 12px;
+            border-radius: 8px;
+            font-size: 12px;
+            font-weight: 600;
+            white-space: nowrap;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            z-index: 9999;
+            opacity: 0;
+            transform: translateY(-50%) scale(0.9);
+            transition: opacity 0.15s cubic-bezier(0.4, 0, 0.2, 1), transform 0.15s cubic-bezier(0.4, 0, 0.2, 1);
+            display: none;
+        }
+        #sidebar-floating-tooltip.show {
+            display: block;
+        }
+        #sidebar-floating-tooltip.visible {
+            opacity: 1;
+            transform: translateY(-50%) scale(1);
+        }
+        #sidebar-floating-tooltip.logout-tooltip {
+            background-color: rgba(186, 26, 26, 0.95);
+            border-color: rgba(255, 255, 255, 0.15);
+        }
+        #sidebar-floating-tooltip::before {
+            content: "";
+            position: absolute;
+            left: -10px;
+            top: 50%;
+            transform: translateY(-50%);
+            border-width: 5px;
+            border-style: solid;
+            border-color: transparent rgba(25, 28, 29, 0.95) transparent transparent;
+        }
+        #sidebar-floating-tooltip.logout-tooltip::before {
+            border-color: transparent rgba(186, 26, 26, 0.95) transparent transparent;
         }
 
         /* Custom Leaflet Control Layer Styling */
@@ -552,10 +1010,142 @@ if (!empty($resolvedPage)) {
             border-color: rgba(0,6,102,0.3);
         }
         .map-type-btn.map-type-active {
-            background-color: #000666;
-            color: #ffffff;
-            border-color: #000666;
             box-shadow: 0 2px 8px rgba(0,6,102,0.25);
+        }
+
+        /* Standardized Table UI Styles */
+        .table-standardized {
+            min-width: 1100px !important;
+            width: 100% !important;
+            border-collapse: collapse !important;
+            text-align: left !important;
+            table-layout: auto !important;
+        }
+        .table-standardized td,
+        .table-standardized th,
+        .table-standardized td *,
+        .table-standardized th * {
+            white-space: nowrap !important;
+            vertical-align: middle !important;
+        }
+        .table-standardized td .flex,
+        .table-standardized td .grid,
+        .table-standardized th .flex,
+        .table-standardized th .grid {
+            flex-wrap: nowrap !important;
+        }
+        .table-standardized th:not(.no-col) {
+            cursor: pointer;
+            user-select: none;
+            transition: background-color 0.2s ease;
+        }
+        .table-standardized th:not(.no-col):hover {
+            background-color: var(--color-surface-container-high, #e7e8e9) !important;
+        }
+        .sort-icon-container {
+            display: inline-flex;
+            flex-direction: column;
+            align-items: center;
+            vertical-align: middle;
+            margin-left: 6px;
+            width: 10px;
+            height: 14px;
+            justify-content: center;
+            line-height: 1;
+            font-size: 8px;
+            gap: 1px;
+            opacity: 0.6;
+        }
+        .sort-icon-container::before {
+            content: '▲';
+            font-size: 7px;
+            color: #b0b2c3;
+            transition: all 0.2s ease;
+        }
+        .sort-icon-container::after {
+            content: '▼';
+            font-size: 7px;
+            color: #b0b2c3;
+            transition: all 0.2s ease;
+        }
+        
+        th:hover .sort-icon-container {
+            opacity: 1;
+        }
+        th:hover .sort-icon-container::before,
+        th:hover .sort-icon-container::after {
+            color: #82859f;
+        }
+
+        .sort-active-asc .sort-icon-container {
+            opacity: 1 !important;
+        }
+        .sort-active-asc .sort-icon-container::before {
+            color: var(--color-primary, #000666) !important;
+            font-weight: 900 !important;
+        }
+        .sort-active-asc .sort-icon-container::after {
+            color: #b0b2c3 !important;
+        }
+
+        .sort-active-desc .sort-icon-container {
+            opacity: 1 !important;
+        }
+        .sort-active-desc .sort-icon-container::after {
+            color: var(--color-primary, #000666) !important;
+            font-weight: 900 !important;
+        }
+        .sort-active-desc .sort-icon-container::before {
+            color: #b0b2c3 !important;
+        }
+
+        /* Premium Custom Scrollbars */
+        ::-webkit-scrollbar {
+            width: 6px !important;
+            height: 6px !important;
+        }
+        ::-webkit-scrollbar-track {
+            background: transparent !important;
+        }
+        ::-webkit-scrollbar-thumb {
+            background-color: transparent !important;
+            border-radius: 10px !important;
+            border: 1px solid transparent !important;
+            background-clip: padding-box !important;
+            transition: background-color 0.3s ease !important;
+        }
+        /* Show on hover or scroll activity */
+        *:hover::-webkit-scrollbar-thumb,
+        html:hover::-webkit-scrollbar-thumb,
+        body:hover::-webkit-scrollbar-thumb,
+        .is-scrolling::-webkit-scrollbar-thumb,
+        html.is-scrolling::-webkit-scrollbar-thumb,
+        body.is-scrolling::-webkit-scrollbar-thumb {
+            background-color: rgba(0, 6, 102, 0.15) !important;
+        }
+        /* Darker on thumb hover */
+        ::-webkit-scrollbar-thumb:hover {
+            background-color: rgba(0, 6, 102, 0.45) !important;
+        }
+        ::-webkit-scrollbar-thumb:active {
+            background-color: rgba(0, 6, 102, 0.6) !important;
+        }
+
+        /* Firefox Support */
+        * {
+            scrollbar-width: thin;
+            scrollbar-color: transparent transparent;
+        }
+        *:hover,
+        .is-scrolling {
+            scrollbar-color: rgba(0, 6, 102, 0.15) transparent;
+        }
+
+        .table-wrapper-standardized {
+            display: block !important;
+            width: 100% !important;
+            max-width: 100% !important;
+            overflow-x: auto !important;
         }
 
     </style>
@@ -576,9 +1166,11 @@ if (!empty($resolvedPage)) {
     <div id="sidebarBackdrop" class="fixed inset-0 bg-black/40 z-30 hidden transition-opacity duration-300 lg:hidden animate-fade-in"></div>
 
     <!-- Floating Hamburger for Mobile (Always visible since global header is removed) -->
-    <button id="mobileSidebarToggle" class="lg:hidden fixed top-4 left-4 z-30 p-3 bg-surface-container-lowest border border-outline-variant/20 shadow-md rounded-full text-on-surface-variant hover:bg-surface-container-high transition-colors flex items-center justify-center">
-        <span class="material-symbols-outlined">menu</span>
-    </button>
+    <?php if (!isset($_SESSION['original_user_id'])): ?>
+        <button id="mobileSidebarToggle" class="lg:hidden fixed top-4 left-4 z-40 p-3 bg-surface-container-lowest border border-outline-variant/20 shadow-md rounded-full text-on-surface-variant hover:bg-surface-container-high transition-colors flex items-center justify-center">
+            <span class="material-symbols-outlined">menu</span>
+        </button>
+    <?php endif; ?>
     
     <!-- Middle Container -->
     <div class="flex-grow flex relative min-w-0 w-full">
@@ -588,8 +1180,12 @@ if (!empty($resolvedPage)) {
         <!-- Right Content Container (Pushed by collapsed sidebar) -->
         <div id="contentContainer" class="content-container flex-grow flex flex-col min-w-0 lg:pl-28 xl:pl-80 transition-all duration-300">
             <?php if (isset($_SESSION['original_user_id'])): ?>
-                <div class="bg-amber-500 text-white px-6 py-3 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 shadow-sm z-30 text-sm font-semibold sticky top-0 border-b border-amber-600/30 backdrop-blur-md bg-amber-500/95">
+                <div class="mx-4 mt-4 lg:mx-8 lg:mt-4 bg-gradient-to-r from-amber-500 to-orange-600 text-white px-6 py-3.5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 shadow-lg rounded-2xl border border-orange-600/20 z-30 text-sm font-semibold sticky top-4 backdrop-blur-md bg-opacity-95">
                     <div class="flex items-center gap-2.5">
+                        <!-- Mobile Hamburger inside the banner -->
+                        <button onclick="openSidebar()" class="lg:hidden p-1.5 bg-white/20 hover:bg-white/35 text-white rounded-lg transition-colors flex items-center justify-center mr-1">
+                            <span class="material-symbols-outlined text-xl">menu</span>
+                        </button>
                         <span class="material-symbols-outlined text-xl animate-pulse">supervised_user_circle</span>
                         <span>Anda sedang melakukan simulasi login sebagai <strong><?= htmlspecialchars($_SESSION['name']) ?></strong> (<?= htmlspecialchars($_SESSION['email']) ?>).</span>
                     </div>
@@ -602,7 +1198,26 @@ if (!empty($resolvedPage)) {
                 <!-- Identity Chip -->
                 <div class="flex items-center gap-2">
                     <span class="bg-green-100 text-green-800 text-[10px] font-bold uppercase tracking-widest px-3 py-1 rounded-full">AKUN TERVERIFIKASI</span>
-                    <span class="text-on-surface-variant text-sm font-medium">Portal Karyawan</span>
+                    <?php
+                    $roleLabel = 'Portal Karyawan';
+                    if (isset($_SESSION['role'])) {
+                        $role = $_SESSION['role'];
+                        if ($role === 'superadmin') {
+                            $roleLabel = 'Portal Superadmin';
+                        } elseif ($role === 'admin') {
+                            $roleLabel = 'Portal Admin';
+                        } elseif ($role === 'hr_ops') {
+                            $roleLabel = 'Portal HR Ops';
+                        } elseif ($role === 'hiring_manager') {
+                            $roleLabel = 'Portal Manager';
+                        } elseif ($role === 'executive') {
+                            $roleLabel = 'Portal Eksekutif';
+                        } elseif ($role === 'candidate') {
+                            $roleLabel = 'Portal Kandidat';
+                        }
+                    }
+                    ?>
+                    <span class="text-on-surface-variant text-sm font-medium"><?= htmlspecialchars($roleLabel) ?></span>
                 </div>
                 
                 <!-- SPA Content Container -->
@@ -621,9 +1236,43 @@ if (!empty($resolvedPage)) {
             let isDashboard = currentPath.endsWith('/dashboard') || currentPath === '/' || currentPath === '' || currentPath.endsWith('/public') || currentPath.endsWith('/index.php');
             
 
-            // 3. Highlight Active Sidebar Item (robust to folder prefixes and trailing slashes)
+            // 1. Reset & Highlight Submenu Groups
+            document.querySelectorAll('.submenu-group').forEach(group => {
+                let btn = group.querySelector('button');
+                let container = group.querySelector('.submenu-container');
+                let parentDiv = btn ? btn.querySelector('div') : null;
+                let parentIcon = parentDiv ? parentDiv.querySelector('.material-symbols-outlined:first-child') : null;
+                let parentText = parentDiv ? parentDiv.querySelector('span:not(.material-symbols-outlined)') : null;
+                let arrow = parentDiv ? parentDiv.querySelector('.submenu-arrow') : null;
+                
+                let hasActiveChild = false;
+                group.querySelectorAll('a').forEach(a => {
+                    let linkPath = a.getAttribute('href');
+                    if (!linkPath) return;
+                    let cleanLink = linkPath.toLowerCase().replace(/\/$/, '');
+                    if (currentPath === cleanLink || currentPath.endsWith(cleanLink)) {
+                        hasActiveChild = true;
+                    }
+                });
+                
+                if (hasActiveChild) {
+                    if (container) container.classList.remove('hidden');
+                    if (parentDiv) parentDiv.className = "rounded-xl p-3 flex items-center justify-start lg:justify-center lg:group-hover:justify-start xl:justify-start gap-3 group cursor-pointer transition-all duration-200 bg-primary/5 text-primary font-bold";
+                    if (parentIcon) parentIcon.className = "material-symbols-outlined flex-shrink-0 transition-colors text-primary";
+                    if (parentText) parentText.className = "text-sm font-medium flex-grow whitespace-nowrap transition-colors text-primary font-bold lg:opacity-0 lg:group-hover:opacity-100 lg:w-0 lg:group-hover:w-auto xl:opacity-100 xl:w-auto overflow-hidden";
+                    if (arrow) arrow.className = "submenu-arrow material-symbols-outlined text-sm flex-shrink-0 ml-auto transition-transform duration-200 lg:opacity-0 lg:group-hover:opacity-100 lg:w-0 lg:group-hover:w-auto xl:opacity-100 xl:w-auto overflow-hidden rotate-180 text-primary";
+                } else {
+                    if (parentDiv) parentDiv.className = "rounded-xl p-3 flex items-center justify-start lg:justify-center lg:group-hover:justify-start xl:justify-start gap-3 group cursor-pointer transition-all duration-200 text-on-surface-variant hover:bg-surface-container-low hover:text-primary transition-all duration-200";
+                    if (parentIcon) parentIcon.className = "material-symbols-outlined flex-shrink-0 transition-colors text-on-surface-variant group-hover:text-primary";
+                    if (parentText) parentText.className = "text-sm font-medium flex-grow whitespace-nowrap transition-colors text-on-surface-variant group-hover:text-primary lg:opacity-0 lg:group-hover:opacity-100 lg:w-0 lg:group-hover:w-auto xl:opacity-100 xl:w-auto overflow-hidden";
+                    if (arrow) arrow.className = "submenu-arrow material-symbols-outlined text-sm flex-shrink-0 ml-auto transition-transform duration-200 lg:opacity-0 lg:group-hover:opacity-100 lg:w-0 lg:group-hover:w-auto xl:opacity-100 xl:w-auto overflow-hidden text-on-surface-variant/50";
+                }
+            });
+
+            // 2. Highlight Active Sidebar Links
             document.querySelectorAll('#appSidebar nav a').forEach(a => {
                 let linkPath = a.getAttribute('href');
+                if (!linkPath) return;
                 let div = a.querySelector('div');
                 let icon = a.querySelector('.material-symbols-outlined');
                 let text = a.querySelector('span:not(.material-symbols-outlined)');
@@ -633,17 +1282,30 @@ if (!empty($resolvedPage)) {
                 let cleanLink = linkPath.toLowerCase().replace(/\/$/, '');
                 
                 let isActive = (cleanCurrent === cleanLink || cleanCurrent.endsWith(cleanLink));
+                let isChild = a.closest('.submenu-container') !== null;
                 
-                if (isActive) {
-                    if (div) div.className = "rounded-xl p-3 flex items-center justify-start lg:justify-center lg:group-hover:justify-start xl:justify-start gap-3 group cursor-pointer transition-all duration-200 bg-primary/10 text-primary font-bold shadow-[0_4px_12px_rgba(0,6,102,0.02)]";
-                    if (icon) icon.className = "material-symbols-outlined text-primary";
-                    if (text) text.className = "text-sm font-bold text-primary transition-all duration-300 lg:opacity-0 lg:group-hover:opacity-100 lg:w-0 lg:group-hover:w-auto xl:opacity-100 xl:w-auto overflow-hidden whitespace-nowrap";
-                    if (chevron) chevron.className = "material-symbols-outlined text-sm ml-auto transition-all duration-300 lg:opacity-0 lg:group-hover:opacity-100 lg:w-0 lg:group-hover:w-auto xl:opacity-100 xl:w-auto overflow-hidden text-primary opacity-100";
+                if (isChild) {
+                    if (isActive) {
+                        if (div) div.className = "rounded-xl px-3 py-2 flex items-center justify-start lg:justify-center lg:group-hover:justify-start xl:justify-start gap-2.5 group cursor-pointer transition-all duration-200 bg-primary/10 text-primary font-bold shadow-[0_2px_8px_rgba(0,6,102,0.02)]";
+                        if (icon) icon.className = "material-symbols-outlined text-[18px] flex-shrink-0 transition-colors text-primary";
+                        if (text) text.className = "text-xs font-medium flex-grow whitespace-nowrap transition-colors text-primary font-bold lg:opacity-0 lg:group-hover:opacity-100 lg:w-0 lg:group-hover:w-auto xl:opacity-100 xl:w-auto overflow-hidden";
+                    } else {
+                        if (div) div.className = "rounded-xl px-3 py-2 flex items-center justify-start lg:justify-center lg:group-hover:justify-start xl:justify-start gap-2.5 group cursor-pointer transition-all duration-200 text-on-surface-variant hover:bg-surface-container-low hover:text-primary";
+                        if (icon) icon.className = "material-symbols-outlined text-[18px] flex-shrink-0 transition-colors text-on-surface-variant/70 group-hover:text-primary";
+                        if (text) text.className = "text-xs font-medium flex-grow whitespace-nowrap transition-colors text-on-surface-variant group-hover:text-primary lg:opacity-0 lg:group-hover:opacity-100 lg:w-0 lg:group-hover:w-auto xl:opacity-100 xl:w-auto overflow-hidden";
+                    }
                 } else {
-                    if (div) div.className = "rounded-xl p-3 flex items-center justify-start lg:justify-center lg:group-hover:justify-start xl:justify-start gap-3 group cursor-pointer transition-all duration-200 text-on-surface-variant hover:bg-surface-container-low hover:text-primary transition-all duration-200";
-                    if (icon) icon.className = "material-symbols-outlined text-on-surface-variant group-hover:text-primary";
-                    if (text) text.className = "text-sm font-medium text-on-surface-variant group-hover:text-primary transition-all duration-300 lg:opacity-0 lg:group-hover:opacity-100 lg:w-0 lg:group-hover:w-auto xl:opacity-100 xl:w-auto overflow-hidden whitespace-nowrap";
-                    if (chevron) chevron.className = "material-symbols-outlined text-sm ml-auto transition-all duration-300 lg:opacity-0 lg:group-hover:opacity-100 lg:w-0 lg:group-hover:w-auto xl:opacity-100 xl:w-auto overflow-hidden text-primary/50 opacity-0 group-hover:opacity-100";
+                    if (isActive) {
+                        if (div) div.className = "rounded-xl p-3 flex items-center justify-start lg:justify-center lg:group-hover:justify-start xl:justify-start gap-3 group cursor-pointer transition-all duration-200 bg-primary/10 text-primary font-bold shadow-[0_4px_12px_rgba(0,6,102,0.02)]";
+                        if (icon) icon.className = "material-symbols-outlined text-primary";
+                        if (text) text.className = "text-sm font-bold text-primary transition-all duration-300 lg:opacity-0 lg:group-hover:opacity-100 lg:w-0 lg:group-hover:w-auto xl:opacity-100 xl:w-auto overflow-hidden whitespace-nowrap";
+                        if (chevron) chevron.className = "material-symbols-outlined text-sm ml-auto transition-all duration-300 lg:opacity-0 lg:group-hover:opacity-100 lg:w-0 lg:group-hover:w-auto xl:opacity-100 xl:w-auto overflow-hidden text-primary opacity-100";
+                    } else {
+                        if (div) div.className = "rounded-xl p-3 flex items-center justify-start lg:justify-center lg:group-hover:justify-start xl:justify-start gap-3 group cursor-pointer transition-all duration-200 text-on-surface-variant hover:bg-surface-container-low hover:text-primary transition-all duration-200";
+                        if (icon) icon.className = "material-symbols-outlined text-on-surface-variant group-hover:text-primary";
+                        if (text) text.className = "text-sm font-medium text-on-surface-variant group-hover:text-primary transition-all duration-300 lg:opacity-0 lg:group-hover:opacity-100 lg:w-0 lg:group-hover:w-auto xl:opacity-100 xl:w-auto overflow-hidden whitespace-nowrap";
+                        if (chevron) chevron.className = "material-symbols-outlined text-sm ml-auto transition-all duration-300 lg:opacity-0 lg:group-hover:opacity-100 lg:w-0 lg:group-hover:w-auto xl:opacity-100 xl:w-auto overflow-hidden text-primary/50 opacity-0 group-hover:opacity-100";
+                    }
                 }
             });
         }
@@ -713,6 +1375,80 @@ if (!empty($resolvedPage)) {
             }
             
             updateActiveSidebarMenu();
+
+            // Floating Tooltip for collapsed sidebar
+            const tooltipEl = document.createElement('div');
+            tooltipEl.id = 'sidebar-floating-tooltip';
+            document.body.appendChild(tooltipEl);
+            
+            let hoverTimeout;
+            
+            document.addEventListener('mouseover', function(e) {
+                const sidebar = document.getElementById('appSidebar');
+                if (!sidebar || !sidebar.classList.contains('sidebar-collapsed')) {
+                    tooltipEl.classList.remove('visible', 'show');
+                    return;
+                }
+                
+                const target = e.target.closest('#appSidebar [data-tooltip]');
+                if (!target) {
+                    hideTooltip();
+                    return;
+                }
+                
+                const tooltipText = target.getAttribute('data-tooltip');
+                if (!tooltipText) {
+                    hideTooltip();
+                    return;
+                }
+                
+                clearTimeout(hoverTimeout);
+                tooltipEl.textContent = tooltipText;
+                
+                if (tooltipText === 'Keluar') {
+                    tooltipEl.classList.add('logout-tooltip');
+                } else {
+                    tooltipEl.classList.remove('logout-tooltip');
+                }
+                
+                tooltipEl.classList.add('show');
+                
+                // Position the tooltip next to the target
+                const rect = target.getBoundingClientRect();
+                const x = rect.right + 12;
+                const y = rect.top + rect.height / 2;
+                
+                tooltipEl.style.left = `${x}px`;
+                tooltipEl.style.top = `${y}px`;
+                
+                requestAnimationFrame(() => {
+                    tooltipEl.classList.add('visible');
+                });
+            });
+            
+            document.addEventListener('mouseout', function(e) {
+                const sidebar = document.getElementById('appSidebar');
+                if (!sidebar || !sidebar.classList.contains('sidebar-collapsed')) return;
+                
+                const target = e.target.closest('#appSidebar [data-tooltip]');
+                if (target) {
+                    const related = e.relatedTarget ? e.relatedTarget.closest('#appSidebar [data-tooltip]') : null;
+                    if (related === target) {
+                        return;
+                    }
+                }
+                hideTooltip();
+            });
+            
+            function hideTooltip() {
+                clearTimeout(hoverTimeout);
+                tooltipEl.classList.remove('visible');
+                hoverTimeout = setTimeout(() => {
+                    if (!tooltipEl.classList.contains('visible')) {
+                        tooltipEl.classList.remove('show');
+                    }
+                }, 150);
+            }
         });
 
         function injectHtmlAndRunScripts(html) {
@@ -730,6 +1466,11 @@ if (!empty($resolvedPage)) {
                 }
                 script.parentNode.replaceChild(newScript, script);
             });
+
+            // Trigger table standardization explicitly after SPA content injection
+            if (typeof window.standardizeAllTables === 'function') {
+                window.standardizeAllTables();
+            }
         }
 
         function updatePageTitle(url) {
@@ -931,113 +1672,71 @@ if (!empty($resolvedPage)) {
 
         // Global Dynamic File Preview Overlay with Fullscreen Zoom Capabilities
         window.viewAttachmentGlobal = function(url, title, subtitle = '') {
-            const modal = document.getElementById('globalFilePreviewModal');
-            const titleEl = document.getElementById('globalFilePreviewTitle');
-            const subtitleEl = document.getElementById('globalFilePreviewSubtitle');
-            const bodyEl = document.getElementById('globalFilePreviewBody');
-            const downloadBtn = document.getElementById('globalFilePreviewDownloadBtn');
-            
-            // Reset download button visibility
-            if (downloadBtn) {
-                downloadBtn.classList.remove('hidden');
-            }
-            
-            titleEl.innerText = title;
-            if (subtitle) {
-                subtitleEl.innerText = subtitle;
-                subtitleEl.classList.remove('hidden');
-            } else {
-                subtitleEl.classList.add('hidden');
-            }
-            
-            bodyEl.innerHTML = '';
-            
             const lowerUrl = url.toLowerCase();
-            if (lowerUrl.includes('.pdf') || lowerUrl.endsWith('.pdf')) {
-                // PDF Document Stream Viewer
-                const iframe = document.createElement('iframe');
-                iframe.src = url;
-                iframe.className = "w-full h-[420px] rounded-xl border-0 bg-white";
-                bodyEl.appendChild(iframe);
+            const isPdf = lowerUrl.includes('.pdf') || lowerUrl.endsWith('.pdf');
+            
+            let fileName = url.split('/').pop().split('?')[0];
+            if (url.includes('file=')) {
+                fileName = decodeURIComponent(url.split('file=')[1].split('&')[0]);
+            }
+            if (!fileName || fileName.length > 40 || fileName.indexOf('.') === -1) {
+                fileName = title.replace(/[^a-zA-Z0-9]/g, '_').toLowerCase() + (isPdf ? '.pdf' : '.jpg');
+            }
+
+            let metaHtml = `
+                <div class="text-left space-y-2 mt-2">
+                    ${subtitle ? `<p class="text-xs text-on-surface-variant"><strong>Keterangan:</strong> ${subtitle}</p>` : ''}
+                    <p class="text-xs text-on-surface-variant font-mono"><strong>Nama Berkas:</strong> ${fileName}</p>
+                    <p class="text-[10px] text-green-700 bg-green-50 px-2 py-1 rounded inline-block font-bold">MIME TYPE VALID: Verified via Server finfo</p>
+                </div>
+            `;
+
+            const swalConfig = {
+                title: title,
+                showDenyButton: true,
+                confirmButtonText: 'Tutup Dokumen',
+                denyButtonText: '<span class="material-symbols-outlined text-xs" style="vertical-align: middle; margin-right: 4px;">download</span>Unduh Berkas',
+                confirmButtonColor: '#000666',
+                denyButtonColor: '#ff6f00',
+            };
+
+            if (isPdf) {
+                swalConfig.html = metaHtml + `
+                    <div class="mt-4 p-6 bg-surface-container-low rounded-xl border border-outline-variant/10 flex flex-col items-center justify-center">
+                        <span class="material-symbols-outlined text-6xl text-red-600 mb-2">picture_as_pdf</span>
+                        <p class="text-xs font-bold text-on-surface">Dokumen PDF Terdeteksi</p>
+                        <a href="${url}" target="_blank" class="mt-3 bg-primary hover:bg-primary/95 text-white font-bold text-xs py-2 px-4 rounded flex items-center gap-1.5 transition-all">
+                            <span class="material-symbols-outlined text-sm">open_in_new</span> Buka PDF di Tab Baru
+                        </a>
+                    </div>
+                `;
             } else {
-                // Image Receipt/Surat Dokter Viewer
-                const img = document.createElement('img');
-                img.src = url;
-                img.className = "max-w-full max-h-[380px] object-contain rounded-xl shadow-sm border border-outline-variant/20 cursor-zoom-in hover:scale-[1.01] transition-transform select-none";
-                img.alt = title;
-                img.onerror = function() {
-                    // Fetch the URL to find out the exact HTTP status code
-                    fetch(url)
-                        .then(response => {
-                            let errorIcon = 'block';
-                            let errorTitle = `${title} Tidak Dapat di Akses!`;
-                            let errorMessage = 'Berkas tidak dapat dimuat karena kebijakan keamanan, batas akses, atau sesi Anda telah kedaluwarsa.';
-                            
-                            if (response.status === 404) {
-                                errorIcon = 'image_not_supported';
-                                errorTitle = `${title} Tidak Dapat di Akses!`;
-                                errorMessage = 'Berkas fisik tidak dapat diakses dikarenakan tidak ditemukan di server oleh sistem aplikasi.';
-                            } else if (response.status === 403) {
-                                errorIcon = 'block';
-                                errorTitle = `${title} Tidak Dapat di Akses!`;
-                                errorMessage = 'Akses ditolak karena kebijakan keamanan, batas akses, atau sesi Anda telah kedaluwarsa (403 Forbidden).';
-                            }
-                            
-                            bodyEl.innerHTML = `
-                                <div class="flex flex-col items-center justify-center p-8 text-center bg-red-50 border border-red-200 rounded-2xl w-full py-10 min-h-[220px] animate-fade-in">
-                                    <div class="w-16 h-16 rounded-full bg-red-100 flex items-center justify-center mb-4 text-red-600">
-                                        <span class="material-symbols-outlined text-3xl font-medium" style="font-variation-settings: 'FILL' 0, 'wght' 500, 'GRAD' 0, 'opsz' 40;">${errorIcon}</span>
-                                    </div>
-                                    <h4 class="text-base font-extrabold text-red-900 mb-2 leading-snug">${errorTitle}</h4>
-                                    <p class="text-xs text-red-700/80 max-w-xs leading-relaxed">
-                                        ${errorMessage}
-                                    </p>
-                                </div>
-                            `;
-                        })
-                        .catch(() => {
-                            bodyEl.innerHTML = `
-                                <div class="flex flex-col items-center justify-center p-8 text-center bg-red-50 border border-red-200 rounded-2xl w-full py-10 min-h-[220px] animate-fade-in">
-                                    <div class="w-16 h-16 rounded-full bg-red-100 flex items-center justify-center mb-4 text-red-600">
-                                        <span class="material-symbols-outlined text-3xl font-medium" style="font-variation-settings: 'FILL' 0, 'wght' 500, 'GRAD' 0, 'opsz' 40;">block</span>
-                                    </div>
-                                    <h4 class="text-base font-extrabold text-red-900 mb-2 leading-snug">${title} Tidak Dapat di Akses!</h4>
-                                    <p class="text-xs text-red-700/80 max-w-xs leading-relaxed">
-                                        Berkas tidak dapat dimuat karena kebijakan keamanan, batas akses, atau sesi Anda telah kedaluwarsa.
-                                    </p>
-                                </div>
-                            `;
-                        });
-                    if (downloadBtn) {
-                        downloadBtn.classList.add('hidden');
-                    }
-                };
-                img.onclick = function() {
-                    window.openFullscreenImage(url);
-                };
-                bodyEl.appendChild(img);
+                const escapedUrl = url.replace(/'/g, "\\'");
+                swalConfig.html = metaHtml + `
+                    <div class="mt-4 bg-surface-container-low/50 p-2 rounded-xl border border-outline-variant/15 text-center group cursor-pointer" onclick="window.openFullscreenImage('${escapedUrl}')" title="Klik untuk memperbesar layar penuh">
+                        <div class="relative overflow-hidden rounded-lg">
+                            <img src="${url}" alt="${title}" class="max-h-[45vh] max-w-full mx-auto object-contain rounded-lg shadow-sm transition-transform duration-300 group-hover:scale-[1.02]" onerror="this.onerror=null; this.src='https://via.placeholder.com/400x300?text=Berkas+Tidak+Ditemukan';" />
+                            <div class="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-1.5 text-white text-xs font-bold backdrop-blur-[1px]">
+                                <span class="material-symbols-outlined text-base">zoom_in</span> Klik Untuk Perbesar (Full Screen)
+                            </div>
+                        </div>
+                    </div>
+                `;
             }
-            
-            // Configure download button
-            if (downloadBtn) {
-                downloadBtn.href = url + (url.includes('?') ? '&' : '?') + 'download=1';
-                let filename = url.substring(url.lastIndexOf('/') + 1);
-                if (!filename || filename.indexOf('.') === -1) {
-                    const isPdf = lowerUrl.includes('.pdf') || lowerUrl.endsWith('.pdf');
-                    filename = title.replace(/[^a-zA-Z0-9]/g, '_') + (isPdf ? '.pdf' : '.jpg');
+
+            Swal.fire(swalConfig).then((result) => {
+                if (result.isDenied) {
+                    window.location.href = url + (url.includes('?') ? '&' : '?') + 'download=1';
                 }
-                downloadBtn.download = filename;
-            }
-            
-            modal.classList.remove('hidden');
-            modal.classList.add('flex');
+            });
         };
 
         window.closeGlobalFilePreview = function() {
             const modal = document.getElementById('globalFilePreviewModal');
-            modal.classList.add('hidden');
-            modal.classList.remove('flex');
-            document.getElementById('globalFilePreviewBody').innerHTML = '';
+            if (modal) {
+                modal.classList.add('hidden');
+                modal.classList.remove('flex');
+            }
         };
 
         window.openFullscreenImage = function(url) {
@@ -1091,12 +1790,12 @@ if (!empty($resolvedPage)) {
     </div>
 
     <!-- Fullscreen Image Zoom Overlay -->
-    <div id="fullscreenImageOverlay" class="fixed inset-0 z-[110] bg-black/95 hidden flex items-center justify-center animate-fade-in">
+    <div id="fullscreenImageOverlay" onclick="closeFullscreenImage()" class="fixed inset-0 z-[99999] bg-black/95 hidden flex items-center justify-center animate-fade-in cursor-zoom-out select-none p-4">
         <!-- Close Button at top-right of page -->
-        <button onclick="closeFullscreenImage()" class="absolute top-6 right-6 p-3 bg-white/10 hover:bg-white/20 text-white rounded-full transition-all cursor-pointer z-[120] flex items-center justify-center shadow-lg">
+        <button onclick="closeFullscreenImage()" class="absolute top-6 right-6 w-12 h-12 aspect-square flex-shrink-0 bg-white/15 hover:bg-white/30 text-white rounded-full transition-all cursor-pointer z-[100000] flex items-center justify-center shadow-lg hover:scale-110 active:scale-95">
             <span class="material-symbols-outlined text-2xl font-bold">close</span>
         </button>
-        <img id="fullscreenImageSrc" src="" class="max-w-full max-h-full object-contain p-4 select-none" />
+        <img id="fullscreenImageSrc" src="" onclick="event.stopPropagation()" class="max-h-[92vh] max-w-[92vw] object-contain shadow-2xl rounded-xl border border-white/10 cursor-default" />
     </div>
 
     <!-- Global Leaflet Map Modal -->
@@ -1632,6 +2331,21 @@ if (!empty($resolvedPage)) {
         // Global Fetch Interceptor to handle Backend/Server/Database errors
         const originalFetch = window.fetch;
         window.fetch = async function(...args) {
+            let [resource, config] = args;
+            if (window.jwtToken) {
+                config = config || {};
+                config.headers = config.headers || {};
+                if (config.headers instanceof Headers) {
+                    if (!config.headers.has('X-JWT-Token')) {
+                        config.headers.set('X-JWT-Token', window.jwtToken);
+                    }
+                } else {
+                    if (!config.headers['X-JWT-Token']) {
+                        config.headers['X-JWT-Token'] = window.jwtToken;
+                    }
+                }
+                args = [resource, config];
+            }
             try {
                 const response = await originalFetch(...args);
                 if (!response.ok && response.status >= 500) {
@@ -1902,7 +2616,34 @@ if (!empty($resolvedPage)) {
                 } else {
                     link.innerHTML = `<span class="brand-logo-icon material-symbols-outlined text-primary text-3xl font-bold flex-shrink-0">${escapeHtml(logoIcon)}</span><span class="brand-text bg-gradient-to-r from-primary to-blue-800 bg-clip-text text-transparent whitespace-nowrap">${escapeHtml(name)}</span>`;
                 }
-            });
+        // Universal Full-Screen Lightbox Image Viewer
+        window.openFullScreenLightbox = function(imageUrl) {
+            let overlay = document.getElementById('globalLightboxOverlay');
+            if (!overlay) {
+                overlay = document.createElement('div');
+                overlay.id = 'globalLightboxOverlay';
+                overlay.className = 'fixed inset-0 z-[99999] bg-black/90 backdrop-blur-md flex items-center justify-center p-4 cursor-zoom-out select-none';
+                overlay.onclick = function() {
+                    overlay.classList.add('hidden');
+                };
+                overlay.innerHTML = `
+                    <button type="button" onclick="document.getElementById('globalLightboxOverlay').classList.add('hidden')" class="absolute top-5 right-5 w-12 h-12 aspect-square flex-shrink-0 bg-white/15 hover:bg-white/30 text-white rounded-full transition-all hover:scale-110 active:scale-95 shadow-lg flex items-center justify-center z-50 cursor-pointer" title="Tutup (Esc)">
+                        <span class="material-symbols-outlined text-2xl font-bold">close</span>
+                    </button>
+                    <div class="relative max-w-full max-h-full flex items-center justify-center" onclick="event.stopPropagation()">
+                        <img id="globalLightboxImage" src="" alt="Full Screen Preview" class="max-h-[92vh] max-w-[92vw] object-contain shadow-2xl rounded-xl border border-white/10" />
+                    </div>
+                `;
+                document.body.appendChild(overlay);
+
+                document.addEventListener('keydown', function(e) {
+                    if (e.key === 'Escape' && !overlay.classList.contains('hidden')) {
+                        overlay.classList.add('hidden');
+                    }
+                });
+            }
+            document.getElementById('globalLightboxImage').src = imageUrl;
+            overlay.classList.remove('hidden');
         };
     </script>
 </body>

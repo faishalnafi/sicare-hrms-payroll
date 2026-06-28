@@ -25,6 +25,12 @@ class DepartmentController {
             echo json_encode(['success' => false, 'message' => 'Hanya Admin atau Superadmin yang dapat mengelola struktur departemen.']);
             exit;
         }
+        $token = $_POST['csrf_token'] ?? $_SERVER['HTTP_X_CSRF_TOKEN'] ?? '';
+        if (empty($token) || !hash_equals($_SESSION['csrf_token'] ?? '', $token)) {
+            header('Content-Type: application/json');
+            echo json_encode(['success' => false, 'message' => 'Token CSRF tidak valid atau kedaluwarsa. Silakan muat ulang halaman.']);
+            exit;
+        }
     }
 
     public function save() {
@@ -85,8 +91,8 @@ class DepartmentController {
                 
                 $level = $parent['level'] + 1;
                 
-                if ($level > 5) {
-                    echo json_encode(['success' => false, 'message' => 'Batas kedalaman struktur departemen maksimal adalah 5 level!']);
+                if ($level > 10) {
+                    echo json_encode(['success' => false, 'message' => 'Batas kedalaman struktur departemen maksimal adalah 10 level!']);
                     return;
                 }
 
@@ -121,8 +127,8 @@ class DepartmentController {
                 if ($parent_id) {
                     // Get all descendant max level depth
                     $maxDepth = $this->getMaxDescendantDepth($db, $id, 0);
-                    if ($level + $maxDepth > 5) {
-                        echo json_encode(['success' => false, 'message' => 'Gagal memindahkan departemen. Tindakan ini akan menyebabkan sub-divisi di bawahnya melebihi kedalaman 5 level.']);
+                    if ($level + $maxDepth > 10) {
+                        echo json_encode(['success' => false, 'message' => 'Gagal memindahkan departemen. Tindakan ini akan menyebabkan sub-divisi di bawahnya melebihi kedalaman 10 level.']);
                         return;
                     }
                 }
@@ -196,6 +202,122 @@ class DepartmentController {
             $stmtUpdate->execute([$childLevel, $childId]);
             $this->updateDescendantsLevels($db, $childId, $childLevel);
         }
+    }
+
+    public function move() {
+        $this->checkAccess();
+        header('Content-Type: application/json');
+
+        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+            echo json_encode(['success' => false, 'message' => 'Invalid request method']);
+            return;
+        }
+
+        $id = $_POST['id'] ?? '';
+        $parent_id = !empty($_POST['parent_id']) ? $_POST['parent_id'] : null;
+
+        if (empty($id)) {
+            echo json_encode(['success' => false, 'message' => 'ID departemen wajib diisi.']);
+            return;
+        }
+
+        try {
+            $db = Database::getInstance()->getConnection();
+
+            // Fetch the department to move
+            $stmt = $db->prepare("SELECT name FROM departments WHERE id = ?");
+            $stmt->execute([$id]);
+            $name = $stmt->fetchColumn();
+            if (!$name) {
+                echo json_encode(['success' => false, 'message' => 'Departemen tidak ditemukan.']);
+                return;
+            }
+
+            // Calculate Level
+            $level = 1;
+            if ($parent_id) {
+                // Fetch parent level
+                $stmtParent = $db->prepare("SELECT level FROM departments WHERE id = ?");
+                $stmtParent->execute([$parent_id]);
+                $parentLevel = $stmtParent->fetchColumn();
+                
+                if ($parentLevel === false) {
+                    echo json_encode(['success' => false, 'message' => 'Departemen induk tidak ditemukan.']);
+                    return;
+                }
+                
+                $level = $parentLevel + 1;
+                
+                if ($level > 10) {
+                    echo json_encode(['success' => false, 'message' => 'Batas kedalaman struktur departemen maksimal adalah 10 level!']);
+                    return;
+                }
+
+                // Prevent circular referencing
+                if ($id === $parent_id) {
+                    echo json_encode(['success' => false, 'message' => 'Departemen tidak boleh menjadi induk dari dirinya sendiri.']);
+                    return;
+                }
+
+                // Check if the parent is a descendant of the department being moved
+                if ($this->isDescendant($db, $id, $parent_id)) {
+                    echo json_encode(['success' => false, 'message' => 'Tidak dapat memindahkan departemen di bawah salah satu sub-divisinya sendiri.']);
+                    return;
+                }
+            }
+
+            // Check if moving this department would cause child levels to exceed 10
+            $maxDepth = $this->getMaxDescendantDepth($db, $id, 0);
+            if ($level + $maxDepth > 10) {
+                echo json_encode(['success' => false, 'message' => 'Gagal memindahkan departemen. Tindakan ini akan menyebabkan sub-divisi di bawahnya melebihi kedalaman 10 level.']);
+                return;
+            }
+
+            $db->beginTransaction();
+
+            $stmtUpdate = $db->prepare("UPDATE departments SET parent_id = ?, level = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?");
+            $stmtUpdate->execute([$parent_id, $level, $id]);
+
+            // Recursively update levels of all descendants
+            $this->updateDescendantsLevels($db, $id, $level);
+
+            // Write to audit log
+            $logId = sprintf('%04x%04x-%04x-%04x-%04x-%04x%04x%04x',
+                mt_rand(0, 0xffff), mt_rand(0, 0xffff),
+                mt_rand(0, 0xffff),
+                mt_rand(0, 0x0fff) | 0x4000,
+                mt_rand(0, 0x3fff) | 0x8000,
+                mt_rand(0, 0xffff), mt_rand(0, 0xffff), mt_rand(0, 0xffff)
+            );
+            $actionText = "Memindahkan departemen: '$name' (Level baru: $level)";
+            $stmtLog = $db->prepare("
+                INSERT INTO audit_logs (id, user_id, action, table_name, ip_address) 
+                VALUES (?, ?, ?, 'departments', ?)
+            ");
+            $stmtLog->execute([$logId, $_SESSION['user_id'], $actionText, $_SERVER['REMOTE_ADDR'] ?? '127.0.0.1']);
+
+            $db->commit();
+            echo json_encode(['success' => true, 'message' => 'Departemen berhasil dipindahkan.']);
+
+        } catch (\Exception $e) {
+            if (isset($db) && $db->inTransaction()) {
+                $db->rollBack();
+            }
+            echo json_encode(['success' => false, 'message' => 'Gagal memproses data: ' . $e->getMessage()]);
+        }
+    }
+
+    private function isDescendant(PDO $db, string $ancestorId, string $descendantId): bool {
+        $stmt = $db->prepare("SELECT parent_id FROM departments WHERE id = ?");
+        $stmt->execute([$descendantId]);
+        $parentId = $stmt->fetchColumn();
+        if (!$parentId) {
+            return false;
+        }
+        if ($parentId === $ancestorId) {
+            return true;
+        }
+        return $this->isDescendant($db, $ancestorId, $parentId);
     }
 
     public function delete() {

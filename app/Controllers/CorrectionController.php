@@ -20,14 +20,31 @@ class CorrectionController {
     }
 
     /**
+     * Validate CSRF token from POST body or HTTP header.
+     */
+    private function validateCsrf(): bool {
+        if (session_status() === PHP_SESSION_NONE) session_start();
+        $token = $_POST['csrf_token'] ?? $_SERVER['HTTP_X_CSRF_TOKEN'] ?? $_SERVER['HTTP_X_CSRF_TOKEN'] ?? '';
+        return !empty($token) && hash_equals($_SESSION['csrf_token'] ?? '', $token);
+    }
+
+    /**
      * Submit a correction request (Employee Portal)
      */
     public function submit() {
         header('Content-Type: application/json');
-        session_start();
+        if (session_status() === PHP_SESSION_NONE) {
+            session_start();
+        }
 
-        if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'employee') {
-            echo json_encode(['success' => false, 'message' => 'Akses ditolak. Anda harus login sebagai Karyawan.']);
+        if (!isset($_SESSION['user_id'])) {
+            echo json_encode(['success' => false, 'message' => 'Akses ditolak. Anda harus login terlebih dahulu.']);
+            return;
+        }
+
+        // CSRF Token Validation
+        if (!$this->validateCsrf()) {
+            echo json_encode(['success' => false, 'message' => 'Token CSRF tidak valid atau kedaluwarsa. Silakan muat ulang halaman.']);
             return;
         }
 
@@ -140,10 +157,18 @@ class CorrectionController {
      */
     public function approve() {
         header('Content-Type: application/json');
-        session_start();
+        if (session_status() === PHP_SESSION_NONE) {
+            session_start();
+        }
 
-        if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'hr_ops') {
+        if (!isset($_SESSION['user_id']) || !in_array($_SESSION['role'], ['hr_ops', 'superadmin'])) {
             echo json_encode(['success' => false, 'message' => 'Akses ditolak. Anda harus login sebagai HR Operations.']);
+            return;
+        }
+
+        // CSRF Token Validation
+        if (!$this->validateCsrf()) {
+            echo json_encode(['success' => false, 'message' => 'Token CSRF tidak valid atau kedaluwarsa. Silakan muat ulang halaman.']);
             return;
         }
 
@@ -233,10 +258,18 @@ class CorrectionController {
      */
     public function reject() {
         header('Content-Type: application/json');
-        session_start();
+        if (session_status() === PHP_SESSION_NONE) {
+            session_start();
+        }
 
-        if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'hr_ops') {
+        if (!isset($_SESSION['user_id']) || !in_array($_SESSION['role'], ['hr_ops', 'superadmin'])) {
             echo json_encode(['success' => false, 'message' => 'Akses ditolak. Anda harus login sebagai HR Operations.']);
+            return;
+        }
+
+        // CSRF Token Validation
+        if (!$this->validateCsrf()) {
+            echo json_encode(['success' => false, 'message' => 'Token CSRF tidak valid atau kedaluwarsa. Silakan muat ulang halaman.']);
             return;
         }
 

@@ -12,16 +12,40 @@ Kesalahan visual paling buruk dalam desain web modern adalah munculnya scroll ho
 * **TIDAK BOLEH** ada scrollbar horizontal pada level *window* atau wadah utama halaman di resolusi perangkat apa pun (mulai dari mobile `320px` hingga monitor ultra-wide `2560px`).
 * Semua layout utama wajib menggunakan pembatas `max-w-full` dan `overflow-x-hidden` jika diperlukan, namun lebih diutamakan menggunakan struktur kontainer yang elastis dan melipat secara dinamis.
 
-### 1.2 Penanganan Tabel Data (Responsive Tables)
-Seluruh tabel wajib dibungkus dengan wadah pelindung *overflow* agar tabel dapat digeser secara lokal tanpa merusak layout luar.
-* **Sintaks Wajib:**
+### 1.2 Penanganan & Standardisasi Tabel Data (Responsive & Sorted Tables)
+Seluruh tabel wajib dibungkus dengan wadah pelindung *overflow* agar tabel dapat digeser secara lokal tanpa merusak layout luar, serta menggunakan lebar minimum agar kolom tidak terhimpit pada sidebar minimize atau layar kecil.
+* **Sintaks & Layout Wajib:**
   ```html
-  <div class="overflow-x-auto w-full max-w-full rounded-2xl border border-outline-variant/10">
-      <table class="w-full text-left border-collapse">
-          <!-- Tabel Konten -->
+  <div class="overflow-x-auto w-full max-w-full rounded-2xl border border-outline-variant/15">
+      <table class="w-full text-left border-collapse table-standardized">
+          <thead>
+              <tr class="bg-surface text-on-surface-variant border-b border-outline-variant/15">
+                  <th class="no-col w-12 text-center py-4 px-6 text-[10px] font-extrabold uppercase tracking-wider">No</th>
+                  <th onclick="window.sortDomTable(this, 1, 'string')" class="py-4 px-6 text-[11px] font-extrabold uppercase tracking-wider">
+                      <div class="flex items-center gap-1">
+                          Nama Kolom
+                          <span class="sort-icon-container">
+                              <span class="material-symbols-outlined sort-up">arrow_drop_up</span>
+                              <span class="material-symbols-outlined sort-down">arrow_drop_down</span>
+                          </span>
+                      </div>
+                  </th>
+                  <!-- Kolom lainnya... -->
+              </tr>
+          </thead>
+          <tbody class="divide-y divide-outline-variant/10">
+              <!-- data row -->
+          </tbody>
       </table>
   </div>
   ```
+* **Aturan Standardisasi UI Tabel:**
+  1. **Lebar Minimum (`min-w-[1100px]`)**: Setiap tabel wajib menggunakan class `.table-standardized` (atau `min-w-[1100px]`) agar kolom tidak memipih/squish dan memicu scrollbar horizontal lokal jika ruang tidak mencukupi.
+  2. **Kolom Urutan (`No`)**: Kolom pertama paling kiri wajib berupa kolom nomor urut (`No`) dengan class `.no-col` di `<th>` dan `.no-col-cell` di `<td>`.
+  3. **Ikon & Filter Sortir**: Seluruh kolom header (kecuali kolom urutan `No`) wajib dilengkapi ikon panah atas dan bawah (`arrow_drop_up` dan `arrow_drop_down`) di samping teks header.
+  4. **Urutan Default & Arah Sortir**: Data secara default harus terurut secara alfabetis (`ASC`) berdasarkan kolom nama (atau kolom tanggal/periode untuk data kronologis), dan mengklik header akan men-toggle pengurutan antara `ASC` dan `DESC`.
+  5. **Standardisasi Otomatis**: Framework standardisasi tabel global berjalan di `app.php` secara otomatis menyuntikkan kelas `.table-standardized`, membungkus kontainer responsif, menambahkan kolom urutan `No` dan menyisipkan ikon sortir jika belum dideklarasikan secara manual di HTML.
+  6. **Pencegahan Row Gemuk Vertikal (Single-line Cells & Actions)**: Seluruh baris tabel wajib dijaga agar tetap tipis secara vertikal. Teks sel dan tombol aksi pada kolom Aksi/Aksi Kontrol **TIDAK BOLEH** melipat/wrap ke baris baru (wajib menggunakan `white-space: nowrap !important` dan `flex-wrap: nowrap !important` agar tombol aksi tetap berada dalam 1 baris lurus). Jika ruang horizontal tidak memadai, pengguna akan menggeser ke samping menggunakan scrollbar horizontal lokal.
 * Tambahkan `whitespace-nowrap` pada kolom-kolom tabel yang berisi teks pendek atau kontrol aksi agar isi kolom tidak pecah/turun ke bawah secara jelek saat dipersempit.
 
 ### 1.3 Penggunaan Ukuran Piksel Keras (Hardcoded Widths)
