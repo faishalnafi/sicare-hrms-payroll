@@ -1,10 +1,12 @@
 <?php
+use App\Services\ViewHelper;
+
 if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
-$db = \App\Config\Database::getInstance()->getConnection();
-$appName = $db->query("SELECT `value` FROM global_settings WHERE `key` = 'app_name' LIMIT 1")->fetchColumn() ?: 'siCare';
-$appLogoImage = $db->query("SELECT `value` FROM global_settings WHERE `key` = 'app_logo_image' LIMIT 1")->fetchColumn() ?: '';
+$appName      = ViewHelper::getSetting('app_name', 'siCare');
+$appLogoImage = ViewHelper::getSetting('app_logo_image', '');
+
 
 // Determine dynamic guest page title
 $page = $page ?? '';

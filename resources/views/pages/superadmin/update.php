@@ -10,28 +10,14 @@ if (!isset($_SESSION['user_id']) || ($_SESSION['role'] ?? '') !== 'superadmin') 
     exit;
 }
 
-$db = \App\Config\Database::getInstance()->getConnection();
+use App\Services\ViewHelper;
 
 // 1. Get current database version
-$dbVersion = 'Belum Terinstal (Butuh Migrasi)';
-$dbCompiledDate = 'N/A';
-$dbEdition = 'business';
-$dbRepoType = 'monorepo';
-try {
-    $tableCheck = $db->query("SHOW TABLES LIKE 'changelogs'")->fetch();
-    if ($tableCheck) {
-        $stmt = $db->query("SELECT version, edition, repo_type, compiled_date FROM changelogs ORDER BY compiled_date DESC, version DESC LIMIT 1");
-        $latestDb = $stmt->fetch(PDO::FETCH_ASSOC);
-        if ($latestDb) {
-            $dbVersion = $latestDb['version'];
-            $dbCompiledDate = $latestDb['compiled_date'];
-            $dbEdition = $latestDb['edition'] ?? 'business';
-            $dbRepoType = $latestDb['repo_type'] ?? 'monorepo';
-        }
-    }
-} catch (Exception $e) {
-    // Table might not exist yet
-}
+$latestInfo = ViewHelper::getLatestDbVersion();
+$dbVersion = $latestInfo['version'];
+$dbCompiledDate = $latestInfo['compiled_date'];
+$dbEdition = $latestInfo['edition'];
+$dbRepoType = $latestInfo['repo_type'];
 
 // 2. Get latest version from changelog.json
 $jsonPath = __DIR__ . '/../../../../changelog.json';

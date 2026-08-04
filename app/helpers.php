@@ -4,6 +4,21 @@
  * Global Helper Functions for siCare System
  */
 
+if (!function_exists('app')) {
+    /**
+     * Resolve a service from the DI Container.
+     *
+     * @param string|null $abstract
+     * @return mixed|\App\Config\Container
+     */
+    function app($abstract = null) {
+        if ($abstract === null) {
+            return \App\Config\Container::getInstance();
+        }
+        return \App\Config\Container::getInstance()->get($abstract);
+    }
+}
+
 if (!function_exists('e')) {
     /**
      * Escape HTML entities to prevent XSS attacks.
@@ -159,3 +174,39 @@ if (!function_exists('resolveProfilePicture')) {
         return null;
     }
 }
+
+if (!function_exists('validate_and_format_phone')) {
+    /**
+     * Validate and format phone number.
+     * Rules:
+     * - Must be pure digits (no spaces, no other characters).
+     * - Length must be 10 to 14 digits.
+     * - If starts with '08', automatically converts to '628'.
+     * - If starts with '628', remains '628'.
+     * 
+     * @param string $phone
+     * @param string &$errorMsg
+     * @return string|bool Formatted phone number on success, false on failure.
+     */
+    function validate_and_format_phone($phone, &$errorMsg) {
+        // Enforce pure digits (no spaces, no characters)
+        // Note: we check the original raw string without trim to ensure no leading/trailing spaces
+        if (!preg_match('/^[0-9]+$/', $phone)) {
+            $errorMsg = "Nomor telepon harus berupa angka murni tanpa spasi atau karakter lain.";
+            return false;
+        }
+
+        $length = strlen($phone);
+        if ($length < 10 || $length > 14) {
+            $errorMsg = "Nomor telepon harus terdiri dari minimal 10 digit dan maksimal 14 digit.";
+            return false;
+        }
+
+        if (str_starts_with($phone, '08')) {
+            return '628' . substr($phone, 2);
+        }
+
+        return $phone;
+    }
+}
+

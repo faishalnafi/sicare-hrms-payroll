@@ -1,6 +1,7 @@
 <?php
-$db = \App\Config\Database::getInstance()->getConnection();
-$appName = $db->query("SELECT `value` FROM global_settings WHERE `key` = 'app_name' LIMIT 1")->fetchColumn() ?: 'siCare';
+use App\Services\ViewHelper;
+
+$appName = ViewHelper::getSetting('app_name', 'siCare');
 ?>
 <!-- Informational Footer -->
 <footer class="w-full bg-[#f3f4f5] border-t border-[#c6c5d4]/15 px-8 py-6">

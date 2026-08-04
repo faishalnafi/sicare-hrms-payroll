@@ -1,6 +1,7 @@
 <?php
+use App\Services\ViewHelper;
+
 // Employee ESS Reimbursement Dashboard
-$db = \App\Config\Database::getInstance()->getConnection();
 $userId = $_SESSION['user_id'] ?? '';
 
 if (empty($userId)) {
@@ -8,98 +9,7 @@ if (empty($userId)) {
     return;
 }
 
-// Fetch all claims for current employee
-$stmt = $db->prepare("
-    SELECT * FROM employee_reimbursement_claims 
-    WHERE user_id = :user_id 
-    ORDER BY created_at DESC
-");
-$stmt->execute(['user_id' => $userId]);
-$claims = $stmt->fetchAll();
-
-// Fetch user's department and its reimbursement limits
-try {
-    $stmtDept = $db->prepare("
-        SELECT d.id, d.name, d.reimbursement_limit, d.limit_medis, d.limit_transport, d.limit_operasional, d.limit_makan
-        FROM users u
-        LEFT JOIN departments d ON u.department_id = d.id
-        WHERE u.id = :user_id
-    ");
-    $stmtDept->execute(['user_id' => $userId]);
-    $deptInfo = $stmtDept->fetch(PDO::FETCH_ASSOC);
-} catch (Exception $e) {
-    $deptInfo = null;
-}
-
-// Fetch limits dynamically from global_settings
-try {
-    $settingsQuery = $db->query("SELECT `key`, `value` FROM global_settings WHERE `key` LIKE 'reimbursement_limit_%'");
-    $settings = $settingsQuery->fetchAll(PDO::FETCH_KEY_PAIR);
-} catch (Exception $e) {
-    $settings = [];
-}
-
-$initialPlafons = [
-    'medis' => ($deptInfo && $deptInfo['limit_medis'] !== null) ? floatval($deptInfo['limit_medis']) : (isset($settings['reimbursement_limit_medis']) ? floatval($settings['reimbursement_limit_medis']) : 5000000.00),
-    'transport' => ($deptInfo && $deptInfo['limit_transport'] !== null) ? floatval($deptInfo['limit_transport']) : (isset($settings['reimbursement_limit_transport']) ? floatval($settings['reimbursement_limit_transport']) : 3000000.00),
-    'operasional' => ($deptInfo && $deptInfo['limit_operasional'] !== null) ? floatval($deptInfo['limit_operasional']) : (isset($settings['reimbursement_limit_operasional']) ? floatval($settings['reimbursement_limit_operasional']) : 4000000.00),
-    'makan' => ($deptInfo && $deptInfo['limit_makan'] !== null) ? floatval($deptInfo['limit_makan']) : (isset($settings['reimbursement_limit_makan']) ? floatval($settings['reimbursement_limit_makan']) : 2500000.00)
-];
-
-$deptLimit = null;
-$deptSpent = 0.0;
-$isDeptLimitReached = false;
-
-if ($deptInfo) {
-    if ($deptInfo['reimbursement_limit'] !== null) {
-        $deptLimit = floatval($deptInfo['reimbursement_limit']);
-    } else {
-        // Fallback to default department limit from global settings
-        if (isset($settings['reimbursement_limit_department_default'])) {
-            $deptLimit = floatval($settings['reimbursement_limit_department_default']);
-        }
-    }
-
-    if ($deptLimit !== null) {
-        // Fetch current month's department usage (approved + pending)
-        $stmtDeptUsage = $db->prepare("
-            SELECT SUM(c.amount) 
-            FROM employee_reimbursement_claims c
-            JOIN users u ON c.user_id = u.id
-            WHERE u.department_id = :dept_id 
-              AND c.status IN ('approved', 'pending')
-              AND MONTH(c.created_at) = MONTH(CURRENT_DATE())
-              AND YEAR(c.created_at) = YEAR(CURRENT_DATE())
-        ");
-        $stmtDeptUsage->execute(['dept_id' => $deptInfo['id']]);
-        $deptSpent = floatval($stmtDeptUsage->fetchColumn());
-        $isDeptLimitReached = ($deptSpent >= $deptLimit) || ($deptLimit <= 0.0);
-    }
-}
-
-// Fetch approved spent amount per category (Current Month Only)
-$stmt = $db->prepare("
-    SELECT category, SUM(amount) as total_spent 
-    FROM employee_reimbursement_claims 
-    WHERE user_id = :user_id AND status = 'approved'
-    AND MONTH(created_at) = MONTH(CURRENT_DATE())
-    AND YEAR(created_at) = YEAR(CURRENT_DATE())
-    GROUP BY category
-");
-$stmt->execute(['user_id' => $userId]);
-$spentByCategory = $stmt->fetchAll(PDO::FETCH_KEY_PAIR);
-
-// Fetch pending amount per category (Current Month Only)
-$stmt = $db->prepare("
-    SELECT category, SUM(amount) as total_pending 
-    FROM employee_reimbursement_claims 
-    WHERE user_id = :user_id AND status = 'pending'
-    AND MONTH(created_at) = MONTH(CURRENT_DATE())
-    AND YEAR(created_at) = YEAR(CURRENT_DATE())
-    GROUP BY category
-");
-$stmt->execute(['user_id' => $userId]);
-$pendingByCategory = $stmt->fetchAll(PDO::FETCH_KEY_PAIR);
+[$claims, $deptInfo, $initialPlafons, $deptLimit, $deptSpent, $isDeptLimitReached, $spentByCategory, $pendingByCategory] = ViewHelper::getEmployeeReimbursementsData($userId);
 
 // Sum totals for Global KPI overview
 $totalApproved = 0;

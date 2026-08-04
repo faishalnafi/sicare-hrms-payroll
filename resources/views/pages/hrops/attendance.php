@@ -1,31 +1,10 @@
 <?php
+use App\Services\ViewHelper;
+
 // HR Ops — Presensi Karyawan (Live DB)
-$db = \App\Config\Database::getInstance()->getConnection();
 $today = (isset($_GET['date']) && preg_match('/^\d{4}-\d{2}-\d{2}$/', $_GET['date'])) ? $_GET['date'] : date('Y-m-d');
 
-// Load global settings
-$stmtSettings = $db->query("SELECT `key`, `value` FROM global_settings");
-$cfg = [];
-while ($gsRow = $stmtSettings->fetch()) {
-    $cfg[$gsRow['key']] = $gsRow['value'];
-}
-
-// ── Stats for today ──
-$stmtHadir = $db->prepare("
-    SELECT
-        COUNT(*) AS hadir,
-        SUM(CASE WHEN status = 'terlambat' THEN 1 ELSE 0 END) AS terlambat,
-        SUM(CASE WHEN status IN ('sakit/izin') THEN 1 ELSE 0 END) AS sakit,
-        SUM(CASE WHEN status = 'alpa' THEN 1 ELSE 0 END) AS alpa
-    FROM employee_attendance
-    WHERE attendance_date = :date
-");
-$stmtHadir->execute(['date' => $today]);
-$todayStats = $stmtHadir->fetch() ?: ['hadir' => 0, 'terlambat' => 0, 'sakit' => 0, 'alpa' => 0];
-
-// Total employees
-$stmtTotal = $db->query("SELECT COUNT(*) FROM users WHERE role = 'employee'");
-$totalEmp  = (int)$stmtTotal->fetchColumn();
+[$cfg, $todayStats, $totalEmp, $attendanceRows] = ViewHelper::getHropsAttendanceData($today);
 
 // Number actually present (tepat waktu + terlambat)
 $hadirCount    = (int)$todayStats['hadir'];
@@ -33,23 +12,6 @@ $terlambatCount = (int)$todayStats['terlambat'];
 $sakitCount    = (int)$todayStats['sakit'];
 $alpaCount     = (int)$todayStats['alpa'];
 $hadirHariIni  = $hadirCount; // includes terlambat
-
-// ── Attendance rows for today ──
-$stmtRows = $db->prepare("
-    SELECT
-        a.id, a.user_id, a.attendance_date, a.clock_in, a.clock_out, a.status,
-        a.clock_in_latitude, a.clock_in_longitude, a.clock_out_latitude, a.clock_out_longitude,
-        a.location_method, a.ip_address, a.correction_reason, a.work_mode, a.work_mode_out,
-        u.first_name, u.last_name, u.employee_id, u.profile_picture, u.email,
-        u.home_latitude, u.home_longitude,
-        COALESCE(u.job_title, '') AS job_title
-    FROM employee_attendance a
-    JOIN users u ON a.user_id = u.id
-    WHERE a.attendance_date = :date
-    ORDER BY a.clock_in ASC
-");
-$stmtRows->execute(['date' => $today]);
-$attendanceRows = $stmtRows->fetchAll();
 
 // ── Employees with no record today (auto-alpa) removed as per user request ──
 $mergedRows = $attendanceRows;

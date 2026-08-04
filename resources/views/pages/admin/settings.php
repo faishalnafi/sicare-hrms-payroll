@@ -5,16 +5,9 @@ $pageTitle = $isGlobalConfig ? 'Konfigurasi Global' : 'Pengaturan Sistem';
 $pageSubtitle = $isGlobalConfig 
     ? 'Konfigurasi parameter sistem global, keamanan, serta kebijakan operasional perusahaan.' 
     : 'Konfigurasi lokasi kantor, jam kerja, toleransi, dan kebijakan WFA/WFC/WFO/WFH.';
+use App\Services\ViewHelper;
 
-$cfg = [];
-$holidays = [];
-try {
-    $db = \App\Config\Database::getInstance()->getConnection();
-    $rows = $db->query("SELECT `key`, `value` FROM global_settings")->fetchAll();
-    foreach ($rows as $r) { $cfg[$r['key']] = $r['value']; }
-    
-    $holidays = $db->query("SELECT * FROM company_holidays ORDER BY holiday_date ASC")->fetchAll();
-} catch (Exception $e) { /* table may not exist yet */ }
+[$cfg, $holidays] = ViewHelper::getGlobalSettingsAndHolidays();
 
 // Fallback defaults
 $cfg = array_merge([
@@ -236,6 +229,7 @@ $allDays = ['Mon' => 'Senin', 'Tue' => 'Selasa', 'Wed' => 'Rabu', 'Thu' => 'Kami
     </div>
 
     <form id="settingsForm" enctype="multipart/form-data" onsubmit="saveSettings(event)">
+        <?= csrfField() ?>
         <input type="hidden" id="work_min_start_time_enabled_hidden" name="work_min_start_time_enabled" value="<?= htmlspecialchars($cfg['work_min_start_time_enabled']) ?>" />
         <input type="hidden" id="work_min_end_time_enabled_hidden" name="work_min_end_time_enabled" value="<?= htmlspecialchars($cfg['work_min_end_time_enabled']) ?>" />
         <div class="grid grid-cols-1 xl:grid-cols-3 gap-6">
@@ -880,10 +874,19 @@ $allDays = ['Mon' => 'Senin', 'Tue' => 'Selasa', 'Wed' => 'Rabu', 'Thu' => 'Kami
 <script>
 const getRoutePrefix = () => {
     const p = window.location.pathname;
-    if (p.startsWith('/hrops')) return '/hrops';
-    if (p.startsWith('/superadmin/system-settings')) return '/superadmin/system-settings';
-    if (p.startsWith('/superadmin')) return '/superadmin';
-    return '/admin';
+    let base = '';
+    const routes = ['/hrops', '/superadmin/system-settings', '/superadmin', '/admin'];
+    for (let route of routes) {
+        if (p.includes(route)) {
+            base = p.split(route)[0];
+            break;
+        }
+    }
+    
+    if (p.includes('/hrops')) return base + '/hrops';
+    if (p.includes('/superadmin/system-settings')) return base + '/superadmin/system-settings';
+    if (p.includes('/superadmin')) return base + '/superadmin';
+    return base + '/admin';
 };
 // ── Radius sync ──────────────────────────────────────────────
 function syncRadius(v) {
@@ -1778,10 +1781,11 @@ function saveSettings(e) {
             Swal.fire({ title: 'Gagal', text: data.message, icon: 'error', confirmButtonColor: '#ba1a1a' });
         }
     })
-    .catch(() => {
+    .catch((err) => {
+        console.error("Save settings fetch error:", err);
         btn.innerHTML = '<span class="material-symbols-outlined text-lg">save</span> Simpan Pengaturan';
         btn.disabled = false;
-        Swal.fire({ title: 'Error Koneksi', text: 'Tidak dapat terhubung ke server.', icon: 'error', confirmButtonColor: '#ba1a1a' });
+        Swal.fire({ title: 'Error Koneksi', text: 'Detail: ' + err.message, icon: 'error', confirmButtonColor: '#ba1a1a' });
     });
 }
 
@@ -1847,6 +1851,7 @@ function openAddHolidayModal() {
         const fd = new FormData();
         fd.append('holiday_date', result.value.date);
         fd.append('description', result.value.desc);
+        fd.append('csrf_token', document.querySelector('input[name="csrf_token"]').value);
         
         fetch(getRoutePrefix() + '/holidays/add', {
             method: 'POST',
@@ -1882,6 +1887,7 @@ function deleteHoliday(id) {
         
         const fd = new FormData();
         fd.append('id', id);
+        fd.append('csrf_token', document.querySelector('input[name="csrf_token"]').value);
         
         fetch(getRoutePrefix() + '/holidays/delete', {
             method: 'POST',
@@ -1935,6 +1941,7 @@ function editHoliday(id, currentDate, currentDesc) {
         fd.append('id', id);
         fd.append('holiday_date', result.value.date);
         fd.append('description', result.value.desc);
+        fd.append('csrf_token', document.querySelector('input[name="csrf_token"]').value);
         fetch(getRoutePrefix() + '/holidays/update', { method: 'POST', body: fd })
             .then(r => r.json())
             .then(data => {
@@ -2069,7 +2076,10 @@ function showGoogleHolidaysImporter() {
                     'Content-Type': 'application/json',
                     'X-Requested-With': 'XMLHttpRequest'
                 },
-                body: JSON.stringify({ holidays: selectedHolidays })
+                body: JSON.stringify({ 
+                    holidays: selectedHolidays, 
+                    csrf_token: document.querySelector('input[name="csrf_token"]').value 
+                })
             })
             .then(r => r.json())
             .then(res => {

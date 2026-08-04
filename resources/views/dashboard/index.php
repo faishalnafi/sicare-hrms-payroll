@@ -332,6 +332,7 @@
             const formData = new FormData();
             formData.append('mood_rating', mood);
             formData.append('workload_rating', workload);
+            formData.append('csrf_token', '<?= csrf_token() ?>');
 
             fetch('/employee/reflection/save-mood', {
                 method: 'POST',

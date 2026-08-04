@@ -433,6 +433,10 @@
  * - Layout: Loaded into the master SPA shell resources/views/layouts/app.php
  */
 (function() {
+    window.CSRF_TOKEN = <?= json_encode(csrf_token()) ?>;
+    function getCsrfToken() {
+        return window.csrfToken || window.CSRF_TOKEN || <?= json_encode(csrf_token()) ?>;
+    }
     // ─── Module State ───────────────────────────────────────────────────────────
     var superAdminUsersData       = [];
     var superAdminDepsData        = [];
@@ -487,7 +491,10 @@
                 cancelButtonText: 'Batal'
             }).then(function(result) {
                 if (result.isConfirmed) {
-                    fetch('/hrops/employees/empty-trash', { method: 'POST' })
+                    var token = getCsrfToken();
+                    var formData = new FormData();
+                    formData.append('csrf_token', token);
+                    fetch('/hrops/employees/empty-trash', { method: 'POST', headers: { 'X-CSRF-TOKEN': token }, body: formData })
                         .then(function(res) { return res.json(); })
                         .then(function(data) {
                             if (data.success) {
@@ -1011,10 +1018,12 @@
             cancelButtonText: "Batal"
         }).then(function(result) {
             if (result.isConfirmed) {
+                var token = getCsrfToken();
                 var formData = new FormData();
                 formData.append("user_id", id);
+                formData.append("csrf_token", token);
 
-                fetch("/auth/impersonate", { method: "POST", body: formData })
+                fetch("/auth/impersonate", { method: "POST", headers: { "X-CSRF-TOKEN": token }, body: formData })
                     .then(function(res) { return res.json(); })
                     .then(function(data) {
                         if (data.success) {
@@ -1068,11 +1077,12 @@
             cancelButtonText: "Batal"
         }).then(function(result) {
             if (result.isConfirmed) {
+                var token = getCsrfToken();
                 var formData = new FormData();
                 formData.append("user_id", userId);
-                formData.append("csrf_token", <?= json_encode(csrf_token()) ?>);
+                formData.append("csrf_token", token);
 
-                fetch("/superadmin/users/reset-profile", { method: "POST", body: formData })
+                fetch("/superadmin/users/reset-profile", { method: "POST", headers: { "X-CSRF-TOKEN": token }, body: formData })
                     .then(function(res) { return res.json(); })
                     .then(function(data) {
                         if (data.success) {
@@ -1133,10 +1143,12 @@
             cancelButtonText: "Batal"
         }).then(function(result) {
             if (result.isConfirmed) {
+                var token = getCsrfToken();
                 var formData = new FormData();
                 formData.append("user_id", userId);
+                formData.append("csrf_token", token);
 
-                fetch("/superadmin/users/reset-lockout", { method: "POST", body: formData })
+                fetch("/superadmin/users/reset-lockout", { method: "POST", headers: { "X-CSRF-TOKEN": token }, body: formData })
                     .then(function(res) { return res.json(); })
                     .then(function(data) {
                         if (data.success) {
@@ -1181,10 +1193,12 @@
             cancelButtonText: "Batal"
         }).then(function(result) {
             if (result.isConfirmed) {
+                var token = getCsrfToken();
                 var formData = new FormData();
                 formData.append("id", userId);
+                formData.append("csrf_token", token);
 
-                fetch("/hrops/employees/toggle-suspend", { method: "POST", body: formData })
+                fetch("/hrops/employees/toggle-suspend", { method: "POST", headers: { "X-CSRF-TOKEN": token }, body: formData })
                     .then(function(res) { return res.json(); })
                     .then(function(data) {
                         if (data.success) {
@@ -1225,10 +1239,12 @@
             cancelButtonText: "Batal"
         }).then(function(result) {
             if (result.isConfirmed) {
+                var token = getCsrfToken();
                 var formData = new FormData();
                 formData.append("id", userId);
+                formData.append("csrf_token", token);
 
-                fetch("/hrops/employees/delete", { method: "POST", body: formData })
+                fetch("/hrops/employees/delete", { method: "POST", headers: { "X-CSRF-TOKEN": token }, body: formData })
                     .then(function(res) { return res.json(); })
                     .then(function(data) {
                         if (data.success) {
@@ -1262,10 +1278,12 @@
             cancelButtonText: "Batal"
         }).then(function(result) {
             if (result.isConfirmed) {
+                var token = getCsrfToken();
                 var formData = new FormData();
                 formData.append("id", userId);
+                formData.append("csrf_token", token);
 
-                fetch("/hrops/employees/restore", { method: "POST", body: formData })
+                fetch("/hrops/employees/restore", { method: "POST", headers: { "X-CSRF-TOKEN": token }, body: formData })
                     .then(function(res) { return res.json(); })
                     .then(function(data) {
                         if (data.success) {
@@ -1299,10 +1317,12 @@
             cancelButtonText: "Batal"
         }).then(function(result) {
             if (result.isConfirmed) {
+                var token = getCsrfToken();
                 var formData = new FormData();
                 formData.append("id", userId);
+                formData.append("csrf_token", token);
 
-                fetch("/hrops/employees/delete-permanent", { method: "POST", body: formData })
+                fetch("/hrops/employees/delete-permanent", { method: "POST", headers: { "X-CSRF-TOKEN": token }, body: formData })
                     .then(function(res) { return res.json(); })
                     .then(function(data) {
                         if (data.success) {
@@ -1508,9 +1528,13 @@
             return;
         }
 
+        var token = getCsrfToken();
         var formData = new FormData(e.target);
+        if (!formData.has("csrf_token")) {
+            formData.append("csrf_token", token);
+        }
 
-        fetch("/hrops/employees/save", { method: "POST", body: formData })
+        fetch("/hrops/employees/save", { method: "POST", headers: { "X-CSRF-TOKEN": token }, body: formData })
             .then(function(res) { return res.json(); })
             .then(function(data) {
                 if (data.success) {

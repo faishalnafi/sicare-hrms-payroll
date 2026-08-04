@@ -1,10 +1,11 @@
 <?php
-$db = \App\Config\Database::getInstance()->getConnection();
-$appName = $db->query("SELECT `value` FROM global_settings WHERE `key` = 'app_name' LIMIT 1")->fetchColumn() ?: 'siCare';
-$appLogoImage = $db->query("SELECT `value` FROM global_settings WHERE `key` = 'app_logo_image' LIMIT 1")->fetchColumn() ?: '';
-$appIdleTimeoutSec = (int)($db->query("SELECT `value` FROM global_settings WHERE `key` = 'app_idle_timeout_sec' LIMIT 1")->fetchColumn() ?: 0);
-$appIdleCountdownSec = (int)($db->query("SELECT `value` FROM global_settings WHERE `key` = 'app_idle_countdown_sec' LIMIT 1")->fetchColumn() ?: 0);
-$googleMapsApiKey = $db->query("SELECT `value` FROM global_settings WHERE `key` = 'google_maps_api_key' LIMIT 1")->fetchColumn() ?: '';
+use App\Services\ViewHelper;
+
+$appName             = ViewHelper::getSetting('app_name', 'siCare');
+$appLogoImage        = ViewHelper::getSetting('app_logo_image', '');
+$appIdleTimeoutSec   = (int)ViewHelper::getSetting('app_idle_timeout_sec', 0);
+$appIdleCountdownSec = (int)ViewHelper::getSetting('app_idle_countdown_sec', 0);
+$googleMapsApiKey    = ViewHelper::getSetting('google_maps_api_key', '');
 
 
 // Determine dynamic page title
@@ -148,30 +149,13 @@ if (!empty($resolvedPage)) {
     if (session_status() === PHP_SESSION_NONE) {
         session_start();
     }
-    if (isset($_SESSION["user_id"]) && empty($_SESSION["jwt_token"])) {
-        try {
-            $db = \App\Config\Database::getInstance()->getConnection();
-            $stmt = $db->prepare("SELECT id, first_name, last_name, email, role FROM users WHERE id = ? LIMIT 1");
-            $stmt->execute([$_SESSION["user_id"]]);
-            $user = $stmt->fetch(\PDO::FETCH_ASSOC);
-            if ($user) {
-                $jwtPayload = [
-                    "user_id" => $user["id"],
-                    "name" => $user["first_name"] . " " . $user["last_name"],
-                    "email" => $user["email"],
-                    "role" => $user["role"]
-                ];
-                $_SESSION["jwt_token"] = \App\Config\JwtHelper::createToken($jwtPayload);
-            }
-        } catch (\Exception $e) {
-            // Fail-safe fallback
-        }
-    }
+    ViewHelper::ensureJwtToken();
     ?>
     <!-- Global JWT Token for CRUD authorization -->
     <script>
         window.jwtToken  = <?php echo json_encode($_SESSION["jwt_token"] ?? ""); ?>;
         window.csrfToken = <?php echo json_encode(csrf_token()); ?>;
+        window.CSRF_TOKEN = window.csrfToken;
     </script>
     <!-- Global Avatar Helper Functions -->
     <script>
@@ -450,7 +434,7 @@ if (!empty($resolvedPage)) {
 
                                         var dataType = 'string';
                                         var lowerTitle = title.toLowerCase();
-                                        if (lowerTitle.indexOf('gaji') !== -1 || lowerTitle.indexOf('jumlah') !== -1 || lowerTitle.indexOf('nominal') !== -1 || lowerTitle.indexOf('durasi') !== -1 || lowerTitle.indexOf('kuota') !== -1 || lowerTitle.indexOf('total') !== -1 || lowerTitle.indexOf('potongan') !== -1) {
+                                        if (lowerTitle.indexOf('gaji') !== -1 || lowerTitle.indexOf('jumlah') !== -1 || lowerTitle.indexOf('nominal') !== -1 || lowerTitle.indexOf('durasi') !== -1 || lowerTitle.indexOf('kuota') !== -1 || lowerTitle.indexOf('total') !== -1 || lowerTitle.indexOf('potongan') !== -1 || lowerTitle.indexOf('urutan') !== -1 || lowerTitle === 'no' || lowerTitle === 'nomor') {
                                             dataType = 'number';
                                         } else if (lowerTitle.indexOf('tanggal') !== -1 || lowerTitle.indexOf('waktu') !== -1 || lowerTitle.indexOf('periode') !== -1 || lowerTitle.indexOf('clock') !== -1) {
                                             dataType = 'date';
@@ -509,11 +493,10 @@ if (!empty($resolvedPage)) {
                             var firstDataHeader = table.querySelector('thead th:not(.no-col)');
                             if (firstDataHeader) {
                                 var dataType = 'string';
-                                var title = firstDataHeader.innerText.trim();
-                                var lowerTitle = title.toLowerCase();
-                                if (lowerTitle.indexOf('gaji') !== -1 || lowerTitle.indexOf('jumlah') !== -1 || lowerTitle.indexOf('nominal') !== -1 || lowerTitle.indexOf('durasi') !== -1 || lowerTitle.indexOf('kuota') !== -1 || lowerTitle.indexOf('total') !== -1 || lowerTitle.indexOf('potongan') !== -1) {
+                                var title = firstDataHeader.innerText.toLowerCase();
+                                if (title.indexOf('gaji') !== -1 || title.indexOf('jumlah') !== -1 || title.indexOf('nominal') !== -1 || title.indexOf('durasi') !== -1 || title.indexOf('kuota') !== -1 || title.indexOf('total') !== -1 || title.indexOf('potongan') !== -1 || title.indexOf('urutan') !== -1 || title === 'no' || title === 'nomor') {
                                     dataType = 'number';
-                                } else if (lowerTitle.indexOf('tanggal') !== -1 || lowerTitle.indexOf('waktu') !== -1 || lowerTitle.indexOf('periode') !== -1 || lowerTitle.indexOf('clock') !== -1) {
+                                } else if (title.indexOf('tanggal') !== -1 || title.indexOf('waktu') !== -1 || title.indexOf('periode') !== -1 || title.indexOf('clock') !== -1) {
                                     dataType = 'date';
                                 }
 
@@ -721,7 +704,13 @@ if (!empty($resolvedPage)) {
                     standardizeTimeout = setTimeout(standardizeAllTables, 30);
                 }
             });
-            tableObserver.observe(document.body, { childList: true, subtree: true });
+            if (document.body) {
+                tableObserver.observe(document.body, { childList: true, subtree: true });
+            } else {
+                document.addEventListener('DOMContentLoaded', function() {
+                    tableObserver.observe(document.body, { childList: true, subtree: true });
+                });
+            }
 
             // Wheel event listener for horizontal table scroll
             document.addEventListener('wheel', function(e) {
@@ -1148,6 +1137,15 @@ if (!empty($resolvedPage)) {
             overflow-x: auto !important;
         }
 
+        /* Fix scrollbar clipping on rounded card tables */
+        .rounded-2xl.overflow-hidden .overflow-x-auto,
+        .rounded-3xl.overflow-hidden .overflow-x-auto,
+        .rounded-2xl.overflow-hidden .table-wrapper-standardized,
+        .rounded-3xl.overflow-hidden .table-wrapper-standardized {
+            border-bottom-left-radius: inherit !important;
+            border-bottom-right-radius: inherit !important;
+        }
+
     </style>
 </head>
 <body class="bg-surface text-on-surface flex flex-col min-h-screen overflow-x-hidden">
@@ -1568,7 +1566,10 @@ if (!empty($resolvedPage)) {
             
             return fetch(fetchUrl, {
                 cache: 'no-store',
-                headers: { 'X-Requested-With': 'XMLHttpRequest' }
+                headers: { 
+                    'X-Requested-With': 'XMLHttpRequest',
+                    'X-CSRF-TOKEN': window.csrfToken || ''
+                }
             })
             .then(res => {
                 if (res.redirected) {
@@ -1761,7 +1762,7 @@ if (!empty($resolvedPage)) {
     <div id="globalFilePreviewModal" class="fixed inset-0 z-[100] bg-black/60 backdrop-blur-sm hidden flex items-center justify-center p-4">
         <div class="bg-surface-container-lowest w-full max-w-lg rounded-2xl overflow-hidden shadow-2xl flex flex-col border border-outline-variant/10 animate-fade-in relative p-6">
             <!-- Close Button at top-right of modal -->
-            <button onclick="closeGlobalFilePreview()" class="absolute top-4 right-4 p-1.5 rounded-lg text-on-surface-variant hover:bg-surface-container-high transition-all cursor-pointer z-10">
+            <button onclick="closeGlobalFilePreview()" class="absolute top-4 right-4 p-1.5 rounded-full text-on-surface-variant hover:bg-surface-container-high transition-all cursor-pointer z-10">
                 <span class="material-symbols-outlined">close</span>
             </button>
             
@@ -1810,7 +1811,7 @@ if (!empty($resolvedPage)) {
                     </h3>
                     <p id="globalLeafletMapSubtitle" class="text-[11px] text-on-surface-variant font-semibold">Detail lokasi check-in/out karyawan</p>
                 </div>
-                <button onclick="closeGlobalLeafletMap()" class="p-1.5 rounded-lg text-on-surface-variant hover:bg-surface-container-high transition-all cursor-pointer">
+                <button onclick="closeGlobalLeafletMap()" class="p-1.5 rounded-full text-on-surface-variant hover:bg-surface-container-high transition-all cursor-pointer">
                     <span class="material-symbols-outlined">close</span>
                 </button>
             </div>
@@ -2616,6 +2617,9 @@ if (!empty($resolvedPage)) {
                 } else {
                     link.innerHTML = `<span class="brand-logo-icon material-symbols-outlined text-primary text-3xl font-bold flex-shrink-0">${escapeHtml(logoIcon)}</span><span class="brand-text bg-gradient-to-r from-primary to-blue-800 bg-clip-text text-transparent whitespace-nowrap">${escapeHtml(name)}</span>`;
                 }
+            });
+        };
+
         // Universal Full-Screen Lightbox Image Viewer
         window.openFullScreenLightbox = function(imageUrl) {
             let overlay = document.getElementById('globalLightboxOverlay');
@@ -2646,5 +2650,95 @@ if (!empty($resolvedPage)) {
             overlay.classList.remove('hidden');
         };
     </script>
+    <!-- SSE Real-time Notifications (Excluded for Superadmin) -->
+    <?php if ($sessRole !== 'superadmin' && ($_SESSION['original_role'] ?? '') !== 'superadmin'): ?>
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            if (typeof EventSource !== 'undefined') {
+                const basePath = window.location.pathname.includes('public/') 
+                    ? window.location.pathname.substring(0, window.location.pathname.indexOf('public/') + 7)
+                    : (window.location.pathname.includes('siCare/') ? '/siCare/public' : '');
+                
+                const sseUrl = (basePath || '') + '/sse/notifications';
+                
+                const connectSSE = () => {
+                    const eventSource = new EventSource(sseUrl);
+
+                    eventSource.onmessage = function(event) {
+                        try {
+                            const data = JSON.parse(event.data);
+                            if (data.ping) return; // Heartbeat
+
+                            if (data.notifications && Array.isArray(data.notifications)) {
+                                const today = new Date().toISOString().split('T')[0];
+                                data.notifications.forEach(notif => {
+                                    const storageKey = `notif_${notif.id}_${today}`;
+                                    const startKey = storageKey + '_start';
+                                    
+                                    // If already completely acknowledged or expired, skip
+                                    if (localStorage.getItem(storageKey) === 'true') {
+                                        return;
+                                    }
+
+                                    let startTime = localStorage.getItem(startKey);
+                                    if (!startTime) {
+                                        startTime = Date.now();
+                                        localStorage.setItem(startKey, startTime);
+                                    }
+
+                                    // Check if 10 minutes (600,000 ms) have passed since first shown
+                                    if (Date.now() - parseInt(startTime) >= 600000) {
+                                        localStorage.setItem(storageKey, 'true');
+                                        return;
+                                    }
+
+                                    // SweetAlert Toast Notification
+                                    Swal.fire({
+                                        toast: true,
+                                        position: 'top-end',
+                                        icon: 'info',
+                                        title: notif.title,
+                                        html: notif.message,
+                                        showConfirmButton: true,
+                                        confirmButtonColor: '#000666',
+                                        confirmButtonText: 'Tutup / OK',
+                                        timer: 10000,
+                                        timerProgressBar: true,
+                                        didOpen: (toast) => {
+                                            toast.addEventListener('mouseenter', Swal.stopTimer)
+                                            toast.addEventListener('mouseleave', Swal.resumeTimer)
+                                        }
+                                    }).then((result) => {
+                                        // Only mark as acknowledged if user clicks the button
+                                        if (result.isConfirmed) {
+                                            localStorage.setItem(storageKey, 'true');
+                                        }
+                                    });
+                                    
+                                    // Optionally play a sound
+                                    try {
+                                        const audio = new Audio('https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3');
+                                        audio.volume = 0.5;
+                                        audio.play().catch(e => console.log('Autoplay blocked', e));
+                                    } catch (e) {}
+                                });
+                            }
+                        } catch(e) {
+                            console.error('SSE Error parsing data:', e);
+                        }
+                    };
+
+                    eventSource.onerror = function(err) {
+                        eventSource.close();
+                        // Reconnect after 12 seconds (membuatnya muncul berulang setelah 10 detik timer habis)
+                        setTimeout(connectSSE, 12000);
+                    };
+                };
+                
+                connectSSE();
+            }
+        });
+    </script>
+    <?php endif; ?>
 </body>
 </html>

@@ -1,35 +1,9 @@
 <?php
+use App\Services\ViewHelper;
+
 // Hiring Manager: Team Self-Reflection Reviews
-$db = \App\Config\Database::getInstance()->getConnection();
 if (session_status() === PHP_SESSION_NONE) session_start();
 $userId = $_SESSION['user_id'] ?? '';
-
-// Helper to get descendant department IDs recursively
-if (!function_exists('getDescendantsReflection')) {
-    function getDescendantsReflection($db, $deptId) {
-        $ids = [$deptId];
-        $stmt = $db->prepare("SELECT id FROM departments WHERE parent_id = ?");
-        $stmt->execute([$deptId]);
-        $children = $stmt->fetchAll(PDO::FETCH_COLUMN);
-        foreach ($children as $childId) {
-            $ids = array_merge($ids, getDescendantsReflection($db, $childId));
-        }
-        return $ids;
-    }
-}
-
-// Get manager's department
-$stmt = $db->prepare("SELECT department_id FROM users WHERE id = :id");
-$stmt->execute(['id' => $userId]);
-$managerDeptId = $stmt->fetchColumn();
-
-$allowedDepts = [];
-if (!empty($managerDeptId)) {
-    $allowedDepts = getDescendantsReflection($db, $managerDeptId);
-}
-
-$hasDepartment = !empty($allowedDepts);
-$inClause = $hasDepartment ? implode(',', array_map(fn($id) => $db->quote($id), $allowedDepts)) : "''";
 
 // Selected period filter
 $currentPeriod = date('Y') . '-Q' . ceil(date('n') / 3);
@@ -40,37 +14,7 @@ $parts = explode('-Q', $selectedPeriod);
 $year = isset($parts[0]) ? (int)$parts[0] : (int)date('Y');
 $quarter = isset($parts[1]) ? (int)$parts[1] : (int)ceil(date('n') / 3);
 
-$reflections = [];
-if ($hasDepartment) {
-    $stmtRef = $db->prepare("
-        SELECT r.*, u.first_name, u.last_name, u.email, u.employee_id, u.job_title, u.profile_picture, d.name AS department_name,
-               COALESCE(latest_mood.mood_rating, 'neutral') AS mood_rating,
-               COALESCE(latest_mood.workload_rating, 3) AS workload_rating
-        FROM self_reflections r
-        JOIN users u ON r.user_id = u.id
-        LEFT JOIN departments d ON u.department_id = d.id
-        LEFT JOIN (
-            SELECT mp1.*
-            FROM mood_pulses mp1
-            INNER JOIN (
-                SELECT user_id, MAX(created_at) as max_created
-                FROM mood_pulses
-                WHERE YEAR(created_at) = :year AND QUARTER(created_at) = :quarter
-                GROUP BY user_id
-            ) mp2 ON mp1.user_id = mp2.user_id AND mp1.created_at = mp2.max_created
-        ) latest_mood ON r.user_id = latest_mood.user_id
-        WHERE u.department_id IN ($inClause) AND u.id != :manager_id
-          AND r.period = :period AND r.status IN ('submitted', 'completed')
-        ORDER BY r.status DESC, r.updated_at DESC
-    ");
-    $stmtRef->execute([
-        'manager_id' => $userId,
-        'period' => $selectedPeriod,
-        'year' => $year,
-        'quarter' => $quarter
-    ]);
-    $reflections = $stmtRef->fetchAll(PDO::FETCH_ASSOC);
-}
+$reflections = ViewHelper::getReflectionDashboardData('manager', $selectedPeriod, $userId);
 
 // Quarters selection list
 $availablePeriods = [];
@@ -291,6 +235,7 @@ function getMoodBadge($mood) {
 
             <!-- Feedback Form -->
             <form id="feedbackForm" onsubmit="submitFeedbackForm(event)" class="space-y-3 border-t border-outline-variant/15 pt-4">
+                <?= csrfField() ?>
                 <input type="hidden" name="reflection_id" id="feedbackReflectionId" />
                 <label for="feedbackContent" class="block text-xs font-bold text-on-surface-variant uppercase">Umpan Balik / Catatan Evaluasi Manajer <span class="text-red-500">*</span></label>
                 <textarea name="feedback" id="feedbackContent" rows="3" required placeholder="Tuliskan umpan balik konstruktif, apresiasi pencapaian, serta persetujuan rencana aksi karir staf..." class="py-2.5 px-3.5 w-full text-xs rounded-xl border border-outline-variant bg-surface focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary font-semibold text-on-surface"></textarea>

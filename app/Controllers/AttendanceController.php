@@ -34,8 +34,8 @@ class AttendanceController {
         'wfa_days'           => '',
     ];
 
-    public function __construct() {
-        $this->db  = Database::getInstance()->getConnection();
+    public function __construct(\PDO $db) {
+        $this->db  = $db;
         $this->autoMigrate();
         $this->cfg = $this->loadSettings();
     }
@@ -946,11 +946,8 @@ class AttendanceController {
     }
 
     private function haversine($lat1, $lng1, $lat2, $lng2): int {
-        $R    = 6371000;
-        $dLat = deg2rad($lat2 - $lat1);
-        $dLng = deg2rad($lng2 - $lng1);
-        $a    = sin($dLat/2)**2 + cos(deg2rad($lat1)) * cos(deg2rad($lat2)) * sin($dLng/2)**2;
-        return (int)round($R * 2 * atan2(sqrt($a), sqrt(1-$a)));
+        $attendanceService = new \App\Services\AttendanceService();
+        return (int)round($attendanceService->calculateDistance((float)$lat1, (float)$lng1, (float)$lat2, (float)$lng2));
     }
 
     private function resolveStatus(?string $clockIn): string {

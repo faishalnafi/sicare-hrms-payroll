@@ -1,33 +1,27 @@
 <?php
+use App\Services\ViewHelper;
+
 // HR Operations Reimbursements Dynamic Dashboard
-$db = \App\Config\Database::getInstance()->getConnection();
+$claims = ViewHelper::getHropsReimbursementsData();
 
-// Fetch counts and sums for KPIs
-$stmt = $db->query("SELECT SUM(amount) FROM employee_reimbursement_claims");
-$totalSubmitted = floatval($stmt->fetchColumn());
+$totalSubmitted = 0.0;
+$pendingCount = 0;
+$totalApproved = 0.0;
 
-$stmt = $db->query("SELECT COUNT(*) FROM employee_reimbursement_claims WHERE status = 'pending'");
-$pendingCount = intval($stmt->fetchColumn());
+foreach ($claims as $c) {
+    $amt = floatval($c['amount']);
+    $totalSubmitted += $amt;
+    if (($c['status'] ?? '') === 'pending') {
+        $pendingCount++;
+    } elseif (($c['status'] ?? '') === 'approved') {
+        $totalApproved += $amt;
+    }
+}
 
-$stmt = $db->query("SELECT SUM(amount) FROM employee_reimbursement_claims WHERE status = 'approved'");
-$totalApproved = floatval($stmt->fetchColumn());
-
-// Calculate dynamic global available percentage
-$stmt = $db->query("SELECT COUNT(*) FROM users WHERE role = 'employee'");
-$employeeCount = max(1, intval($stmt->fetchColumn()));
-$globalInitial = $employeeCount * 14500000.00; // Rp 14.5jt per employee global limit
-
+$employeeCount = max(1, count($claims));
+$globalInitial = $employeeCount * 14500000.00;
 $globalAvailable = $globalInitial - $totalApproved;
 $globalAvailablePercent = round(($globalAvailable / $globalInitial) * 100, 1);
-
-// Fetch all claims from database
-$stmt = $db->query("
-    SELECT c.*, u.first_name, u.last_name, u.employee_id, u.role, u.email, u.profile_picture
-    FROM employee_reimbursement_claims c
-    JOIN users u ON c.user_id = u.id
-    ORDER BY c.created_at DESC
-");
-$claims = $stmt->fetchAll();
 
 function getCategoryColor($category) {
     $colors = [

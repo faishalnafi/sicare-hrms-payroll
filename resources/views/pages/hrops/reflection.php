@@ -1,6 +1,7 @@
 <?php
+use App\Services\ViewHelper;
+
 // HR Operations: Corporate Employee Self-Reflection & IDP Tracker (GDPR & UU PDP Masked)
-$db = \App\Config\Database::getInstance()->getConnection();
 if (session_status() === PHP_SESSION_NONE) session_start();
 $userId = $_SESSION['user_id'] ?? '';
 
@@ -13,33 +14,7 @@ $parts = explode('-Q', $selectedPeriod);
 $year = isset($parts[0]) ? (int)$parts[0] : (int)date('Y');
 $quarter = isset($parts[1]) ? (int)$parts[1] : (int)ceil(date('n') / 3);
 
-// Fetch all reflections in the company for the selected period
-$stmtRef = $db->prepare("
-    SELECT r.*, u.first_name, u.last_name, u.email, u.employee_id, u.job_title, u.profile_picture, d.name AS department_name,
-           COALESCE(latest_mood.mood_rating, 'neutral') AS mood_rating,
-           COALESCE(latest_mood.workload_rating, 3) AS workload_rating
-    FROM self_reflections r
-    JOIN users u ON r.user_id = u.id
-    LEFT JOIN departments d ON u.department_id = d.id
-    LEFT JOIN (
-        SELECT mp1.*
-        FROM mood_pulses mp1
-        INNER JOIN (
-            SELECT user_id, MAX(created_at) as max_created
-            FROM mood_pulses
-            WHERE YEAR(created_at) = :year AND QUARTER(created_at) = :quarter
-            GROUP BY user_id
-        ) mp2 ON mp1.user_id = mp2.user_id AND mp1.created_at = mp2.max_created
-    ) latest_mood ON r.user_id = latest_mood.user_id
-    WHERE r.period = :period AND r.status IN ('submitted', 'completed')
-    ORDER BY r.status DESC, r.updated_at DESC
-");
-$stmtRef->execute([
-    'period' => $selectedPeriod,
-    'year' => $year,
-    'quarter' => $quarter
-]);
-$reflections = $stmtRef->fetchAll(PDO::FETCH_ASSOC);
+$reflections = ViewHelper::getReflectionDashboardData('hrops', $selectedPeriod);
 
 // Calculate Aggregates for HR Ops Dashboard
 $moodCounts = ['excellent' => 0, 'good' => 0, 'neutral' => 0, 'tired' => 0, 'stressed' => 0];

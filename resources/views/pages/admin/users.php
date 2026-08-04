@@ -45,6 +45,18 @@
                             
                         </div>
                     </div>
+                    <!-- Impor & Ekspor Massal Buttons -->
+                    <div class="flex items-center gap-2 flex-shrink-0">
+                        <button onclick="openImportModal()" class="px-3.5 py-2.5 bg-surface-container-low hover:bg-surface-container-high text-primary border border-primary/20 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer">
+                            <span class="material-symbols-outlined text-base">upload_file</span>
+                            <span>Impor CSV (UPSERT)</span>
+                        </button>
+                        <a href="/admin/export/employees" target="_blank" class="px-3.5 py-2.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-200 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer">
+                            <span class="material-symbols-outlined text-base">download</span>
+                            <span>Ekspor CSV</span>
+                        </a>
+                    </div>
+
                     <!-- Tambah Pengguna Button -->
                     <div class="w-full md:w-auto flex-shrink-0">
                         <button id="adminAddUserBtn" onclick="window.openMutationModal()" class="w-full px-4 py-2.5 bg-primary hover:bg-primary/95 text-white rounded-xl text-sm font-bold shadow-sm transition-all flex items-center justify-center gap-2 hover:scale-[1.02] active:scale-[0.98]">
@@ -423,6 +435,10 @@
 
 <script>
 (function() {
+    window.CSRF_TOKEN = <?= json_encode(csrf_token()) ?>;
+    function getCsrfToken() {
+        return window.csrfToken || window.CSRF_TOKEN || <?= json_encode(csrf_token()) ?>;
+    }
     // ─── Module State ───────────────────────────────────────────────────────────
     var adminUsersData       = [];
     var adminDepsData        = [];
@@ -477,7 +493,9 @@
                 cancelButtonText: 'Batal'
             }).then(function(result) {
                 if (result.isConfirmed) {
-                    fetch('/hrops/employees/empty-trash', { method: 'POST' })
+                    var formData = new FormData();
+                    formData.append('csrf_token', window.CSRF_TOKEN);
+                    fetch('/hrops/employees/empty-trash', { method: 'POST', body: formData })
                         .then(function(res) { return res.json(); })
                         .then(function(data) {
                             if (data.success) {
@@ -958,10 +976,12 @@
             cancelButtonText: "Batal"
         }).then(function(result) {
             if (result.isConfirmed) {
+                var token = getCsrfToken();
                 var formData = new FormData();
                 formData.append("user_id", userId);
+                formData.append("csrf_token", token);
 
-                fetch("/admin/users/reset-lockout", { method: "POST", body: formData })
+                fetch("/admin/users/reset-lockout", { method: "POST", headers: { "X-CSRF-TOKEN": token }, body: formData })
                     .then(function(res) { return res.json(); })
                     .then(function(data) {
                         if (data.success) {
@@ -1006,10 +1026,12 @@
             cancelButtonText: "Batal"
         }).then(function(result) {
             if (result.isConfirmed) {
+                var token = getCsrfToken();
                 var formData = new FormData();
                 formData.append("id", userId);
+                formData.append("csrf_token", token);
 
-                fetch("/hrops/employees/toggle-suspend", { method: "POST", body: formData })
+                fetch("/hrops/employees/toggle-suspend", { method: "POST", headers: { "X-CSRF-TOKEN": token }, body: formData })
                     .then(function(res) { return res.json(); })
                     .then(function(data) {
                         if (data.success) {
@@ -1050,10 +1072,12 @@
             cancelButtonText: "Batal"
         }).then(function(result) {
             if (result.isConfirmed) {
+                var token = getCsrfToken();
                 var formData = new FormData();
                 formData.append("id", userId);
+                formData.append("csrf_token", token);
 
-                fetch("/hrops/employees/delete", { method: "POST", body: formData })
+                fetch("/hrops/employees/delete", { method: "POST", headers: { "X-CSRF-TOKEN": token }, body: formData })
                     .then(function(res) { return res.json(); })
                     .then(function(data) {
                         if (data.success) {
@@ -1087,10 +1111,12 @@
             cancelButtonText: "Batal"
         }).then(function(result) {
             if (result.isConfirmed) {
+                var token = getCsrfToken();
                 var formData = new FormData();
                 formData.append("id", userId);
+                formData.append("csrf_token", token);
 
-                fetch("/hrops/employees/restore", { method: "POST", body: formData })
+                fetch("/hrops/employees/restore", { method: "POST", headers: { "X-CSRF-TOKEN": token }, body: formData })
                     .then(function(res) { return res.json(); })
                     .then(function(data) {
                         if (data.success) {
@@ -1124,10 +1150,12 @@
             cancelButtonText: "Batal"
         }).then(function(result) {
             if (result.isConfirmed) {
+                var token = getCsrfToken();
                 var formData = new FormData();
                 formData.append("id", userId);
+                formData.append("csrf_token", token);
 
-                fetch("/hrops/employees/delete-permanent", { method: "POST", body: formData })
+                fetch("/hrops/employees/delete-permanent", { method: "POST", headers: { "X-CSRF-TOKEN": token }, body: formData })
                     .then(function(res) { return res.json(); })
                     .then(function(data) {
                         if (data.success) {
@@ -1314,9 +1342,13 @@
             return;
         }
 
+        var token = getCsrfToken();
         var formData = new FormData(e.target);
+        if (!formData.has("csrf_token")) {
+            formData.append("csrf_token", token);
+        }
 
-        fetch('/hrops/employees/save', { method: 'POST', body: formData })
+        fetch('/hrops/employees/save', { method: 'POST', headers: { "X-CSRF-TOKEN": token }, body: formData })
             .then(function(res) { return res.json(); })
             .then(function(data) {
                 if (data.success) {
@@ -1413,4 +1445,105 @@
     }, 100);
 
 })();
+
+function openImportModal() {
+    document.getElementById('import-modal').classList.remove('hidden');
+}
+
+function closeImportModal() {
+    document.getElementById('import-modal').classList.add('hidden');
+}
+
+document.getElementById('import-form')?.addEventListener('submit', function(e) {
+    e.preventDefault();
+
+    const formData = new FormData(this);
+    const btn = document.getElementById('btn-submit-import');
+    btn.disabled = true;
+    btn.innerHTML = `<span class="material-symbols-outlined text-base animate-spin">sync</span> Mengimpor...`;
+
+    fetch('/admin/import/employees', {
+        method: 'POST',
+        headers: {
+            'X-JWT-Token': window.jwtToken || ''
+        },
+        body: formData
+    })
+    .then(res => res.json())
+    .then(data => {
+        btn.disabled = false;
+        btn.innerHTML = `<span class="material-symbols-outlined text-base">upload_file</span> Mulai Impor UPSERT`;
+
+        if (data.success) {
+            Swal.fire({
+                icon: 'success',
+                title: 'Impor Berhasil!',
+                text: data.message,
+                confirmButtonColor: '#000666'
+            }).then(() => {
+                closeImportModal();
+                if (window.loadAdminUsers) window.loadAdminUsers();
+                else window.location.reload();
+            });
+        } else {
+            Swal.fire({
+                icon: 'error',
+                title: 'Gagal Impor',
+                text: data.message,
+                confirmButtonColor: '#000666'
+            });
+        }
+    })
+    .catch(err => {
+        btn.disabled = false;
+        btn.innerHTML = `<span class="material-symbols-outlined text-base">upload_file</span> Mulai Impor UPSERT`;
+        Swal.fire({
+            icon: 'error',
+            title: 'Kesalahan Sistem',
+            text: 'Terjadi kesalahan jaringan saat mengunggah berkas impor.',
+            confirmButtonColor: '#000666'
+        });
+    });
+});
 </script>
+
+<!-- Modal Import Massal CSV -->
+<div id="import-modal" class="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 hidden">
+    <div class="bg-surface-container-lowest w-full max-w-lg rounded-2xl shadow-2xl border border-outline-variant/20 overflow-hidden">
+        <div class="p-5 border-b border-outline-variant/15 flex items-center justify-between bg-surface">
+            <div>
+                <h3 class="font-headline font-extrabold text-base text-primary">Impor Data Karyawan Massal (UPSERT)</h3>
+                <p class="text-xs text-on-surface-variant">Update otomatis data lama & buat akun baru untuk data baru</p>
+            </div>
+            <button type="button" onclick="closeImportModal()" class="w-8 h-8 rounded-full bg-surface-container hover:bg-outline-variant/20 flex items-center justify-center text-on-surface-variant">
+                <span class="material-symbols-outlined text-lg">close</span>
+            </button>
+        </div>
+
+        <form id="import-form" enctype="multipart/form-data" class="p-6 space-y-4 text-xs">
+            <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($_SESSION['csrf_token'] ?? '') ?>">
+
+            <div class="p-4 bg-blue-50 border border-blue-200 rounded-xl space-y-2 text-blue-900">
+                <div class="font-bold flex items-center gap-1.5">
+                    <span class="material-symbols-outlined text-base text-primary">info</span> Ketentuan Format Berkas (CSV)
+                </div>
+                <p class="text-[11px] leading-relaxed">
+                    Sediakan file CSV dengan header kolom berikut:<br>
+                    <code class="bg-white px-1.5 py-0.5 rounded border border-blue-200 font-mono text-[10px]">employee_id, email, first_name, last_name, ktp_nik, department_id, job_title, base_salary</code>
+                </p>
+            </div>
+
+            <div>
+                <label class="block font-bold text-on-surface mb-1.5">Pilih Berkas CSV <span class="text-red-500">*</span></label>
+                <input type="file" name="file_import" accept=".csv,.txt" required class="block w-full text-xs text-on-surface-variant file:mr-4 file:py-2.5 file:px-4 file:rounded-lg file:border-0 file:text-xs file:font-bold file:bg-primary file:text-white hover:file:bg-primary/90">
+            </div>
+
+            <div class="pt-3 border-t border-outline-variant/15 flex items-center justify-end gap-3">
+                <button type="button" onclick="closeImportModal()" class="px-4 py-2 bg-surface hover:bg-surface-container text-on-surface font-bold rounded-xl border border-outline-variant/30">Batal</button>
+                <button type="submit" id="btn-submit-import" class="px-6 py-2.5 bg-primary hover:bg-primary/90 text-white font-bold rounded-xl shadow-md transition-all flex items-center gap-1.5 cursor-pointer">
+                    <span class="material-symbols-outlined text-base">upload_file</span> Mulai Impor UPSERT
+                </button>
+            </div>
+        </form>
+    </div>
+</div>

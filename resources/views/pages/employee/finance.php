@@ -1,14 +1,11 @@
 <?php
+use App\Services\ViewHelper;
+
 // Check quarterly self-reflection compliance before letting them access finance page
-$db = \App\Config\Database::getInstance()->getConnection();
 $userId = $_SESSION['user_id'] ?? '';
-$currentPeriod = date('Y') . '-Q' . ceil(date('n') / 3);
+$isReflectionIncomplete = ViewHelper::isReflectionIncomplete($userId);
 
-$stmt = $db->prepare("SELECT COUNT(*) FROM self_reflections WHERE user_id = :user_id AND period = :period AND status IN ('submitted', 'completed')");
-$stmt->execute(['user_id' => $userId, 'period' => $currentPeriod]);
-$hasQuarterly = $stmt->fetchColumn() > 0;
-
-if (!$hasQuarterly) {
+if ($isReflectionIncomplete) {
     echo "<div class='p-6 text-red-650 font-bold bg-red-50 border border-red-200 rounded-2xl shadow-sm flex items-center gap-3'>
             <span class='material-symbols-outlined text-red-600'>lock</span>
             <div>
@@ -23,42 +20,25 @@ $sessName  = $_SESSION['name'] ?? 'Alex Rivera';
 $sessEmail = $_SESSION['email'] ?? 'alex.rivera@example.com';
 $sessRole  = $_SESSION['role'] ?? 'employee';
 
-// Fetch dynamic user data from DB
-$db = \App\Config\Database::getInstance()->getConnection();
-$companyName = $db->query("SELECT `value` FROM global_settings WHERE `key` = 'app_company_name' LIMIT 1")->fetchColumn() ?: 'PT SI CARE ENTERPRISE';
+// Fetch dynamic user data from ViewHelper
+$companyName = ViewHelper::getSetting('app_company_name', 'PT SI CARE ENTERPRISE');
 $companyNameForStamp = $companyName;
 if (stripos($companyName, 'Mango') !== false) {
     $companyNameForStamp = 'PT. MANGO TEKNUSA INOVASI';
 }
-$appName = $db->query("SELECT `value` FROM global_settings WHERE `key` = 'app_name' LIMIT 1")->fetchColumn() ?: 'siCare';
-$appLogoIcon = $db->query("SELECT `value` FROM global_settings WHERE `key` = 'app_logo_icon' LIMIT 1")->fetchColumn() ?: 'local_police';
-$appLogoType = $db->query("SELECT `value` FROM global_settings WHERE `key` = 'app_logo_type' LIMIT 1")->fetchColumn() ?: 'icon';
-$appLogoImage = $db->query("SELECT `value` FROM global_settings WHERE `key` = 'app_logo_image' LIMIT 1")->fetchColumn() ?: '';
+$appName      = ViewHelper::getSetting('app_name', 'siCare');
+$appLogoIcon  = ViewHelper::getSetting('app_logo_icon', 'local_police');
+$appLogoType  = ViewHelper::getSetting('app_logo_type', 'icon');
+$appLogoImage = ViewHelper::getSetting('app_logo_image', '');
 
-$bpjsTkPct = (float)($db->query("SELECT `value` FROM global_settings WHERE `key` = 'payroll_bpjs_tk_pct' LIMIT 1")->fetchColumn() ?: 2);
-$bpjsKesPct = (float)($db->query("SELECT `value` FROM global_settings WHERE `key` = 'payroll_bpjs_kes_pct' LIMIT 1")->fetchColumn() ?: 1);
-$pph21Pct = (float)($db->query("SELECT `value` FROM global_settings WHERE `key` = 'payroll_pph21_pct' LIMIT 1")->fetchColumn() ?: 2.5);
+$bpjsTkPct  = (float)ViewHelper::getSetting('payroll_bpjs_tk_pct', 2);
+$bpjsKesPct = (float)ViewHelper::getSetting('payroll_bpjs_kes_pct', 1);
+$pph21Pct   = (float)ViewHelper::getSetting('payroll_pph21_pct', 2.5);
 
 // Fetch HR Director (Hiring Manager of HR department) dynamically, fallback to Zanuba Arifatul Khafsoh
-$hrQuery = $db->query("
-    SELECT u.first_name, u.last_name, u.job_title 
-    FROM users u
-    JOIN departments d ON u.department_id = d.id
-    WHERE u.role = 'hiring_manager' AND (d.name LIKE '%Human Resources%' OR d.name LIKE '%HR%')
-    LIMIT 1
-");
-$hrDirectorData = $hrQuery->fetch();
-$hrDirectorName = $hrDirectorData ? trim($hrDirectorData['first_name'] . ' ' . ($hrDirectorData['last_name'] ?? '')) : 'Zanuba Arifatul Khafsoh';
-$hrDirectorTitle = $hrDirectorData ? ($hrDirectorData['job_title'] ?? 'HR Operations Director') : 'HR Operations Director';
+[$hrDirectorName, $hrDirectorTitle] = ViewHelper::getHrDirectorData();
 
-$userQuery = $db->prepare("
-    SELECT u.*, d.name AS department_name
-    FROM users u
-    LEFT JOIN departments d ON u.department_id = d.id
-    WHERE u.id = :id
-");
-$userQuery->execute(['id' => $_SESSION['user_id']]);
-$dbUser = $userQuery->fetch();
+$dbUser = ViewHelper::getFullUserProfile($_SESSION['user_id'] ?? null);
 
 $jobTitle = $dbUser['job_title'] ?? 'Karyawan';
 $deptName = $dbUser['department_name'] ?? '';
@@ -88,211 +68,13 @@ $baseSalary = !empty($dbUser['base_salary']) ? (float)$dbUser['base_salary'] : 0
 // ======================================================
 $currentYear = date('Y');
 
-// Fetch all approved payroll records for this user in the current year
-$payrollStmt = $db->prepare("
-    SELECT ep.*
-    FROM employee_payroll ep
-    WHERE ep.user_id = :user_id
-      AND ep.status IN ('Approved', 'Paid')
-      AND ep.month_year LIKE :year_pattern
-    ORDER BY ep.month_year DESC
-");
-$payrollStmt->execute([
-    'user_id'      => $_SESSION['user_id'],
-    'year_pattern' => '%-' . $currentYear,
-]);
-$approvedPayrolls = $payrollStmt->fetchAll(\PDO::FETCH_ASSOC);
-
-// Build months array from DB records
-$months = [];
-$monthNames = [
-    '01' => 'Januari', '02' => 'Februari', '03' => 'Maret',
-    '04' => 'April',   '05' => 'Mei',       '06' => 'Juni',
-    '07' => 'Juli',    '08' => 'Agustus',   '09' => 'September',
-    '10' => 'Oktober', '11' => 'November',  '12' => 'Desember'
-];
-
-foreach ($approvedPayrolls as $record) {
-    // month_year format: MM-YYYY
-    $parts = explode('-', $record['month_year']);
-    $mm = $parts[0] ?? '01';
-    $yyyy = $parts[1] ?? $currentYear;
-    $monthName = ($monthNames[$mm] ?? $mm) . ' ' . $yyyy;
-
-    // Format payment_date (approved/transfer date)
-    $paymentDateRaw = $record['payment_date'] ?? null;
-    $paymentDateFormatted = '';
-    if ($paymentDateRaw) {
-        $ts = strtotime($paymentDateRaw);
-        $bulan = ['','Januari','Februari','Maret','April','Mei','Juni','Juli','Agustus','September','Oktober','November','Desember'];
-        $paymentDateFormatted = date('j', $ts) . ' ' . $bulan[(int)date('n', $ts)] . ' ' . date('Y', $ts);
-    }
-
-    // Calculate dynamic working days count
-    $workingDaysCount = 22; // default
-    $weeklyHolidays = ['Sat', 'Sun'];
-    $val = $db->query("SELECT `value` FROM global_settings WHERE `key` = 'weekly_holidays' LIMIT 1")->fetchColumn();
-    if (!empty($val)) {
-        $weeklyHolidays = array_filter(array_map('trim', explode(',', $val)));
-    }
-    $stmtHolidays = $db->prepare("
-        SELECT holiday_date 
-        FROM company_holidays 
-        WHERE MONTH(holiday_date) = ? AND YEAR(holiday_date) = ?
-    ");
-    $stmtHolidays->execute([intval($mm), intval($yyyy)]);
-    $companyHolidays = $stmtHolidays->fetchAll(\PDO::FETCH_COLUMN) ?: [];
-
-    $daysInMonth = (int)date('t', strtotime(sprintf('%04d-%02d-01', intval($yyyy), intval($mm))));
-    $workingDays = 0;
-    for ($day = 1; $day <= $daysInMonth; $day++) {
-        $dateStr = sprintf('%04d-%02d-%02d', intval($yyyy), intval($mm), $day);
-        $ts = strtotime($dateStr);
-        $dayName = date('D', $ts);
-        if (!in_array($dayName, $weeklyHolidays) && !in_array($dateStr, $companyHolidays)) {
-            $workingDays++;
-        }
-    }
-    $workingDaysCount = $workingDays > 0 ? $workingDays : 22;
-
-    // Calculate present days (clock-in)
-    $stmtPresent = $db->prepare("
-        SELECT COUNT(*) 
-        FROM employee_attendance 
-        WHERE user_id = :user_id 
-          AND status IN ('tepat waktu', 'awal', 'terlambat')
-          AND MONTH(attendance_date) = :month 
-          AND YEAR(attendance_date) = :year
-    ");
-    $stmtPresent->execute([
-        'user_id' => $_SESSION['user_id'],
-        'month'   => intval($mm),
-        'year'    => intval($yyyy)
-    ]);
-    $presentDaysCount = (int)$stmtPresent->fetchColumn();
-
-    // Calculate unpaid leave days
-    $stmtLeaves = $db->prepare("
-        SELECT start_date, end_date 
-        FROM employee_leave_requests
-        WHERE user_id = :user_id
-          AND status = 'approved'
-          AND LOWER(leave_type) = 'cuti tidak dibayar'
-          AND start_date <= :last_day
-          AND end_date >= :first_day
-    ");
-    $firstDay = sprintf('%04d-%02d-01', intval($yyyy), intval($mm));
-    $lastDay = date('Y-m-t', strtotime($firstDay));
-    $stmtLeaves->execute([
-        'user_id' => $_SESSION['user_id'],
-        'first_day' => $firstDay,
-        'last_day' => $lastDay
-    ]);
-    $leaves = $stmtLeaves->fetchAll(\PDO::FETCH_ASSOC);
-    $unpaidDays = 0;
-    foreach ($leaves as $l) {
-        $start = max(strtotime($firstDay), strtotime($l['start_date']));
-        $end = min(strtotime($lastDay), strtotime($l['end_date']));
-        for ($curr = $start; $curr <= $end; $curr = strtotime('+1 day', $curr)) {
-            $currDateStr = date('Y-m-d', $curr);
-            $dayName = date('D', $curr);
-            if (!in_array($dayName, $weeklyHolidays) && !in_array($currDateStr, $companyHolidays)) {
-                $unpaidDays++;
-            }
-        }
-    }
-
-    // Calculate alpa days
-    $stmtAlpa = $db->prepare("
-        SELECT COUNT(*) 
-        FROM employee_attendance
-        WHERE user_id = :user_id
-          AND status = 'alpa'
-          AND MONTH(attendance_date) = :month
-          AND YEAR(attendance_date) = :year
-    ");
-    $stmtAlpa->execute([
-        'user_id' => $_SESSION['user_id'],
-        'month' => intval($mm),
-        'year' => intval($yyyy)
-    ]);
-    $alpaDays = (int)$stmtAlpa->fetchColumn();
-
-    // Calculate late days
-    $stmtLate = $db->prepare("
-        SELECT COUNT(*) 
-        FROM employee_attendance
-        WHERE user_id = :user_id
-          AND status = 'terlambat'
-          AND MONTH(attendance_date) = :month
-          AND YEAR(attendance_date) = :year
-    ");
-    $stmtLate->execute([
-        'user_id' => $_SESSION['user_id'],
-        'month' => intval($mm),
-        'year' => intval($yyyy)
-    ]);
-    $lateDays = (int)$stmtLate->fetchColumn();
-
-    // Calculate deductions
-    $unpaidDeduction = 0.0;
-    if ($workingDaysCount > 0 && $unpaidDays > 0) {
-        $unpaidDeduction = ($record['base_salary'] / $workingDaysCount) * $unpaidDays;
-    }
-    $alpaDeduction = 0.0;
-    if ($workingDaysCount > 0 && $alpaDays > 0) {
-        $alpaDeduction = ($record['base_salary'] / $workingDaysCount) * $alpaDays;
-    }
-    $latePenalty = 50000.0;
-    $latePenaltyVal = $db->query("SELECT `value` FROM global_settings WHERE `key` = 'payroll_late_deduction' LIMIT 1")->fetchColumn();
-    if ($latePenaltyVal !== false && $latePenaltyVal !== null) {
-        $latePenalty = (float)$latePenaltyVal;
-    }
-    $lateDeduction = $lateDays * $latePenalty;
-
-    $tunjanganTotal = (float)$record['tunj_jabatan'] + (float)$record['tunj_transport_makan'] + (float)$record['tunj_komunikasi'] + (float)$record['bonus'] + (float)$record['reimbursement'];
-    $totDed = (float)$record['bpjs_tk'] + (float)$record['bpjs_kes'] + (float)$record['pph21'] + (float)$record['other_deduction'];
-    $grossEarning = (float)$record['base_salary'] + $tunjanganTotal + (float)$record['overtime'];
-    $netPay = (float)$record['net_salary'];
-
-    $months[] = [
-        'id'                     => $record['id'],
-        'code'                   => $record['month_year'],
-        'month_name'             => $monthName,
-        'date'                   => $paymentDateFormatted,
-        'status'                 => $record['status'],
-        'base_salary'            => (float)$record['base_salary'],
-        'tunj_jabatan'           => (float)$record['tunj_jabatan'],
-        'tunj_transport_makan'   => (float)$record['tunj_transport_makan'],
-        'tunj_komunikasi'        => (float)$record['tunj_komunikasi'],
-        'bonus'                  => (float)$record['bonus'],
-        'thr'                    => 0,
-        'overtime'               => (float)$record['overtime'],
-        'reimbursement'          => (float)$record['reimbursement'],
-        'other_deduction'        => (float)$record['other_deduction'],
-        'unpaid_leave_days'      => $unpaidDays,
-        'unpaid_leave_deduction' => $unpaidDeduction,
-        'alpa_days'              => $alpaDays,
-        'alpa_deduction'         => $alpaDeduction,
-        'late_days'              => $lateDays,
-        'late_deduction'         => $lateDeduction,
-        'bpjs_tk'                => (float)$record['bpjs_tk'],
-        'bpjs_kes'               => (float)$record['bpjs_kes'],
-        'pph21'                  => (float)$record['pph21'],
-        'tunjangan_total'        => $tunjanganTotal,
-        'total_deductions'       => $totDed + $unpaidDeduction + $alpaDeduction + $lateDeduction,
-        'gross_earning'          => $grossEarning - $unpaidDeduction - $alpaDeduction - $lateDeduction,
-        'net_pay'                => $netPay,
-        'working_days'           => $workingDaysCount,
-        'present_days'           => $presentDaysCount,
-    ];
-}
+$months = ViewHelper::getEmployeeFinanceData($_SESSION['user_id'] ?? '', $currentYear);
 
 // Latest month (most recent approved payroll)
 $hasApprovedPayroll = !empty($months);
 $latest = $hasApprovedPayroll ? $months[0] : null;
-$latestNetPay = $latest ? $latest['net_pay'] : 0;
-$latestDate = $latest ? $latest['date'] : '';
+$latestNetPay = $latest ? ($latest['net_salary'] ?? $latest['net_pay'] ?? 0) : 0;
+$latestDate = $latest ? ($latest['payment_date'] ?? $latest['date'] ?? '') : '';
 $latestBaseSalary = $latest ? $latest['base_salary'] : $baseSalary;
 ?>
 

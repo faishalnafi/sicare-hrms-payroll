@@ -600,12 +600,15 @@
             cancelButtonText: 'Batal'
         }).then(async (result) => {
             if (result.isConfirmed) {
+                const token = window.csrfToken || window.CSRF_TOKEN || <?= json_encode(csrf_token()) ?>;
                 const formData = new FormData();
                 formData.append('id', id);
+                formData.append('csrf_token', token);
                 
                 try {
                     const res = await fetch('/hrops/employees/delete', {
                         method: 'POST',
+                        headers: { 'X-CSRF-TOKEN': token },
                         body: formData
                     });
                     const data = await res.json();

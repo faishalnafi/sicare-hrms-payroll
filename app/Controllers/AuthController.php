@@ -167,11 +167,12 @@ class AuthController {
                     
                     // Generate remember token
                     $rememberToken = bin2hex(random_bytes(32));
+                    $hashedToken = hash('sha256', $rememberToken);
                     
-                    // Save to database
-                    $db->prepare("UPDATE users SET remember_token = ? WHERE id = ?")->execute([$rememberToken, $user["id"]]);
+                    // Save hashed token to database
+                    $db->prepare("UPDATE users SET remember_token = ? WHERE id = ?")->execute([$hashedToken, $user["id"]]);
                     
-                    // Set cookie remember_me_token (30 days)
+                    // Set cookie remember_me_token (30 days) with raw token
                     $isSecure = (!empty($_SERVER["HTTPS"]) && $_SERVER["HTTPS"] !== "off") || (isset($_SERVER["HTTP_X_FORWARDED_PROTO"]) && $_SERVER["HTTP_X_FORWARDED_PROTO"] === "https");
                     if (PHP_VERSION_ID >= 70300) {
                         setcookie("remember_me_token", $rememberToken, [
@@ -264,9 +265,18 @@ class AuthController {
         $lastName = $_POST["last_name"] ?? "";
         $email = $_POST["email"] ?? "";
         $password = $_POST["password"] ?? "";
+        $phone = $_POST["phone"] ?? "";
         
-        if (empty($firstName) || empty($email) || empty($password)) {
+        if (empty($firstName) || empty($email) || empty($password) || empty($phone)) {
             echo json_encode(["success" => false, "message" => "Semua kolom wajib diisi."]);
+            return;
+        }
+
+        // Validate and format phone number
+        $phoneMsg = "";
+        $formattedPhone = validate_and_format_phone($phone, $phoneMsg);
+        if ($formattedPhone === false) {
+            echo json_encode(["success" => false, "message" => $phoneMsg]);
             return;
         }
 
@@ -288,10 +298,276 @@ class AuthController {
         $id = $userModel->create($firstName, $lastName, $email, $password);
         
         if ($id) {
+            // Handle Resume and Cover Letter Uploads
+            $resumePath = null;
+            $coverLetterPath = null;
+            
+            $uploadDirResumes = __DIR__ . '/../../public/uploads/resumes/';
+            $uploadDirLetters = __DIR__ . '/../../public/uploads/cover_letters/';
+            
+            if (!file_exists($uploadDirResumes)) mkdir($uploadDirResumes, 0755, true);
+            if (!file_exists($uploadDirLetters)) mkdir($uploadDirLetters, 0755, true);
+            
+            if (isset($_FILES['resume']) && $_FILES['resume']['error'] === UPLOAD_ERR_OK) {
+                $file = $_FILES['resume'];
+                $ext = pathinfo($file['name'], PATHINFO_EXTENSION);
+                $filename = 'resume_' . time() . '_' . mt_rand(1000, 9999) . '.' . $ext;
+                if (move_uploaded_file($file['tmp_name'], $uploadDirResumes . $filename)) {
+                    $resumePath = '/uploads/resumes/' . $filename;
+                }
+            }
+            
+            if (isset($_FILES['cover_letter']) && $_FILES['cover_letter']['error'] === UPLOAD_ERR_OK) {
+                $file = $_FILES['cover_letter'];
+                $ext = pathinfo($file['name'], PATHINFO_EXTENSION);
+                $filename = 'cover_' . time() . '_' . mt_rand(1000, 9999) . '.' . $ext;
+                if (move_uploaded_file($file['tmp_name'], $uploadDirLetters . $filename)) {
+                    $coverLetterPath = '/uploads/cover_letters/' . $filename;
+                }
+            }
+            
+            // Save candidate metadata to database
+            try {
+                $db = \App\Config\Database::getInstance()->getConnection();
+                $stmtUpdate = $db->prepare("
+                    UPDATE users 
+                    SET no_telepon = :phone,
+                        tautan_profesional = :portfolio,
+                        pendidikan_terakhir = :education,
+                        ekspektasi_gaji = :salary,
+                        riwayat_pekerjaan = :experience,
+                        resume_file = :resume_file,
+                        cover_letter_file = :cover_letter_file
+                    WHERE id = :id
+                ");
+                $stmtUpdate->execute([
+                    'phone' => $formattedPhone,
+                    'portfolio' => $_POST['portfolio'] ?? null,
+                    'education' => $_POST['education'] ?? null,
+                    'salary' => !empty($_POST['salary']) ? floatval($_POST['salary']) : null,
+                    'experience' => $_POST['experience'] ?? null,
+                    'resume_file' => $resumePath,
+                    'cover_letter_file' => $coverLetterPath,
+                    'id' => $id
+                ]);
+            } catch (\Exception $e) {
+                // Log or handle error if necessary
+            }
+
             echo json_encode(["success" => true, "message" => "Pendaftaran berhasil! Silakan masuk.", "redirect" => "/signin"]);
         } else {
             echo json_encode(["success" => false, "message" => "Terjadi kesalahan sistem."]);
         }
+    }
+
+    public function updateCandidateProfile() {
+        if (session_status() === PHP_SESSION_NONE) session_start();
+        header('Content-Type: application/json');
+
+        $userId = $_SESSION['user_id'] ?? null;
+        if (!$userId) {
+            echo json_encode(['success' => false, 'message' => 'Sesi login telah berakhir. Silakan masuk kembali.']);
+            return;
+        }
+
+        $firstName = trim($_POST['first_name'] ?? '');
+        $lastName = trim($_POST['last_name'] ?? '');
+        $phone = $_POST['phone'] ?? '';
+        $education = trim($_POST['education'] ?? '');
+        $salary = !empty($_POST['salary']) ? floatval($_POST['salary']) : null;
+        $portfolio = trim($_POST['portfolio'] ?? '');
+        $experience = trim($_POST['experience'] ?? '');
+
+        if (empty($firstName) || empty($phone)) {
+            echo json_encode(['success' => false, 'message' => 'Nama depan dan nomor telepon wajib diisi.']);
+            return;
+        }
+
+        $phoneMsg = "";
+        $formattedPhone = validate_and_format_phone($phone, $phoneMsg);
+        if ($formattedPhone === false) {
+            echo json_encode(['success' => false, 'message' => $phoneMsg]);
+            return;
+        }
+
+        try {
+            $db = \App\Config\Database::getInstance()->getConnection();
+
+            // Fetch existing user data for file reference
+            $stmtUser = $db->prepare("SELECT resume_file, cover_letter_file FROM users WHERE id = :id LIMIT 1");
+            $stmtUser->execute(['id' => $userId]);
+            $existing = $stmtUser->fetch(\PDO::FETCH_ASSOC);
+
+            $resumePath = $existing['resume_file'] ?? null;
+            $coverLetterPath = $existing['cover_letter_file'] ?? null;
+
+            $uploadDirResumes = __DIR__ . '/../../public/uploads/resumes/';
+            $uploadDirLetters = __DIR__ . '/../../public/uploads/cover_letters/';
+
+            if (!file_exists($uploadDirResumes)) mkdir($uploadDirResumes, 0755, true);
+            if (!file_exists($uploadDirLetters)) mkdir($uploadDirLetters, 0755, true);
+
+            // Allowed MIME types for documents
+            $allowedDocMimes = [
+                'application/pdf',
+                'application/msword',
+                'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+            ];
+
+            // Handle Resume File Upload
+            if (isset($_FILES['resume']) && $_FILES['resume']['error'] === UPLOAD_ERR_OK) {
+                $file = $_FILES['resume'];
+                if ($file['size'] > 5242880) {
+                    echo json_encode(['success' => false, 'message' => 'Ukuran file CV/Resume maksimal 5MB.']);
+                    return;
+                }
+                // Real MIME validation via finfo (checks file bytes, not just extension)
+                $finfo = finfo_open(FILEINFO_MIME_TYPE);
+                $realMime = finfo_file($finfo, $file['tmp_name']);
+                finfo_close($finfo);
+                if (!in_array($realMime, $allowedDocMimes)) {
+                    echo json_encode(['success' => false, 'message' => 'Format file CV tidak valid. Hanya PDF dan DOCX yang diperbolehkan. File Anda terdeteksi sebagai: ' . $realMime]);
+                    return;
+                }
+                $ext = strtolower(pathinfo($file['name'], PATHINFO_EXTENSION));
+                if (empty($ext)) $ext = ($realMime === 'application/pdf') ? 'pdf' : 'docx';
+                $filename = 'resume_' . time() . '_' . mt_rand(1000, 9999) . '.' . $ext;
+                if (move_uploaded_file($file['tmp_name'], $uploadDirResumes . $filename)) {
+                    // Delete old resume file from disk
+                    if (!empty($existing['resume_file'])) {
+                        $oldFile = __DIR__ . '/../../public' . $existing['resume_file'];
+                        if (file_exists($oldFile)) @unlink($oldFile);
+                    }
+                    $resumePath = '/uploads/resumes/' . $filename;
+                }
+            }
+
+            // Handle Cover Letter File Upload
+            if (isset($_FILES['cover_letter']) && $_FILES['cover_letter']['error'] === UPLOAD_ERR_OK) {
+                $file = $_FILES['cover_letter'];
+                if ($file['size'] > 5242880) {
+                    echo json_encode(['success' => false, 'message' => 'Ukuran file Surat Lamaran maksimal 5MB.']);
+                    return;
+                }
+                // Real MIME validation via finfo
+                $finfo = finfo_open(FILEINFO_MIME_TYPE);
+                $realMime = finfo_file($finfo, $file['tmp_name']);
+                finfo_close($finfo);
+                if (!in_array($realMime, $allowedDocMimes)) {
+                    echo json_encode(['success' => false, 'message' => 'Format file Surat Lamaran tidak valid. Hanya PDF dan DOCX yang diperbolehkan. File Anda terdeteksi sebagai: ' . $realMime]);
+                    return;
+                }
+                $ext = strtolower(pathinfo($file['name'], PATHINFO_EXTENSION));
+                if (empty($ext)) $ext = ($realMime === 'application/pdf') ? 'pdf' : 'docx';
+                $filename = 'cover_' . time() . '_' . mt_rand(1000, 9999) . '.' . $ext;
+                if (move_uploaded_file($file['tmp_name'], $uploadDirLetters . $filename)) {
+                    // Delete old cover letter file from disk
+                    if (!empty($existing['cover_letter_file'])) {
+                        $oldFile = __DIR__ . '/../../public' . $existing['cover_letter_file'];
+                        if (file_exists($oldFile)) @unlink($oldFile);
+                    }
+                    $coverLetterPath = '/uploads/cover_letters/' . $filename;
+                }
+            }
+
+            $stmtUpdate = $db->prepare("
+                UPDATE users SET
+                    first_name = :first_name,
+                    last_name = :last_name,
+                    no_telepon = :phone,
+                    pendidikan_terakhir = :education,
+                    ekspektasi_gaji = :salary,
+                    tautan_profesional = :portfolio,
+                    riwayat_pekerjaan = :experience,
+                    resume_file = :resume_file,
+                    cover_letter_file = :cover_letter_file,
+                    updated_at = NOW()
+                WHERE id = :id
+            ");
+            $stmtUpdate->execute([
+                'first_name' => $firstName,
+                'last_name' => $lastName,
+                'phone' => $formattedPhone,
+                'education' => $education,
+                'salary' => $salary,
+                'portfolio' => $portfolio,
+                'experience' => $experience,
+                'resume_file' => $resumePath,
+                'cover_letter_file' => $coverLetterPath,
+                'id' => $userId
+            ]);
+
+            // Update session name
+            $_SESSION['name'] = trim($firstName . ' ' . $lastName);
+
+            echo json_encode(['success' => true, 'message' => 'Data dan profil pribadi Anda berhasil diperbarui!']);
+
+        } catch (\Exception $e) {
+            echo json_encode(['success' => false, 'message' => 'Kesalahan server: ' . $e->getMessage()]);
+        }
+    }
+
+    public function serveInlineDocument() {
+        if (session_status() === PHP_SESSION_NONE) session_start();
+
+        if (empty($_SESSION['user_id'])) {
+            http_response_code(403);
+            echo 'Akses ditolak.';
+            exit;
+        }
+
+        $file = $_GET['file'] ?? '';
+        if (empty($file)) {
+            http_response_code(400);
+            echo 'File tidak ditentukan.';
+            exit;
+        }
+
+        $file = str_replace(["\0", '..'], '', $file);
+        if (strpos($file, '/uploads/') !== 0) {
+            http_response_code(403);
+            echo 'Akses ditolak.';
+            exit;
+        }
+
+        $fullPath    = realpath(__DIR__ . '/../../public' . $file);
+        $allowedBase = realpath(__DIR__ . '/../../public/uploads');
+
+        $normFull = str_replace('\\', '/', strtolower($fullPath ?: ''));
+        $normBase = str_replace('\\', '/', strtolower($allowedBase ?: ''));
+
+        if (!$fullPath || !$allowedBase || strpos($normFull, $normBase) !== 0 || !file_exists($fullPath)) {
+            http_response_code(404);
+            echo 'File tidak ditemukan.';
+            exit;
+        }
+
+        $finfo    = finfo_open(FILEINFO_MIME_TYPE);
+        $realMime = finfo_file($finfo, $fullPath);
+        finfo_close($finfo);
+
+        $allowedMimes = [
+            'application/pdf',
+            'application/msword',
+            'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+        ];
+        if (!in_array($realMime, $allowedMimes)) {
+            http_response_code(403);
+            echo 'Tipe file tidak diizinkan.';
+            exit;
+        }
+
+        while (ob_get_level() > 0) {
+            ob_end_clean();
+        }
+
+        header('Content-Type: ' . $realMime);
+        header('Content-Disposition: inline; filename="' . basename($fullPath) . '"');
+        header('Content-Length: ' . filesize($fullPath));
+        header('Cache-Control: private, max-age=3600, must-revalidate');
+
+        readfile($fullPath);
+        exit;
     }
 
     /**
@@ -556,6 +832,13 @@ class AuthController {
             return;
         }
 
+        $phoneMsg = "";
+        $formattedPhone = validate_and_format_phone($phone, $phoneMsg);
+        if ($formattedPhone === false) {
+            echo json_encode(["success" => false, "message" => $phoneMsg]);
+            return;
+        }
+
         try {
             $db = \App\Config\Database::getInstance()->getConnection();
             
@@ -572,7 +855,7 @@ class AuthController {
             $query = "UPDATE users SET email = :email, no_telepon = :phone, alamat_domisili = :domisili, home_latitude = :lat, home_longitude = :lng, updated_at = NOW()";
             $params = [
                 "email" => $email,
-                "phone" => $phone,
+                "phone" => $formattedPhone,
                 "domisili" => $domisili,
                 "lat" => $lat,
                 "lng" => $lng,
@@ -893,4 +1176,77 @@ class AuthController {
         }
         return -1; // -1 represents blocked
     }
+
+    /**
+     * Auto-login via remember_me_token cookie.
+     */
+    public static function processRememberMe(): void {
+        if (!isset($_SESSION['user_id']) && isset($_COOKIE['remember_me_token'])) {
+            $token = $_COOKIE['remember_me_token'];
+            $hashedToken = hash('sha256', $token);
+            try {
+                $db = \App\Config\Database::getInstance()->getConnection();
+                $stmt = $db->prepare("SELECT * FROM users WHERE remember_token = ? AND is_deleted = 0 AND is_suspended = 0 LIMIT 1");
+                $stmt->execute([$hashedToken]);
+                $user = $stmt->fetch(\PDO::FETCH_ASSOC);
+                if ($user) {
+                    $_SESSION["user_id"] = $user["id"];
+                    $_SESSION["role"] = $user["role"];
+                    $_SESSION["role_id"] = $user["role_id"];
+                    $_SESSION["department_id"] = $user["department_id"];
+                    $_SESSION["name"] = $user["first_name"] . " " . $user["last_name"];
+                    $_SESSION["email"] = $user["email"];
+                    $_SESSION["profile_picture"] = $user["profile_picture"];
+                    $_SESSION["remember_me"] = true;
+                    
+                    $jwtPayload = [
+                        "user_id" => $user["id"],
+                        "name" => $user["first_name"] . " " . $user["last_name"],
+                        "email" => $user["email"],
+                        "role" => $user["role"]
+                    ];
+                    $jwtToken = \App\Config\JwtHelper::createToken($jwtPayload);
+                    $_SESSION["jwt_token"] = $jwtToken;
+                    
+                    $isSecure = (!empty($_SERVER["HTTPS"]) && $_SERVER["HTTPS"] !== "off") || (isset($_SERVER["HTTP_X_FORWARDED_PROTO"]) && $_SERVER["HTTP_X_FORWARDED_PROTO"] === "https");
+                    if (PHP_VERSION_ID >= 70300) {
+                        setcookie("jwt_token", $jwtToken, [
+                            "expires" => time() + 604800,
+                            "path" => "/",
+                            "domain" => "",
+                            "secure" => $isSecure,
+                            "httponly" => false,
+                            "samesite" => "Lax"
+                        ]);
+                    } else {
+                        setcookie("jwt_token", $jwtToken, time() + 604800, "/; samesite=Lax", "", $isSecure, false);
+                    }
+                }
+            } catch (\Exception $e) {
+                // Fail-safe
+            }
+        }
+    }
+
+    /**
+     * Validate profile reset token for employee profile fill page.
+     */
+    public static function validateProfileResetToken(string $token): array {
+        try {
+            $db = \App\Config\Database::getInstance()->getConnection();
+            $stmt = $db->prepare("SELECT id FROM users WHERE profile_reset_token = :token LIMIT 1");
+            $stmt->execute(['token' => $token]);
+            $user = $stmt->fetch();
+            if (!$user) {
+                return ['valid' => false, 'error' => 'Tautan pengisian identitas tidak valid, sudah digunakan, atau kedaluwarsa.'];
+            }
+            if (isset($_SESSION['user_id']) && $user['id'] !== $_SESSION['user_id']) {
+                return ['valid' => false, 'error' => 'Tautan ini diperuntukkan bagi akun lain. Silakan keluar (logout) dan masuk dengan akun yang sesuai.'];
+            }
+            return ['valid' => true, 'user_id' => $user['id']];
+        } catch (\Exception $e) {
+            return ['valid' => false, 'error' => 'Terjadi kesalahan sistem: ' . $e->getMessage()];
+        }
+    }
 }
+

@@ -23,6 +23,31 @@ Homestead.json
 .phpunit.result.cache
 
 /public/build
+/vendor/
+node_modules/
+npm-debug.log
+yarn-error.log
+
+# Laravel 4 specific
+bootstrap/compiled.php
+app/storage/
+
+# Laravel 5 & Lumen specific
+public/storage
+public/hot
+
+# Laravel 5 & Lumen specific with changed public path
+public_html/storage
+public_html/hot
+
+storage/*.key
+.env
+Homestead.yaml
+Homestead.json
+/.vagrant
+.phpunit.result.cache
+
+/public/build
 /storage/pail
 .env.backup
 .env.production
@@ -32,3 +57,6 @@ auth.json
 # Cache and framework storage
 /storage/framework/cache/*
 !/storage/framework/cache/.gitkeep
+database/database.sqlite
+storage/secured_storage/*
+!storage/secured_storage/.gitkeep

@@ -1,14 +1,8 @@
 <?php
 // HR Ops — Pengaturan Presensi & Lokasi
-$cfg = [];
-$holidays = [];
-try {
-    $db = \App\Config\Database::getInstance()->getConnection();
-    $rows = $db->query("SELECT `key`, `value` FROM global_settings")->fetchAll();
-    foreach ($rows as $r) { $cfg[$r['key']] = $r['value']; }
-    
-    $holidays = $db->query("SELECT * FROM company_holidays ORDER BY holiday_date ASC")->fetchAll();
-} catch (Exception $e) { /* table may not exist yet */ }
+use App\Services\ViewHelper;
+
+[$cfg, $holidays] = ViewHelper::getGlobalSettingsAndHolidays();
 
 // Fallback defaults
 $cfg = array_merge([
@@ -1587,7 +1581,12 @@ function editHoliday(id, currentDate, currentDesc) {
 }
 
 function getRoutePrefix() {
-    return '/hrops';
+    const p = window.location.pathname;
+    let base = '';
+    if (p.includes('/hrops')) {
+        base = p.split('/hrops')[0];
+    }
+    return base + '/hrops';
 }
 
 // ── Tarik Libur Nasional dari Google Calendar ────────────────

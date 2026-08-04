@@ -1,52 +1,11 @@
 <?php
-// Hiring Manager: Team Members Dashboard with Strict Hierarchical Isolation and Granular Permitted Personal Data
-$db = \App\Config\Database::getInstance()->getConnection();
+use App\Services\ViewHelper;
 
+// Hiring Manager: Team Members Dashboard with Strict Hierarchical Isolation and Granular Permitted Personal Data
 if (session_status() === PHP_SESSION_NONE) session_start();
 $userId = $_SESSION['user_id'] ?? '';
 
-// Helper to get descendant department IDs recursively
-if (!function_exists('getDescendantsTeam')) {
-    function getDescendantsTeam($db, $deptId) {
-        $ids = [$deptId];
-        $stmt = $db->prepare("SELECT id FROM departments WHERE parent_id = ?");
-        $stmt->execute([$deptId]);
-        $children = $stmt->fetchAll(PDO::FETCH_COLUMN);
-        foreach ($children as $childId) {
-            $ids = array_merge($ids, getDescendantsTeam($db, $childId));
-        }
-        return $ids;
-    }
-}
-
-// Get manager's department
-$stmt = $db->prepare("SELECT department_id FROM users WHERE id = :id");
-$stmt->execute(['id' => $userId]);
-$managerDeptId = $stmt->fetchColumn();
-
-$allowedDepts = [];
-if (!empty($managerDeptId)) {
-    $allowedDepts = getDescendantsTeam($db, $managerDeptId);
-}
-
-$hasDepartment = !empty($allowedDepts);
-$inClause = $hasDepartment ? implode(',', array_map(fn($id) => $db->quote($id), $allowedDepts)) : "''";
-
-// Fetch Team Members with strictly permitted operational & contact details
-// (Under GDPR & UU PDP, private demographic data like Tanggal Lahir, Gender, and Status Pernikahan are hidden from Manager)
-$teamMembers = [];
-if ($hasDepartment) {
-    $stmt = $db->prepare("
-        SELECT u.id, u.first_name, u.last_name, u.email, u.employee_id, u.role, u.job_title, u.profile_picture, 
-               u.home_latitude, u.home_longitude, u.no_telepon, u.alamat_domisili, u.annual_leave_quota, d.name AS department_name
-        FROM users u
-        LEFT JOIN departments d ON u.department_id = d.id
-        WHERE u.department_id IN ($inClause) AND u.id != :manager_id
-        ORDER BY d.name ASC, u.first_name ASC
-    ");
-    $stmt->execute(['manager_id' => $userId]);
-    $teamMembers = $stmt->fetchAll(PDO::FETCH_ASSOC);
-}
+$teamMembers = ViewHelper::getManagerTeamData($userId);
 
 // Function to generate Gravatar avatar
 function getGravatarTeam($email, $profilePic = null) {
@@ -82,6 +41,10 @@ function getWhatsAppLinkTeam($phone) {
     border-radius: 50%;
     background: rgba(255,255,255,0.04);
     pointer-events: none;
+    transition: transform 0.5s ease;
+}
+.team-hero-card:hover::before {
+    transform: scale(1.15);
 }
 .team-hero-card::after {
     content: '';
@@ -91,6 +54,10 @@ function getWhatsAppLinkTeam($phone) {
     border-radius: 50%;
     background: rgba(255,255,255,0.03);
     pointer-events: none;
+    transition: transform 0.5s ease;
+}
+.team-hero-card:hover::after {
+    transform: scale(1.15);
 }
 </style>
 
@@ -111,41 +78,41 @@ function getWhatsAppLinkTeam($phone) {
     </div>
 
     <!-- Search & Filters Container with View Mode Toggle -->
-    <div class="bg-surface-container-lowest border border-outline-variant/15 rounded-3xl p-5 shadow-sm flex flex-col lg:flex-row justify-between items-stretch lg:items-center gap-4">
+    <div class="bg-surface-container-lowest border border-outline-variant/15 rounded-3xl p-5 shadow-sm flex flex-col lg:flex-row items-stretch lg:items-center gap-4">
+        <!-- Stats widget (Paling Kiri, Warna Biru) -->
+        <div class="bg-gradient-to-br from-primary to-blue-900 text-white rounded-2xl p-4 shadow-md flex items-center justify-between min-w-[240px] relative overflow-hidden group flex-shrink-0">
+            <div class="absolute right-0 bottom-0 opacity-10 translate-x-1 translate-y-1 group-hover:scale-110 transition-transform duration-500">
+                <span class="material-symbols-outlined text-6xl">groups</span>
+            </div>
+            <div class="z-10">
+                <p class="text-[10px] font-bold uppercase tracking-wider text-blue-200">Total Anggota</p>
+                <p class="text-3xl font-black text-white mt-1 leading-none" id="stat-total"><?= count($teamMembers) ?></p>
+            </div>
+            <div class="z-10 text-right border-l border-white/20 pl-4">
+                <p class="text-[10px] font-bold uppercase tracking-wider text-blue-200">WFH Setel</p>
+                <p class="text-xl font-bold text-white mt-1" id="stat-wfh-set">
+                    <?= count(array_filter($teamMembers, fn($tm) => $tm['home_latitude'] !== null && $tm['home_longitude'] !== null)) ?>
+                </p>
+            </div>
+        </div>
+
         <!-- Search bar -->
-        <div class="relative flex-grow max-w-xl">
+        <div class="relative flex-grow min-w-[200px]">
             <span class="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-on-surface-variant/60">
                 <span class="material-symbols-outlined text-lg">search</span>
             </span>
             <input type="text" id="teamSearchInput" oninput="window.filterTeamMembers()" placeholder="Cari nama, NIK, jabatan, divisi, no. HP, atau domisili..." 
-                class="w-full pl-10 pr-4 py-2.5 border border-outline-variant/30 rounded-2xl bg-surface-container-low text-xs text-on-surface font-semibold placeholder-on-surface-variant/55 focus:outline-none focus:border-primary transition-all" />
+                class="w-full pl-10 pr-4 py-3 border border-outline-variant/30 rounded-2xl bg-surface-container-low text-xs text-on-surface font-semibold placeholder-on-surface-variant/55 focus:outline-none focus:border-primary transition-all" />
         </div>
         
-        <!-- Controls Right: View Toggle + Stats -->
-        <div class="flex flex-wrap items-center gap-4 self-start lg:self-auto">
-            <!-- View Mode Switcher -->
-            <div class="flex items-center bg-surface-container-low border border-outline-variant/20 rounded-2xl p-1">
-                <button onclick="window.toggleTeamView('grid')" id="viewBtnGrid" class="flex items-center gap-1 px-3 py-1.5 rounded-xl text-xs font-extrabold cursor-pointer transition-all bg-primary text-white shadow-sm">
-                    <span class="material-symbols-outlined text-xs">grid_view</span> Grid
-                </button>
-                <button onclick="window.toggleTeamView('table')" id="viewBtnTable" class="flex items-center gap-1 px-3 py-1.5 rounded-xl text-xs font-extrabold cursor-pointer transition-all text-on-surface-variant hover:bg-surface-container-high/50">
-                    <span class="material-symbols-outlined text-xs">table_chart</span> Tabel
-                </button>
-            </div>
-
-            <!-- Stats widget -->
-            <div class="flex items-center gap-4 bg-surface-container-low/40 border border-outline-variant/10 rounded-2xl px-4 py-1.5">
-                <div class="text-center border-r border-outline-variant/20 pr-4">
-                    <p class="text-[9px] text-on-surface-variant uppercase font-extrabold tracking-wider">Total Anggota</p>
-                    <p class="text-base font-black text-primary" id="stat-total"><?= count($teamMembers) ?></p>
-                </div>
-                <div class="text-center">
-                    <p class="text-[9px] text-on-surface-variant uppercase font-extrabold tracking-wider">WFH Setel</p>
-                    <p class="text-base font-black text-indigo-600" id="stat-wfh-set">
-                        <?= count(array_filter($teamMembers, fn($tm) => $tm['home_latitude'] !== null && $tm['home_longitude'] !== null)) ?>
-                    </p>
-                </div>
-            </div>
+        <!-- View Mode Switcher -->
+        <div class="flex items-center bg-surface-container-low border border-outline-variant/20 rounded-2xl p-1 flex-shrink-0">
+            <button onclick="window.toggleTeamView('grid')" id="viewBtnGrid" class="flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-extrabold cursor-pointer transition-all bg-primary text-white shadow-sm">
+                <span class="material-symbols-outlined text-sm">grid_view</span> Grid
+            </button>
+            <button onclick="window.toggleTeamView('table')" id="viewBtnTable" class="flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-extrabold cursor-pointer transition-all text-on-surface-variant hover:bg-surface-container-high/50">
+                <span class="material-symbols-outlined text-sm">table_chart</span> Tabel
+            </button>
         </div>
     </div>
 

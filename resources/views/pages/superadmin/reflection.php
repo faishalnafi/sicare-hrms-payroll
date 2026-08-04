@@ -1,6 +1,7 @@
 <?php
+use App\Services\ViewHelper;
+
 // Superadmin: Corporate Employee Self-Reflection Reviews (Unrestricted Access)
-$db = \App\Config\Database::getInstance()->getConnection();
 if (session_status() === PHP_SESSION_NONE) session_start();
 $userId = $_SESSION['user_id'] ?? '';
 
@@ -8,44 +9,11 @@ $userId = $_SESSION['user_id'] ?? '';
 $currentPeriod = date('Y') . '-Q' . ceil(date('n') / 3);
 $selectedPeriod = $_GET['period'] ?? $currentPeriod;
 
-// Parse year and quarter for mood pulses filter
-$parts = explode('-Q', $selectedPeriod);
-$year = isset($parts[0]) ? (int)$parts[0] : (int)date('Y');
-$quarter = isset($parts[1]) ? (int)$parts[1] : (int)ceil(date('n') / 3);
-
-// Fetch all reflections in the company for the selected period (NO ANONYMITY, superadmin can see names of everyone)
-$stmtRef = $db->prepare("
-    SELECT r.*, u.first_name, u.last_name, u.email, u.employee_id, u.job_title, u.profile_picture, d.name AS department_name,
-           COALESCE(latest_mood.mood_rating, 'neutral') AS mood_rating,
-           COALESCE(latest_mood.workload_rating, 3) AS workload_rating
-    FROM self_reflections r
-    JOIN users u ON r.user_id = u.id
-    LEFT JOIN departments d ON u.department_id = d.id
-    LEFT JOIN (
-        SELECT mp1.*
-        FROM mood_pulses mp1
-        INNER JOIN (
-            SELECT user_id, MAX(created_at) as max_created
-            FROM mood_pulses
-            WHERE YEAR(created_at) = :year AND QUARTER(created_at) = :quarter
-            GROUP BY user_id
-        ) mp2 ON mp1.user_id = mp2.user_id AND mp1.created_at = mp2.max_created
-    ) latest_mood ON r.user_id = latest_mood.user_id
-    WHERE r.period = :period
-    ORDER BY r.status DESC, r.updated_at DESC
-");
-$stmtRef->execute([
-    'period' => $selectedPeriod,
-    'year' => $year,
-    'quarter' => $quarter
-]);
-$reflections = $stmtRef->fetchAll(PDO::FETCH_ASSOC);
+$reflections = ViewHelper::getReflectionDashboardData('superadmin', $selectedPeriod);
 
 // Fetch personal journals (only available to Employee and Superadmin)
 foreach ($reflections as &$ref) {
-    $stmtJournals = $db->prepare("SELECT * FROM personal_journals WHERE user_id = :user_id ORDER BY created_at DESC");
-    $stmtJournals->execute(['user_id' => $ref['user_id']]);
-    $ref['journals'] = $stmtJournals->fetchAll(PDO::FETCH_ASSOC);
+    $ref['journals'] = ViewHelper::getPersonalJournals($ref['user_id']);
 }
 unset($ref);
 

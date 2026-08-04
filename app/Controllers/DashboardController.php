@@ -85,8 +85,9 @@ class DashboardController {
             exit;
         }
 
-        // 1. If employee, check quarterly reflection compliance
-        if ($role === "employee") {
+        // 1. If employee (and not superadmin impersonating), check quarterly reflection compliance
+        $origRole = $_SESSION["original_role"] ?? "";
+        if ($role === "employee" && $origRole !== "superadmin") {
             $db = \App\Config\Database::getInstance()->getConnection();
             $userId = $_SESSION["user_id"];
             $currentPeriod = date("Y") . "-Q" . ceil(date("n") / 3);
@@ -184,8 +185,9 @@ class DashboardController {
 
         $role = $_SESSION["role"] ?? "employee";
 
-        // 1. If employee, enforce quarterly reflection check (except for the reflection page itself)
-        if ($role === "employee" && $path !== "employee/reflection") {
+        // 1. If employee (and not superadmin impersonating), enforce quarterly reflection check (except for the reflection page itself)
+        $origRole = $_SESSION["original_role"] ?? "";
+        if ($role === "employee" && $origRole !== "superadmin" && $path !== "employee/reflection") {
             $db = \App\Config\Database::getInstance()->getConnection();
             $userId = $_SESSION["user_id"];
             $currentPeriod = date("Y") . "-Q" . ceil(date("n") / 3);
@@ -261,19 +263,25 @@ class DashboardController {
 
         $fullPath = __DIR__ . "/../../resources/views/" . $viewPath . ".php";
 
+        // Intercept apps route to point to the dedicated apps empty state
+        if (preg_match('/^[a-z_]+\/apps$/', $path)) {
+            $viewPath = "pages/apps/index";
+            $fullPath = __DIR__ . "/../../resources/views/" . $viewPath . ".php";
+        }
+
         // Universal fallback to beautiful Coming Soon page or 404/403 page if the view doesn't exist
         if (!file_exists($fullPath)) {
             if (!$allowed) {
                 $viewPath = "pages/errors/404";
             } else {
                 $validUnbuilt = [
-                    "candidate/jobs", "candidate/interviews", "candidate/offerings", "candidate/onboarding",
-                    "employee/profile", "employee/attendance", "employee/leaves", "employee/finance", "employee/reimbursements", "employee/reflection",
-                    "recruiter/jobs", "recruiter/ats", "recruiter/interviews", "recruiter/offerings",
-                    "manager/requisitions", "manager/candidates", "manager/interviews", "manager/approvals",
-                    "hrops/onboarding", "hrops/employees", "hrops/verifications", "hrops/payroll",
-                    "admin/departments", "admin/users", "admin/settings",
-                    "executive/analytics", "executive/budgets", "executive/approvals",
+                    "candidate/jobs", "candidate/profile", "candidate/interviews", "candidate/offerings", "candidate/onboarding",
+                    "employee/profile", "employee/attendance", "employee/leaves", "employee/finance", "employee/reimbursements", "employee/reflection", "employee/apps",
+                    "recruiter/jobs", "recruiter/ats", "recruiter/interviews", "recruiter/offerings", "recruiter/apps",
+                    "manager/requisitions", "manager/candidates", "manager/interviews", "manager/approvals", "manager/apps",
+                    "hrops/onboarding", "hrops/employees", "hrops/verifications", "hrops/payroll", "hrops/apps",
+                    "admin/departments", "admin/users", "admin/settings", "admin/apps",
+                    "executive/analytics", "executive/budgets", "executive/approvals", "executive/apps",
                     "superadmin/apps", "superadmin/api",
                     "superadmin/approvals/executive", "superadmin/approvals/hrops", "superadmin/approvals/recruiter"
                 ];
@@ -410,5 +418,208 @@ class DashboardController {
             ]);
             exit;
         }
+    }
+
+    public function saveApp() {
+        if (session_status() === PHP_SESSION_NONE) session_start();
+        header("Content-Type: application/json");
+
+        $role = $_SESSION["role"] ?? "";
+        if ($role !== "superadmin" && $role !== "admin") {
+            echo json_encode(["success" => false, "message" => "Akses ditolak."]);
+            exit;
+        }
+
+        if (!$this->validateCsrf()) {
+            echo json_encode(["success" => false, "message" => "Token CSRF tidak valid atau kedaluwarsa. Silakan muat ulang halaman."]);
+            exit;
+        }
+
+        try {
+            $db = \App\Config\Database::getInstance()->getConnection();
+            $id = $_POST["id"] ?? "";
+            $name = $_POST["name"] ?? "";
+            $sortOrder = (int)($_POST["sort_order"] ?? 0);
+            $description = $_POST["description"] ?? "";
+            $logoUrl = $_POST["logo_url"] ?? "";
+            
+            // Handle Logo File Upload if present
+            if (isset($_FILES['logo_file']) && $_FILES['logo_file']['error'] === UPLOAD_ERR_OK) {
+                $file = $_FILES['logo_file'];
+                
+                // Validate size (max 1MB)
+                if ($file['size'] > 1048576) {
+                    echo json_encode(["success" => false, "message" => "Kapasitas file logo maksimal adalah 1MB."]);
+                    exit;
+                }
+                
+                // Validate MIME via finfo
+                $finfo = finfo_open(FILEINFO_MIME_TYPE);
+                $mimeType = finfo_file($finfo, $file['tmp_name']);
+                finfo_close($finfo);
+                
+                $allowedMimes = ['image/png', 'image/jpeg', 'image/gif', 'image/svg+xml', 'image/webp'];
+                if (in_array($mimeType, $allowedMimes)) {
+                    $uploadDir = __DIR__ . '/../../public/uploads/logos/';
+                    if (!file_exists($uploadDir)) {
+                        mkdir($uploadDir, 0755, true);
+                    }
+                    
+                    $ext = pathinfo($file['name'], PATHINFO_EXTENSION);
+                    if (empty($ext)) {
+                        $extMap = [
+                            'image/png' => 'png',
+                            'image/jpeg' => 'jpg',
+                            'image/gif' => 'gif',
+                            'image/svg+xml' => 'svg',
+                            'image/webp' => 'webp'
+                        ];
+                        $ext = $extMap[$mimeType] ?? 'png';
+                    }
+                    
+                    $filename = 'logo_' . time() . '_' . mt_rand(100, 999) . '.' . $ext;
+                    $destination = $uploadDir . $filename;
+                    
+                    if (move_uploaded_file($file['tmp_name'], $destination)) {
+                        $logoUrl = '/uploads/logos/' . $filename;
+                    } else {
+                        echo json_encode(['success' => false, 'message' => 'Gagal menyimpan file logo ke server.']);
+                        exit;
+                    }
+                } else {
+                    echo json_encode(['success' => false, 'message' => 'Format file logo tidak didukung. Gunakan PNG, JPG, GIF, SVG, atau WebP.']);
+                    exit;
+                }
+            }
+
+            $iconMaterial = $_POST["icon_material"] ?? "apps";
+            $iconColor = $_POST["icon_color"] ?? "blue";
+            $portalUrl = $_POST["portal_url"] ?? "";
+            $loginUrl = $_POST["login_url"] ?? "";
+            $visibilityType = $_POST["visibility_type"] ?? "global";
+            
+            $allowedRoles = $_POST["allowed_roles"] ?? null;
+            if (is_array($allowedRoles)) {
+                $allowedRoles = implode(",", $allowedRoles);
+            }
+            
+            $allowedDepartments = $_POST["allowed_departments"] ?? null;
+            if (is_array($allowedDepartments)) {
+                $allowedDepartments = implode(",", $allowedDepartments);
+            }
+
+            if ($visibilityType === 'global') {
+                $allowedRoles = null;
+                $allowedDepartments = null;
+            }
+
+            $isActive = isset($_POST["is_active"]) && ($_POST["is_active"] == "1" || $_POST["is_active"] == "true") ? 1 : 0;
+
+            if ($isActive === 1) {
+                if (empty($id)) {
+                    $checkStmt = $db->prepare("SELECT name FROM portal_applications WHERE sort_order = :sort_order AND is_active = 1 LIMIT 1");
+                    $checkStmt->execute(["sort_order" => $sortOrder]);
+                } else {
+                    $checkStmt = $db->prepare("SELECT name FROM portal_applications WHERE sort_order = :sort_order AND is_active = 1 AND id != :id LIMIT 1");
+                    $checkStmt->execute(["sort_order" => $sortOrder, "id" => $id]);
+                }
+                $existingApp = $checkStmt->fetch(\PDO::FETCH_ASSOC);
+                if ($existingApp) {
+                    echo json_encode([
+                        "success" => false,
+                        "message" => "Nomor urut {$sortOrder} sudah digunakan oleh aplikasi aktif '" . $existingApp['name'] . "'. Silakan gunakan nomor urut lain."
+                    ]);
+                    exit;
+                }
+            }
+
+            if (empty($name)) {
+                echo json_encode(["success" => false, "message" => "Nama aplikasi wajib diisi."]);
+                exit;
+            }
+
+            if (empty($id)) {
+                $id = sprintf('%04x%04x-%04x-%04x-%04x-%04x%04x%04x',
+                    mt_rand(0, 0xffff), mt_rand(0, 0xffff), mt_rand(0, 0xffff),
+                    mt_rand(0, 0x0fff) | 0x4000, mt_rand(0, 0x3fff) | 0x8000,
+                    mt_rand(0, 0xffff), mt_rand(0, 0xffff), mt_rand(0, 0xffff)
+                );
+                $stmt = $db->prepare("
+                    INSERT INTO portal_applications (id, name, sort_order, description, logo_url, icon_material, icon_color, portal_url, login_url, visibility_type, allowed_roles, allowed_departments, is_active)
+                    VALUES (:id, :name, :sort_order, :description, :logo_url, :icon_material, :icon_color, :portal_url, :login_url, :visibility_type, :allowed_roles, :allowed_departments, :is_active)
+                ");
+            } else {
+                $stmt = $db->prepare("
+                    UPDATE portal_applications 
+                    SET name = :name, sort_order = :sort_order, description = :description, logo_url = :logo_url, 
+                        icon_material = :icon_material, icon_color = :icon_color, portal_url = :portal_url, login_url = :login_url, 
+                        visibility_type = :visibility_type, allowed_roles = :allowed_roles, allowed_departments = :allowed_departments, is_active = :is_active
+                    WHERE id = :id
+                ");
+            }
+
+            $stmt->execute([
+                "id" => $id,
+                "name" => $name,
+                "sort_order" => $sortOrder,
+                "description" => $description,
+                "logo_url" => empty($logoUrl) ? null : $logoUrl,
+                "icon_material" => $iconMaterial,
+                "icon_color" => $iconColor,
+                "portal_url" => empty($portalUrl) ? null : $portalUrl,
+                "login_url" => empty($loginUrl) ? null : $loginUrl,
+                "visibility_type" => $visibilityType,
+                "allowed_roles" => $allowedRoles,
+                "allowed_departments" => $allowedDepartments,
+                "is_active" => $isActive
+            ]);
+
+            echo json_encode(["success" => true, "message" => "Aplikasi berhasil disimpan."]);
+            exit;
+        } catch (\Exception $e) {
+            echo json_encode(["success" => false, "message" => "Gagal menyimpan aplikasi: " . $e->getMessage()]);
+            exit;
+        }
+    }
+
+    public function deleteApp() {
+        if (session_status() === PHP_SESSION_NONE) session_start();
+        header("Content-Type: application/json");
+
+        $role = $_SESSION["role"] ?? "";
+        if ($role !== "superadmin" && $role !== "admin") {
+            echo json_encode(["success" => false, "message" => "Akses ditolak."]);
+            exit;
+        }
+
+        if (!$this->validateCsrf()) {
+            echo json_encode(["success" => false, "message" => "Token CSRF tidak valid atau kedaluwarsa. Silakan muat ulang halaman."]);
+            exit;
+        }
+
+        try {
+            $db = \App\Config\Database::getInstance()->getConnection();
+            $id = $_POST["id"] ?? "";
+
+            if (empty($id)) {
+                echo json_encode(["success" => false, "message" => "ID aplikasi tidak valid."]);
+                exit;
+            }
+
+            $stmt = $db->prepare("DELETE FROM portal_applications WHERE id = :id");
+            $stmt->execute(["id" => $id]);
+
+            echo json_encode(["success" => true, "message" => "Aplikasi berhasil dihapus."]);
+            exit;
+        } catch (\Exception $e) {
+            echo json_encode(["success" => false, "message" => "Gagal menghapus aplikasi: " . $e->getMessage()]);
+            exit;
+        }
+    }
+
+    private function validateCsrf(): bool {
+        if (session_status() === PHP_SESSION_NONE) session_start();
+        $token = $_POST['csrf_token'] ?? $_SERVER['HTTP_X_CSRF_TOKEN'] ?? '';
+        return !empty($token) && hash_equals($_SESSION['csrf_token'] ?? '', $token);
     }
 }

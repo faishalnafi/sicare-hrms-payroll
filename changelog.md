@@ -4,6 +4,37 @@ All public releases of the siCare HRMS Payroll system are listed here.
 
 ---
 
+## Version local-26.07.00026 (Enterprise) - Mono
+*Compiled Date: 2026-07-29 | Migration: dev -> stg | Alias: Architecture Refactor: 3-Layer Compliance*
+
+### Architecture
+- Implementasi penuh Arsitektur 3-Layer Top-Down Unidirectional (Presentation → Business → Data Layer) di seluruh codebase siCare sesuai standar industri internasional.
+- Verifikasi ketat: 0 panggilan `Database::getInstance()` di Presentation Layer (`resources/views/` & `public/index.php`). 0 raw HTML `echo` di Business Layer (`app/Controllers/`).
+- Pemetaan arsitektur diperbarui di `layers.md` mencakup seluruh komponen Services baru dan 5 Model entitas baru.
+
+### Added
+- **[NEW]** `app/Services/AuthService.php` — Business Layer Service: autentikasi, brute-force protection, session initialization, hashing remember-me token (SHA-256), validasi token reset profil.
+- **[NEW]** `app/Services/AttendanceService.php` — Business Layer Service: kalkulasi jarak GPS Haversine, validasi radius geofencing kantor/rumah, evaluasi status keterlambatan clock-in, rekap statistik absensi harian.
+- **[NEW]** `app/Services/PayrollService.php` — Business Layer Service: kalkulasi BPJS Ketenagakerjaan (2%), BPJS Kesehatan (1%), pajak PPh21 (2.5%), kalkulasi gaji bersih (net salary), pembacaan global payroll settings.
+- **[NEW]** `app/Services/LeaveService.php` — Business Layer Service: kalkulasi durasi hari kerja efektif (mengabaikan akhir pekan & company holidays), deteksi overlapping cuti, saldo cuti tahunan per karyawan.
+- **[NEW]** `app/Models/Attendance.php` — Data Layer Model: entitas `employee_attendance` (findByUserIdAndDate, getLogsForDate).
+- **[NEW]** `app/Models/LeaveRequest.php` — Data Layer Model: entitas `employee_leave_requests` (findByUserId, getPendingCount).
+- **[NEW]** `app/Models/Payroll.php` — Data Layer Model: entitas `employee_payroll` (findApprovedByUserAndYear).
+- **[NEW]** `app/Models/Reimbursement.php` — Data Layer Model: entitas `employee_reimbursement_claims` (findByUserId).
+- **[NEW]** `app/Models/Department.php` — Data Layer Model: entitas `departments` (getAll, getLevel1).
+
+### Changed
+- `app/Services/ViewHelper.php` — Penambahan 16 metode data provider domain agar Presentation Layer tidak perlu akses DB: `getLatestDbVersion`, `getEmployeeReflection`, `getPersonalJournals`, `getEmployeeReimbursementsData`, `getHropsAttendanceData`, `getHropsLeavesData`, `getHropsReimbursementsData`, `getHropsVerificationsData`, `getManagerApprovalsDashboardData`, `getManagerTeamData`, `getSuperadminGlobalApprovalsData`, `getReflectionDashboardData`, `getEmployeeLeavesData`, `getEmployeeFinanceData`, `getGlobalApprovalData`, `getEmployeeCorrectionRequests`.
+- `app/Controllers/AttendanceController.php` — Delegasi logika kalkulasi Haversine GPS ke `AttendanceService::calculateDistance()`.
+- 21 file view di `resources/views/pages/` — Penggantian seluruh panggilan `Database::getInstance()` dan query SQL langsung dengan pemanggilan `ViewHelper::*()`.
+- `layers.md` — Pembaruan peta arsitektur 3-Layer dengan penambahan entri Services baru dan 5 Model entitas baru.
+
+### Security
+- Segregasi logika autentikasi ke `AuthService` memastikan password verification, brute-force throttling, dan session setup tidak bocor ke lapisan lain.
+- Remember-me token di `AuthService` sudah menggunakan SHA-256 hashing sebelum disimpan ke database (token plaintext hanya di cookie, tidak di storage).
+
+---
+
 ## Version local-26.06.00025 (Enterprise) - Mono
 *Compiled Date: 2026-06-28 | Migration: stg -> production*
 

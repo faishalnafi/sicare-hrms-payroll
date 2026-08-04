@@ -1,40 +1,12 @@
 <?php
-// Hiring Manager Approvals Dashboard with Strict Hierarchical Isolation
-$db = \App\Config\Database::getInstance()->getConnection();
+use App\Services\ViewHelper;
 
+// Hiring Manager Approvals Dashboard with Strict Hierarchical Isolation
 if (session_status() === PHP_SESSION_NONE) session_start();
 $userId = $_SESSION['user_id'] ?? '';
 
-// Helper to get descendant department IDs recursively
-function getDescendants($db, $deptId) {
-    $ids = [$deptId];
-    $stmt = $db->prepare("SELECT id FROM departments WHERE parent_id = ?");
-    $stmt->execute([$deptId]);
-    $children = $stmt->fetchAll(PDO::FETCH_COLUMN);
-    foreach ($children as $childId) {
-        $ids = array_merge($ids, getDescendants($db, $childId));
-    }
-    return $ids;
-}
-
-// 1. Get manager fungsional's department
-$stmt = $db->prepare("SELECT department_id FROM users WHERE id = :id");
-$stmt->execute(['id' => $userId]);
-$managerDeptId = $stmt->fetchColumn();
-
-$allowedDepts = [];
-if (!empty($managerDeptId)) {
-    $allowedDepts = getDescendants($db, $managerDeptId);
-}
-
-// Check department status
 $sessRole = $_SESSION['role'] ?? '';
 $isSuperAdmin = $sessRole === 'superadmin';
-
-$hasDepartment = $isSuperAdmin ? true : !empty($allowedDepts);
-$inClause = !empty($allowedDepts) ? implode(',', array_map(fn($id) => $db->quote($id), $allowedDepts)) : "''";
-$deptFilter = $isSuperAdmin ? "" : "WHERE u.department_id IN ($inClause)";
-$deptFilter2 = $isSuperAdmin ? "" : "AND department_id IN ($inClause)";
 
 // Dynamic Page Titles & Labels based on role
 $pageTitle = $isSuperAdmin ? "Persetujuan Level Manager" : "Persetujuan Tim";
@@ -49,48 +21,11 @@ $inputAttendanceLabel = $isSuperAdmin ? "Input Kehadiran" : "Input Kehadiran Tim
 $selectEmployeeLabel = $isSuperAdmin ? "Karyawan / Pengguna" : "Karyawan Tim";
 $selectOptionLabel = $isSuperAdmin ? "-- Pilih Pengguna --" : "-- Pilih Staf Fungsional --";
 
-// A. Fetch Cuti (Leaves)
-$leaves = [];
-if ($hasDepartment) {
-    $stmt = $db->query("
-        SELECT r.*, u.first_name, u.last_name, u.employee_id, u.email, u.profile_picture, u.job_title, u.role
-        FROM employee_leave_requests r
-        JOIN users u ON r.user_id = u.id
-        $deptFilter
-        ORDER BY r.created_at DESC
-    ");
-    $leaves = $stmt->fetchAll(PDO::FETCH_ASSOC);
-}
-
-// B. Fetch Reimbursements
-$reimbursements = [];
-if ($hasDepartment) {
-    $stmt = $db->query("
-        SELECT c.*, u.first_name, u.last_name, u.employee_id, u.email, u.profile_picture, u.job_title, u.role
-        FROM employee_reimbursement_claims c
-        JOIN users u ON c.user_id = u.id
-        $deptFilter
-        ORDER BY c.created_at DESC
-    ");
-    $reimbursements = $stmt->fetchAll(PDO::FETCH_ASSOC);
-}
-
-// C. Fetch Team Members List for Attendance dropdown select & Total Users count
-$teamMembers = [];
-if ($hasDepartment) {
-    $userWhere = $isSuperAdmin ? "WHERE role != 'candidate'" : "WHERE role = 'employee' $deptFilter2";
-    $stmt = $db->query("
-        SELECT id, first_name, last_name, employee_id, job_title, role 
-        FROM users 
-        $userWhere
-        ORDER BY first_name ASC
-    ");
-    $teamMembers = $stmt->fetchAll(PDO::FETCH_ASSOC);
-}
+[$leaves, $reimbursements, $teamMembers] = ViewHelper::getManagerApprovalsDashboardData($userId, $isSuperAdmin);
 
 // Compute pending stats for badges
-$pendingLeavesCount = count(array_filter($leaves, fn($l) => $l['status'] === 'pending'));
-$pendingReimCount = count(array_filter($reimbursements, fn($r) => $r['status'] === 'pending'));
+$pendingLeavesCount = count(array_filter($leaves, fn($l) => ($l['status'] ?? '') === 'pending'));
+$pendingReimCount = count(array_filter($reimbursements, fn($r) => ($r['status'] ?? '') === 'pending'));
 
 function getStatusBadgeHtml($status) {
     $classes = [

@@ -1,6 +1,7 @@
 <?php
-$db = \App\Config\Database::getInstance()->getConnection();
-$appName = $db->query("SELECT `value` FROM global_settings WHERE `key` = 'app_name' LIMIT 1")->fetchColumn() ?: 'siCare';
+use App\Services\ViewHelper;
+
+$appName = ViewHelper::getSetting('app_name', 'siCare');
 ?>
 <div class="flex-grow flex items-center justify-center px-6 py-2 relative overflow-hidden">
     <!-- Background Decorative Elements -->

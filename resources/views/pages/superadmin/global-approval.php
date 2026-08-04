@@ -7,17 +7,13 @@
  * - Controller: Loaded dynamically by App\Controllers\DashboardController::genericPage()
  * - Router: Mapped in public/index.php (route prefix /superadmin/)
  * - Layout: Rendered inside resources/views/layouts/app.php
- * - Database: Queries Level 1 departments from the 'departments' table via App\Config\Database
+ * - Router: Mapped in public/index.php (route prefix /superadmin/)
+ * - Layout: Rendered inside resources/views/layouts/app.php
+ * - Business Layer: ViewHelper service
  */
-$db = \App\Config\Database::getInstance()->getConnection();
-$level1Depts = [];
-$avatarMap = [];
-try {
-    $level1Depts = $db->query("SELECT name FROM departments WHERE parent_id IS NULL OR level = 1 ORDER BY name ASC")->fetchAll(PDO::FETCH_COLUMN);
-    $avatarMap = $db->query("SELECT employee_id, profile_picture FROM users WHERE employee_id IS NOT NULL AND employee_id != ''")->fetchAll(PDO::FETCH_KEY_PAIR);
-} catch (\Exception $e) {
-    // Fail-safe fallback if DB connection fails
-}
+use App\Services\ViewHelper;
+
+[$level1Depts, $avatarMap] = ViewHelper::getGlobalApprovalData();
 ?>
 <div class="space-y-6 animate-fade-in font-body">
     <!-- Header Section -->

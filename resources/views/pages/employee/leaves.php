@@ -1,6 +1,7 @@
 <?php
+use App\Services\ViewHelper;
+
 // Employee ESS Leaves & Permits Dashboard
-$db = \App\Config\Database::getInstance()->getConnection();
 $userId = $_SESSION['user_id'] ?? '';
 
 if (empty($userId)) {
@@ -8,70 +9,17 @@ if (empty($userId)) {
     return;
 }
 
-// Fetch user leave quota
-$stmt = $db->prepare("SELECT annual_leave_quota, updated_at FROM users WHERE id = :id");
-$stmt->execute(['id' => $userId]);
-$userRow = $stmt->fetch(PDO::FETCH_ASSOC);
-$annualLeaveQuota = intval($userRow['annual_leave_quota'] ?? 12);
-$lastUpdateYear = !empty($userRow['updated_at']) ? date('Y', strtotime($userRow['updated_at'])) : date('Y');
-$currentYear = date('Y');
+[
+    $user,
+    $dropdownAnnualLeaveRemaining,
+    $dropdownMaternityLeaveRemaining,
+    $sickLeaveTaken,
+    $pendingCount,
+    $approvedCount,
+    $leaves
+] = ViewHelper::getEmployeeLeavesData($userId);
 
-if ($currentYear > $lastUpdateYear) {
-    // Reset annual leave quota to 12 in the new year
-    $stmtReset = $db->prepare("UPDATE users SET annual_leave_quota = 12, updated_at = NOW() WHERE id = :id");
-    $stmtReset->execute(['id' => $userId]);
-    $annualLeaveQuota = 12;
-}
-
-// Fetch approved cuti tahunan duration for the current month
-$stmt = $db->prepare("
-    SELECT SUM(duration) FROM employee_leave_requests 
-    WHERE user_id = :user_id 
-      AND leave_type = 'cuti tahunan' 
-      AND status = 'approved' 
-      AND MONTH(created_at) = MONTH(CURRENT_DATE) 
-      AND YEAR(created_at) = YEAR(CURRENT_DATE)
-");
-$stmt->execute(['user_id' => $userId]);
-$monthlyAnnualLeaveApproved = intval($stmt->fetchColumn() ?? 0);
-$dropdownAnnualLeaveRemaining = max(0, 12 - $monthlyAnnualLeaveApproved);
-
-// Fetch approved cuti melahirkan duration for the current month
-$stmt = $db->prepare("
-    SELECT SUM(duration) FROM employee_leave_requests 
-    WHERE user_id = :user_id 
-      AND leave_type = 'cuti melahirkan' 
-      AND status = 'approved' 
-      AND MONTH(created_at) = MONTH(CURRENT_DATE) 
-      AND YEAR(created_at) = YEAR(CURRENT_DATE)
-");
-$stmt->execute(['user_id' => $userId]);
-$monthlyMaternityLeaveApproved = intval($stmt->fetchColumn() ?? 0);
-$dropdownMaternityLeaveRemaining = max(0, 90 - $monthlyMaternityLeaveApproved);
-
-// Fetch total cuti sakit taken (approved)
-$stmt = $db->prepare("SELECT SUM(duration) FROM employee_leave_requests WHERE user_id = :user_id AND leave_type = 'cuti sakit' AND status = 'approved' AND YEAR(created_at) = YEAR(CURRENT_DATE)");
-$stmt->execute(['user_id' => $userId]);
-$sickLeaveTaken = intval($stmt->fetchColumn() ?? 0);
-
-// Fetch pending requests count
-$stmt = $db->prepare("SELECT COUNT(*) FROM employee_leave_requests WHERE user_id = :user_id AND status = 'pending'");
-$stmt->execute(['user_id' => $userId]);
-$pendingCount = intval($stmt->fetchColumn() ?? 0);
-
-// Fetch approved requests count (excluding sick leave)
-$stmt = $db->prepare("SELECT COUNT(*) FROM employee_leave_requests WHERE user_id = :user_id AND status = 'approved' AND YEAR(created_at) = YEAR(CURRENT_DATE)");
-$stmt->execute(['user_id' => $userId]);
-$approvedCount = intval($stmt->fetchColumn() ?? 0);
-
-// Fetch all leave requests for history table
-$stmt = $db->prepare("
-    SELECT * FROM employee_leave_requests 
-    WHERE user_id = :user_id 
-    ORDER BY created_at DESC
-");
-$stmt->execute(['user_id' => $userId]);
-$leaves = $stmt->fetchAll(PDO::FETCH_ASSOC);
+$annualLeaveQuota = intval($user['annual_leave_quota'] ?? 12);
 
 function getLeaveTypeColor($type) {
     $colors = [

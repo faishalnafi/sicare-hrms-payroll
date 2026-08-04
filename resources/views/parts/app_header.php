@@ -1,21 +1,20 @@
 <?php
+use App\Services\ViewHelper;
+
 $sessName  = $_SESSION['name'] ?? 'User';
 $sessEmail = $_SESSION['email'] ?? '';
 $sessRole  = $_SESSION['role'] ?? 'Employee';
 $profilePic = $_SESSION['profile_picture'] ?? null;
 
-$db = \App\Config\Database::getInstance()->getConnection();
-$appName = $db->query("SELECT `value` FROM global_settings WHERE `key` = 'app_name' LIMIT 1")->fetchColumn() ?: 'siCare';
-$appLogoIcon = $db->query("SELECT `value` FROM global_settings WHERE `key` = 'app_logo_icon' LIMIT 1")->fetchColumn() ?: 'local_police';
-$appLogoType = $db->query("SELECT `value` FROM global_settings WHERE `key` = 'app_logo_type' LIMIT 1")->fetchColumn() ?: 'icon';
-$appLogoImage = $db->query("SELECT `value` FROM global_settings WHERE `key` = 'app_logo_image' LIMIT 1")->fetchColumn() ?: '';
+$appName      = ViewHelper::getSetting('app_name', 'siCare');
+$appLogoIcon  = ViewHelper::getSetting('app_logo_icon', 'local_police');
+$appLogoType  = ViewHelper::getSetting('app_logo_type', 'icon');
+$appLogoImage = ViewHelper::getSetting('app_logo_image', '');
 
 if (isset($_SESSION['user_id'])) {
-    $userQuery = $db->prepare("SELECT profile_picture FROM users WHERE id = :id");
-    $userQuery->execute(['id' => $_SESSION['user_id']]);
-    $dbUser = $userQuery->fetch();
-    if ($dbUser && !empty($dbUser['profile_picture'])) {
-        $profilePic = $dbUser['profile_picture'];
+    $userProf = ViewHelper::getUserProfile($_SESSION['user_id']);
+    if ($userProf && !empty($userProf['profile_picture'])) {
+        $profilePic = $userProf['profile_picture'];
     }
 }
 

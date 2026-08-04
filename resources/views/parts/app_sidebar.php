@@ -1,20 +1,20 @@
 <?php
+use App\Services\ViewHelper;
+
 $sessName  = $_SESSION['name'] ?? 'User';
 $sessEmail = $_SESSION['email'] ?? '';
 $sessRole  = $_SESSION['role'] ?? 'candidate';
 $profilePic = $_SESSION['profile_picture'] ?? null;
 
-$db = \App\Config\Database::getInstance()->getConnection();
-$appName = $db->query("SELECT `value` FROM global_settings WHERE `key` = 'app_name' LIMIT 1")->fetchColumn() ?: 'siCare';
-$appLogoIcon = $db->query("SELECT `value` FROM global_settings WHERE `key` = 'app_logo_icon' LIMIT 1")->fetchColumn() ?: 'local_police';
-$appLogoType = $db->query("SELECT `value` FROM global_settings WHERE `key` = 'app_logo_type' LIMIT 1")->fetchColumn() ?: 'icon';
-$appLogoImage = $db->query("SELECT `value` FROM global_settings WHERE `key` = 'app_logo_image' LIMIT 1")->fetchColumn() ?: '';
+$appName      = ViewHelper::getSetting('app_name', 'siCare');
+$appLogoIcon  = ViewHelper::getSetting('app_logo_icon', 'local_police');
+$appLogoType  = ViewHelper::getSetting('app_logo_type', 'icon');
+$appLogoImage = ViewHelper::getSetting('app_logo_image', '');
+
 if (isset($_SESSION['user_id'])) {
-    $userQuery = $db->prepare("SELECT profile_picture FROM users WHERE id = :id");
-    $userQuery->execute(['id' => $_SESSION['user_id']]);
-    $dbUser = $userQuery->fetch();
-    if ($dbUser && !empty($dbUser['profile_picture'])) {
-        $profilePic = $dbUser['profile_picture'];
+    $userProf = ViewHelper::getUserProfile($_SESSION['user_id']);
+    if ($userProf && !empty($userProf['profile_picture'])) {
+        $profilePic = $userProf['profile_picture'];
     }
 }
 
@@ -23,89 +23,13 @@ if (empty($profilePic)) {
     $profilePic = "https://www.gravatar.com/avatar/{$hash}?d=identicon&s=200";
 }
 
-$isReflectionIncomplete = false;
-if ($sessRole === 'employee') {
-    $currentPeriod = date('Y') . '-Q' . ceil(date('n') / 3);
-    $userId = $_SESSION['user_id'] ?? '';
-    if (!empty($userId)) {
-        $stmtRefCheck = $db->prepare("SELECT COUNT(*) FROM self_reflections WHERE user_id = :user_id AND period = :period AND status IN ('submitted', 'completed')");
-        $stmtRefCheck->execute(['user_id' => $userId, 'period' => $currentPeriod]);
-        $isReflectionIncomplete = ($stmtRefCheck->fetchColumn() == 0);
-    }
-}
-
+$isReflectionIncomplete = ViewHelper::isReflectionIncomplete($_SESSION['user_id'] ?? null);
 
 $roleFolder = $sessRole;
 if ($sessRole === 'hiring_manager') $roleFolder = 'manager';
 if ($sessRole === 'hr_ops') $roleFolder = 'hrops';
 
-$sessRoleId = $_SESSION['role_id'] ?? null;
-$sessDeptId = $_SESSION['department_id'] ?? null;
-$userId     = $_SESSION['user_id'] ?? '';
-
-if (empty($sessRoleId) && !empty($userId)) {
-    try {
-        $stmtUser = $db->prepare("SELECT role_id, department_id FROM users WHERE id = :id LIMIT 1");
-        $stmtUser->execute(['id' => $userId]);
-        $dbUser = $stmtUser->fetch();
-        if ($dbUser) {
-            $sessRoleId = $dbUser['role_id'];
-            $sessDeptId = $dbUser['department_id'];
-            $_SESSION['role_id'] = $sessRoleId;
-            $_SESSION['department_id'] = $sessDeptId;
-        }
-    } catch (\Exception $e) {
-        // Fail-safe
-    }
-}
-
-$cache = \App\Config\SimpleCache::getInstance();
-$cacheKey = 'sidebar_menus_' . md5(($sessRoleId ?? '') . '_' . ($sessDeptId ?? 'null'));
-$menus = $cache->get($cacheKey);
-
-if ($menus === null) {
-    try {
-        $stmt = $db->prepare("
-            SELECT DISTINCT sm.title, sm.icon, sm.url_route, sm.sort_order 
-            FROM sys_menus sm
-            INNER JOIN menu_permissions mp ON sm.id = mp.menu_id
-            WHERE mp.role_id = :role_id 
-              AND (mp.department_id = :dept_id OR mp.department_id IS NULL)
-            ORDER BY sm.sort_order ASC, sm.title ASC
-        ");
-        $stmt->execute([
-            'role_id' => $sessRoleId,
-            'dept_id' => $sessDeptId
-        ]);
-        $dbMenus = $stmt->fetchAll(PDO::FETCH_ASSOC);
-
-        $menus = array_map(function($m) {
-            $link = $m['url_route'];
-            if (!str_starts_with($link, '/')) {
-                $link = '/' . $link;
-            }
-            return [
-                'title' => $m['title'],
-                'icon' => $m['icon'] ?? 'widgets',
-                'link' => $link
-            ];
-        }, $dbMenus);
-
-        $cache->set($cacheKey, $menus, 3600);
-    } catch (\Exception $e) {
-        $menus = [];
-    }
-}
-
-// Filter out 'Pedoman Penomoran' menu if user is not admin or superadmin
-if (isset($menus) && is_array($menus)) {
-    $menus = array_filter($menus, function($m) use ($sessRole) {
-        if (isset($m['title']) && strtolower($m['title']) === 'pedoman penomoran') {
-            return in_array($sessRole, ['admin', 'superadmin']);
-        }
-        return true;
-    });
-}
+$menus = ViewHelper::getSystemMenus();
 
 // Reorganize menu for Superadmin role
 if ($sessRole === 'superadmin') {
@@ -126,7 +50,7 @@ if ($sessRole === 'superadmin') {
             'id' => 'submenu-settings',
             'children' => [
                 ['title' => 'Umum', 'link' => '/superadmin/settings', 'icon' => 'tune'],
-                ['title' => 'Sistem', 'link' => '/superadmin/system-settings', 'icon' => 'settings_applications']
+                ['title' => 'Sistem', 'link' => '/superadmin/system-settings', 'icon' => 'instant_mix']
             ]
         ],
         [

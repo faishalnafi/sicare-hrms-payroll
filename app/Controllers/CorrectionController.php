@@ -11,8 +11,8 @@ class CorrectionController {
     private $db;
     private $uploadDir;
 
-    public function __construct() {
-        $this->db = Database::getInstance()->getConnection();
+    public function __construct(PDO $db) {
+        $this->db = $db;
         $this->uploadDir = __DIR__ . '/../../storage/secured_storage/';
         if (!file_exists($this->uploadDir)) {
             mkdir($this->uploadDir, 0755, true);

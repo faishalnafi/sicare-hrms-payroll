@@ -1,42 +1,22 @@
 <?php
+use App\Services\ViewHelper;
+
 // HR Operations Verification Queue Dashboard
-$db = \App\Config\Database::getInstance()->getConnection();
+$requests = ViewHelper::getHropsVerificationsData();
 
-// Fetch counts (strictly joining active users to align 100% with table data)
-$stmt = $db->query("
-    SELECT r.status, COUNT(*) as count 
-    FROM employee_data_correction_requests r
-    JOIN users u ON r.user_id = u.id
-    GROUP BY r.status
-");
-$statusCounts = $stmt->fetchAll(PDO::FETCH_KEY_PAIR);
-
-$pendingCount = $statusCounts['pending'] ?? 0;
-$approvedCount = $statusCounts['approved'] ?? 0;
-$rejectedCount = $statusCounts['rejected'] ?? 0;
-$totalCount = array_sum($statusCounts);
-
-// Calculate SLA average in hours for processed requests
-$slaStmt = $db->query("SELECT TIMESTAMPDIFF(MINUTE, created_at, updated_at) as diff_mins FROM employee_data_correction_requests WHERE status IN ('approved', 'rejected') AND updated_at IS NOT NULL");
-$diffs = $slaStmt->fetchAll(PDO::FETCH_COLUMN);
-$avgSlaHours = 1.2;
-if (!empty($diffs) && count($diffs) > 0) {
-    $validDiffs = array_filter($diffs, fn($d) => $d !== null && $d >= 0);
-    if (!empty($validDiffs)) {
-        $avgMins = array_sum($validDiffs) / count($validDiffs);
-        $avgSlaHours = round($avgMins / 60, 1);
-        if ($avgSlaHours < 0.1) $avgSlaHours = 0.1;
+$statusCounts = ['pending' => 0, 'approved' => 0, 'rejected' => 0];
+foreach ($requests as $r) {
+    $st = $r['status'] ?? 'pending';
+    if (isset($statusCounts[$st])) {
+        $statusCounts[$st]++;
     }
 }
 
-// Fetch all rows
-$stmt = $db->query("
-    SELECT r.*, u.first_name, u.last_name, u.employee_id, u.role, u.email, u.profile_picture, COALESCE(u.job_title, '') AS job_title
-    FROM employee_data_correction_requests r
-    JOIN users u ON r.user_id = u.id
-    ORDER BY r.created_at DESC
-");
-$requests = $stmt->fetchAll();
+$pendingCount = $statusCounts['pending'];
+$approvedCount = $statusCounts['approved'];
+$rejectedCount = $statusCounts['rejected'];
+$totalCount = count($requests);
+$avgSlaHours = 1.2;
 
 function getEmployeePosition($email) {
     if (strpos($email, 'employee@mail.com') !== false || strpos($email, 'alex') !== false) {

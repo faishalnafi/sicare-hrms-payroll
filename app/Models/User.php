@@ -23,12 +23,18 @@ class User {
     }
 
     public function findByEmail($email) {
+        if (empty(trim($email)) || !filter_var($email, FILTER_VALIDATE_EMAIL)) {
+            return false;
+        }
         $stmt = $this->db->prepare("SELECT * FROM users WHERE email = :email");
         $stmt->execute(['email' => $email]);
         return $stmt->fetch();
     }
 
     public function create($firstName, $lastName, $email, $password, $profilePicture = null) {
+        if (empty(trim($firstName)) || empty(trim($email)) || empty($password)) {
+            return false;
+        }
         $id = $this->generateUuid();
         $hash = password_hash($password, PASSWORD_BCRYPT);
         
@@ -57,6 +63,9 @@ class User {
     }
 
     public function updateProfilePicture($id, $url) {
+        if (empty(trim($id)) || empty(trim($url))) {
+            return false;
+        }
         $stmt = $this->db->prepare("UPDATE users SET profile_picture = :url WHERE id = :id");
         return $stmt->execute(['url' => $url, 'id' => $id]);
     }

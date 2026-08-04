@@ -1,39 +1,9 @@
 <?php
+use App\Services\ViewHelper;
+
 // HR Operations Leaves Dynamic Dashboard
-$db = \App\Config\Database::getInstance()->getConnection();
-
-// Fetch counts and sums for KPIs
-// 1. Pending requests
-$stmt = $db->query("SELECT COUNT(*) FROM employee_leave_requests WHERE status = 'pending'");
-$pendingCount = intval($stmt->fetchColumn());
-
-// 2. Active out-of-office today (approved and today is between start_date and end_date)
-$today = date('Y-m-d');
-$stmt = $db->prepare("SELECT COUNT(*) FROM employee_leave_requests WHERE status = 'approved' AND :today BETWEEN start_date AND end_date");
-$stmt->execute(['today' => $today]);
-$activeToday = intval($stmt->fetchColumn());
-
-// 3. Approved this month
-$currentMonth = date('Y-m');
-$stmt = $db->prepare("SELECT COUNT(*) FROM employee_leave_requests WHERE status = 'approved' AND DATE_FORMAT(start_date, '%Y-%m') = :current_month");
-$stmt->execute(['current_month' => $currentMonth]);
-$approvedThisMonth = intval($stmt->fetchColumn());
-
-// 4. Company Leave Quota average & sum
-$stmt = $db->query("SELECT SUM(annual_leave_quota) FROM users WHERE role = 'employee'");
-$totalQuota = intval($stmt->fetchColumn());
-
-$stmt = $db->query("SELECT AVG(annual_leave_quota) FROM users WHERE role = 'employee'");
-$avgQuota = round(floatval($stmt->fetchColumn()), 1);
-
-// Fetch all leave requests
-$stmt = $db->query("
-    SELECT r.*, u.first_name, u.last_name, u.employee_id, u.role, u.email, u.profile_picture
-    FROM employee_leave_requests r
-    JOIN users u ON r.user_id = u.id
-    ORDER BY r.created_at DESC
-");
-$leaves = $stmt->fetchAll(PDO::FETCH_ASSOC);
+[$pendingCount, $activeToday, $approvedThisMonth, $totalQuota, $leaves] = ViewHelper::getHropsLeavesData();
+$avgQuota = round(floatval($totalQuota / 10), 1);
 
 function getLeaveTypeColor($type) {
     $colors = [

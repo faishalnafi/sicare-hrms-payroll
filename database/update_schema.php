@@ -132,7 +132,22 @@ try {
         "ALTER TABLE users ADD COLUMN IF NOT EXISTS login_just_occurred TINYINT DEFAULT 0 AFTER profile_reset_token",
         "ALTER TABLE users ADD COLUMN IF NOT EXISTS is_suspended TINYINT DEFAULT 0 AFTER login_just_occurred",
         "ALTER TABLE users ADD COLUMN IF NOT EXISTS is_deleted TINYINT DEFAULT 0 AFTER is_suspended",
-        "ALTER TABLE users ADD COLUMN IF NOT EXISTS remember_token VARCHAR(255) NULL DEFAULT NULL AFTER is_deleted"
+        "ALTER TABLE users ADD COLUMN IF NOT EXISTS remember_token VARCHAR(255) NULL DEFAULT NULL AFTER is_deleted",
+        "ALTER TABLE users ADD COLUMN IF NOT EXISTS tautan_profesional VARCHAR(255) NULL",
+        "ALTER TABLE users ADD COLUMN IF NOT EXISTS pendidikan_terakhir VARCHAR(255) NULL",
+        "ALTER TABLE users ADD COLUMN IF NOT EXISTS ekspektasi_gaji DECIMAL(15,2) NULL",
+        "ALTER TABLE users ADD COLUMN IF NOT EXISTS riwayat_pekerjaan TEXT NULL",
+        "ALTER TABLE users ADD COLUMN IF NOT EXISTS resume_file VARCHAR(255) NULL",
+        "ALTER TABLE users ADD COLUMN IF NOT EXISTS cover_letter_file VARCHAR(255) NULL",
+        "ALTER TABLE users ADD COLUMN IF NOT EXISTS ktp_file VARCHAR(255) NULL",
+        "ALTER TABLE users ADD COLUMN IF NOT EXISTS kk_file VARCHAR(255) NULL",
+        "ALTER TABLE users ADD COLUMN IF NOT EXISTS npwp_file VARCHAR(255) NULL",
+        "ALTER TABLE users ADD COLUMN IF NOT EXISTS bank_book_file VARCHAR(255) NULL",
+        "ALTER TABLE users ADD COLUMN IF NOT EXISTS emergency_contact_name VARCHAR(100) NULL",
+        "ALTER TABLE users ADD COLUMN IF NOT EXISTS emergency_contact_phone VARCHAR(20) NULL",
+        "ALTER TABLE users ADD COLUMN IF NOT EXISTS emergency_contact_relation VARCHAR(50) NULL",
+        "ALTER TABLE users ADD COLUMN IF NOT EXISTS onboarding_status VARCHAR(30) DEFAULT 'not_started'",
+        "ALTER TABLE users ADD COLUMN IF NOT EXISTS employee_id VARCHAR(50) NULL"
     ];
 
     foreach ($alterQueries as $q) {
@@ -831,6 +846,146 @@ try {
     } catch (Exception $ex) {
         // Ignored
     }
+
+    // 22. Create portal_applications table
+    $createPortalAppsQuery = "
+        CREATE TABLE IF NOT EXISTS portal_applications (
+            id CHAR(36) PRIMARY KEY,
+            name VARCHAR(255) NOT NULL,
+            sort_order INT DEFAULT 0,
+            description TEXT NULL,
+            logo_url VARCHAR(255) NULL,
+            icon_material VARCHAR(100) DEFAULT 'apps',
+            icon_color VARCHAR(50) DEFAULT '#3b82f6',
+            portal_url VARCHAR(255) NULL,
+            login_url VARCHAR(255) NULL,
+            visibility_type VARCHAR(20) NOT NULL DEFAULT 'global',
+            allowed_roles TEXT NULL,
+            allowed_departments TEXT NULL,
+            is_active TINYINT DEFAULT 1,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+    ";
+    $db->exec($createPortalAppsQuery);
+    echo "Table portal_applications created or verified.\n";
+
+    // 23. Create job_requisitions and job_requisition_approvals tables
+    $createJobReqsQuery = "
+        CREATE TABLE IF NOT EXISTS job_requisitions (
+            id CHAR(36) PRIMARY KEY,
+            req_number VARCHAR(50) NOT NULL UNIQUE,
+            title VARCHAR(255) NOT NULL,
+            department_id CHAR(36) NOT NULL,
+            requested_by CHAR(36) NOT NULL,
+            headcount INT NOT NULL DEFAULT 1,
+            employment_type VARCHAR(50) NOT NULL DEFAULT 'full_time',
+            min_salary DECIMAL(15, 2) DEFAULT 0.00,
+            max_salary DECIMAL(15, 2) DEFAULT 0.00,
+            job_description TEXT NULL,
+            requirements TEXT NULL,
+            reason TEXT NULL,
+            status VARCHAR(50) NOT NULL DEFAULT 'pending_dept_clevel',
+            dept_clevel_approved_at TIMESTAMP NULL,
+            dept_clevel_approved_by CHAR(36) NULL,
+            cfo_approved_at TIMESTAMP NULL,
+            cfo_approved_by CHAR(36) NULL,
+            chro_approved_at TIMESTAMP NULL,
+            chro_approved_by CHAR(36) NULL,
+            ceo_approved_at TIMESTAMP NULL,
+            ceo_approved_by CHAR(36) NULL,
+            published_at TIMESTAMP NULL,
+            published_by CHAR(36) NULL,
+            rejected_at TIMESTAMP NULL,
+            rejected_by CHAR(36) NULL,
+            rejection_reason TEXT NULL,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+    ";
+    $db->exec($createJobReqsQuery);
+
+    $createJobReqApprovalsQuery = "
+        CREATE TABLE IF NOT EXISTS job_requisition_approvals (
+            id CHAR(36) PRIMARY KEY,
+            requisition_id CHAR(36) NOT NULL,
+            action_by CHAR(36) NOT NULL,
+            action_role VARCHAR(50) NOT NULL,
+            stage VARCHAR(50) NOT NULL,
+            decision VARCHAR(20) NOT NULL,
+            notes TEXT NULL,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+    ";
+    $db->exec($createJobReqApprovalsQuery);
+    try {
+        $db->exec("ALTER TABLE job_requisitions MODIFY COLUMN status ENUM('pending_dept_clevel', 'pending_cfo_chro', 'pending_ceo', 'approved', 'published', 'closed', 'rejected') NOT NULL DEFAULT 'pending_dept_clevel'");
+    } catch (\Exception $e) {}
+
+    $createJobAppsQuery = "
+        CREATE TABLE IF NOT EXISTS job_applications (
+            id CHAR(36) PRIMARY KEY,
+            requisition_id CHAR(36) NOT NULL,
+            candidate_id CHAR(36) NULL,
+            candidate_name VARCHAR(255) NOT NULL,
+            candidate_email VARCHAR(255) NOT NULL,
+            candidate_phone VARCHAR(50) NULL,
+            portfolio_url VARCHAR(255) NULL,
+            resume_path VARCHAR(255) NULL,
+            cover_letter TEXT NULL,
+            status VARCHAR(50) DEFAULT 'submitted',
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+    ";
+    $db->exec($createJobAppsQuery);
+    try {
+        $db->exec("ALTER TABLE job_applications ADD COLUMN IF NOT EXISTS portfolio_url VARCHAR(255) NULL AFTER candidate_phone");
+    } catch (\Exception $e) {}
+
+    $createJobInterviewsQuery = "
+        CREATE TABLE IF NOT EXISTS job_interviews (
+            id CHAR(36) PRIMARY KEY,
+            application_id CHAR(36) NOT NULL,
+            interviewer_id CHAR(36) NOT NULL,
+            interview_type VARCHAR(20) DEFAULT 'online',
+            interview_date DATE NOT NULL,
+            interview_time VARCHAR(20) NOT NULL,
+            location_or_link VARCHAR(255) NOT NULL,
+            candidate_status VARCHAR(50) DEFAULT 'pending',
+            candidate_notes TEXT NULL,
+            manager_score INT NULL,
+            manager_feedback TEXT NULL,
+            manager_decision VARCHAR(20) DEFAULT 'pending',
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+    ";
+    $db->exec($createJobInterviewsQuery);
+    try {
+        $db->exec("ALTER TABLE job_interviews ADD COLUMN IF NOT EXISTS interview_type VARCHAR(20) DEFAULT 'online' AFTER interviewer_id");
+        $db->exec("ALTER TABLE job_interviews ADD COLUMN IF NOT EXISTS score_technical INT NULL AFTER manager_score");
+        $db->exec("ALTER TABLE job_interviews ADD COLUMN IF NOT EXISTS score_problem_solving INT NULL AFTER score_technical");
+        $db->exec("ALTER TABLE job_interviews ADD COLUMN IF NOT EXISTS score_communication INT NULL AFTER score_problem_solving");
+        $db->exec("ALTER TABLE job_interviews ADD COLUMN IF NOT EXISTS score_cultural_fit INT NULL AFTER score_communication");
+    } catch (\Exception $e) {}
+
+    $createJobOffersQuery = "
+        CREATE TABLE IF NOT EXISTS job_offers (
+            id CHAR(36) PRIMARY KEY,
+            application_id CHAR(36) NOT NULL,
+            offering_letter_path VARCHAR(255) NOT NULL,
+            offered_salary DECIMAL(15,2) NOT NULL,
+            status VARCHAR(50) DEFAULT 'sent',
+            candidate_signature TEXT NULL,
+            signed_at TIMESTAMP NULL,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+    ";
+    $db->exec($createJobOffersQuery);
+
+    echo "Tables job_requisitions, job_requisition_approvals, job_applications, job_interviews, and job_offers created or verified.\n";
 
     // Run new idempotent migrations (Roadmap Bab 1)
     echo "Running Migrator...\n";

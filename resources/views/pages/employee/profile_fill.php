@@ -1,17 +1,10 @@
 <?php
+use App\Services\ViewHelper;
+
 $sessName  = $_SESSION['name'] ?? 'Alex Rivera';
 $sessEmail = $_SESSION['email'] ?? 'alex.rivera@example.com';
 
-// Fetch dynamic user data from DB
-$db = \App\Config\Database::getInstance()->getConnection();
-$userQuery = $db->prepare("
-    SELECT u.*, d.name AS department_name 
-    FROM users u 
-    LEFT JOIN departments d ON u.department_id = d.id 
-    WHERE u.id = :id
-");
-$userQuery->execute(['id' => $_SESSION['user_id']]);
-$dbUser = $userQuery->fetch();
+$dbUser = ViewHelper::getFullUserProfile($_SESSION['user_id'] ?? null);
 
 $deptName = !empty($dbUser['department_name']) ? $dbUser['department_name'] : 'Tanpa Departemen';
 $jobTitle = !empty($dbUser['job_title']) ? $dbUser['job_title'] : 'Staff';

@@ -13,8 +13,8 @@ class SettingsController {
 
     private $db;
 
-    public function __construct() {
-        $this->db = Database::getInstance()->getConnection();
+    public function __construct(PDO $db) {
+        $this->db = $db;
     }
 
     /**
@@ -72,7 +72,7 @@ class SettingsController {
      */
     public function save() {
         header('Content-Type: application/json');
-        session_start();
+        if (session_status() === PHP_SESSION_NONE) session_start();
 
         if (!isset($_SESSION['user_id']) || !in_array($_SESSION['role'], ['superadmin', 'admin', 'hr_ops'])) {
             echo json_encode(['success' => false, 'message' => 'Akses ditolak.']);
@@ -231,7 +231,7 @@ class SettingsController {
      */
     public function addHoliday() {
         header('Content-Type: application/json');
-        session_start();
+        if (session_status() === PHP_SESSION_NONE) session_start();
 
         if (!isset($_SESSION['user_id']) || !in_array($_SESSION['role'], ['superadmin', 'admin', 'hr_ops'])) {
             echo json_encode(['success' => false, 'message' => 'Akses ditolak.']);
@@ -276,7 +276,7 @@ class SettingsController {
      */
     public function deleteHoliday() {
         header('Content-Type: application/json');
-        session_start();
+        if (session_status() === PHP_SESSION_NONE) session_start();
 
         if (!isset($_SESSION['user_id']) || !in_array($_SESSION['role'], ['superadmin', 'admin', 'hr_ops'])) {
             echo json_encode(['success' => false, 'message' => 'Akses ditolak.']);
@@ -311,7 +311,7 @@ class SettingsController {
      */
     public function updateHoliday() {
         header('Content-Type: application/json');
-        session_start();
+        if (session_status() === PHP_SESSION_NONE) session_start();
 
         if (!isset($_SESSION['user_id']) || !in_array($_SESSION['role'], ['superadmin', 'admin', 'hr_ops'])) {
             echo json_encode(['success' => false, 'message' => 'Akses ditolak.']);
@@ -356,7 +356,8 @@ class SettingsController {
      */
     public function fetchGoogleHolidays() {
         header('Content-Type: application/json');
-        session_start();
+        if (session_status() === PHP_SESSION_NONE) session_start();
+
         if (!isset($_SESSION['user_id']) || !in_array($_SESSION['role'], ['superadmin', 'admin', 'hr_ops'])) {
             echo json_encode(['success' => false, 'message' => 'Akses ditolak.']);
             return;
@@ -451,7 +452,7 @@ class SettingsController {
      */
     public function importGoogleHolidays() {
         header('Content-Type: application/json');
-        session_start();
+        if (session_status() === PHP_SESSION_NONE) session_start();
 
         if (!isset($_SESSION['user_id']) || !in_array($_SESSION['role'], ['superadmin', 'admin', 'hr_ops'])) {
             echo json_encode(['success' => false, 'message' => 'Akses ditolak.']);

@@ -27,12 +27,9 @@ if ($userId) {
         $ctrl = new \App\Controllers\AttendanceController();
         $attData = $ctrl->getEmployeeData($userId, $selectedMonth, $selectedYear);
         
-        $db = \App\Config\Database::getInstance()->getConnection();
-        $userStmt = $db->prepare("SELECT home_latitude, home_longitude FROM users WHERE id = :uid LIMIT 1");
-        $userStmt->execute(['uid' => $userId]);
-        $dbUser = $userStmt->fetch();
-        $homeLat = $dbUser && $dbUser['home_latitude'] !== null ? (float)$dbUser['home_latitude'] : null;
-        $homeLng = $dbUser && $dbUser['home_longitude'] !== null ? (float)$dbUser['home_longitude'] : null;
+        $dbUser = \App\Services\ViewHelper::getUserProfile($userId);
+        $homeLat = $dbUser && isset($dbUser['home_latitude']) && $dbUser['home_latitude'] !== null ? (float)$dbUser['home_latitude'] : null;
+        $homeLng = $dbUser && isset($dbUser['home_longitude']) && $dbUser['home_longitude'] !== null ? (float)$dbUser['home_longitude'] : null;
     } catch (Exception $e) {
         // silently fail, show empty state
     }
@@ -58,10 +55,7 @@ $isHoliday = $isWeeklyHoliday;
 $holidayReason = '';
 if ($userId) {
     try {
-        $db = \App\Config\Database::getInstance()->getConnection();
-        $holidayStmt = $db->prepare("SELECT description FROM company_holidays WHERE holiday_date = :date LIMIT 1");
-        $holidayStmt->execute(['date' => $todayDate]);
-        $nationalHoliday = $holidayStmt->fetch();
+        $nationalHoliday = \App\Services\ViewHelper::getNationalHoliday($todayDate);
         
         if ($nationalHoliday) {
             $isHoliday = true;

@@ -28,7 +28,8 @@ class EmployeeMasterController {
         }
         if ($requireCsrf) {
             $token = $_POST['csrf_token'] ?? $_SERVER['HTTP_X_CSRF_TOKEN'] ?? '';
-            if (empty($token) || !hash_equals($_SESSION['csrf_token'] ?? '', $token)) {
+            $sessionToken = csrf_token();
+            if (empty($token) || !hash_equals($sessionToken, $token)) {
                 header('Content-Type: application/json');
                 echo json_encode(['success' => false, 'message' => 'Token CSRF tidak valid atau kedaluwarsa. Silakan muat ulang halaman.']);
                 exit;
@@ -193,6 +194,26 @@ class EmployeeMasterController {
         $emergency_phone             = !empty($_POST['emergency_phone']) ? $_POST['emergency_phone'] : null;
         $id_kartu                    = !empty($_POST['id_kartu']) ? $_POST['id_kartu'] : null;
         $id_qrcode                   = !empty($_POST['id_qrcode']) ? $_POST['id_qrcode'] : null;
+
+        if (!empty($no_telepon)) {
+            $phoneMsg = "";
+            $formattedPhone = validate_and_format_phone($no_telepon, $phoneMsg);
+            if ($formattedPhone === false) {
+                echo json_encode(['success' => false, 'message' => 'Nomor Telepon: ' . $phoneMsg]);
+                return;
+            }
+            $no_telepon = $formattedPhone;
+        }
+
+        if (!empty($emergency_phone)) {
+            $phoneMsg = "";
+            $formattedPhone = validate_and_format_phone($emergency_phone, $phoneMsg);
+            if ($formattedPhone === false) {
+                echo json_encode(['success' => false, 'message' => 'Kontak Darurat: ' . $phoneMsg]);
+                return;
+            }
+            $emergency_phone = $formattedPhone;
+        }
 
         $reimburse_plafon_medis       = $this->cleanAmount($_POST['reimburse_plafon_medis'] ?? '0');
         $reimburse_plafon_transport   = $this->cleanAmount($_POST['reimburse_plafon_transport'] ?? '0');
@@ -888,6 +909,14 @@ class EmployeeMasterController {
                 echo json_encode(['success' => false, 'message' => 'Mohon lengkapi semua kolom bertanda bintang (*).']);
                 return;
             }
+
+            $phoneMsg = "";
+            $formattedPhone = validate_and_format_phone($no_telepon, $phoneMsg);
+            if ($formattedPhone === false) {
+                echo json_encode(['success' => false, 'message' => $phoneMsg]);
+                return;
+            }
+            $no_telepon = $formattedPhone;
 
             // Update user profile and clear token
             $stmtUpdate = $db->prepare("

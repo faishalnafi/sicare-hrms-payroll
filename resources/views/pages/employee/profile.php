@@ -1,17 +1,11 @@
 <?php
+use App\Services\ViewHelper;
+
 $sessName  = $_SESSION['name'] ?? 'Alex Rivera';
 $sessEmail = $_SESSION['email'] ?? 'alex.rivera@example.com';
 $sessRole  = $_SESSION['role'] ?? 'employee';
-// Fetch dynamic user data from DB with department joined
-$db = \App\Config\Database::getInstance()->getConnection();
-$userQuery = $db->prepare("
-    SELECT u.*, d.name AS department_name 
-    FROM users u 
-    LEFT JOIN departments d ON u.department_id = d.id 
-    WHERE u.id = :id
-");
-$userQuery->execute(['id' => $_SESSION['user_id']]);
-$dbUser = $userQuery->fetch();
+
+$dbUser = ViewHelper::getFullUserProfile($_SESSION['user_id'] ?? null);
 
 $deptName = !empty($dbUser['department_name']) ? $dbUser['department_name'] : '-';
 $jobTitle = !empty($dbUser['job_title']) ? $dbUser['job_title'] : '-';
@@ -42,14 +36,7 @@ $homeLat = $dbUser['home_latitude'] ?? '';
 $homeLng = $dbUser['home_longitude'] ?? '';
 
 // Fetch pending, approved, and rejected correction requests within the last 1 month
-$reqQuery = $db->prepare("
-    SELECT * FROM employee_data_correction_requests 
-    WHERE user_id = :id 
-      AND (status = 'pending' OR created_at >= DATE_SUB(NOW(), INTERVAL 1 MONTH))
-    ORDER BY created_at DESC
-");
-$reqQuery->execute(['id' => $_SESSION['user_id']]);
-$pendingRequests = $reqQuery->fetchAll();
+$pendingRequests = ViewHelper::getEmployeeCorrectionRequests($_SESSION['user_id'] ?? '');
 ?>
 
 <div class="space-y-6">

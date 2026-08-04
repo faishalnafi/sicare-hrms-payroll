@@ -10,8 +10,8 @@ class PayrollController {
 
     private $db;
 
-    public function __construct() {
-        $this->db = Database::getInstance()->getConnection();
+    public function __construct(PDO $db) {
+        $this->db = $db;
     }
 
     /**
