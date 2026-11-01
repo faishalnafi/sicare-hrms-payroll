@@ -144,7 +144,7 @@ $allDays = ['Mon' => 'Senin', 'Tue' => 'Selasa', 'Wed' => 'Rabu', 'Thu' => 'Kami
     transform: translateY(-1px);
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.03);
 }
-.settings-section-title { font-family:'Manrope',sans-serif; font-weight:800; font-size:.875rem; color:#000666; letter-spacing:.02em; }
+.settings-section-title { font-family:'Ubuntu',sans-serif; font-weight:800; font-size:.875rem; color:#000666; letter-spacing:.02em; }
 .settings-input {
     width:100%; padding:.6rem .9rem; font-size:.8rem; font-weight:600; color:#1a1c2d;
     background:#f8f9fa; border:1.5px solid #dde0f0; border-radius:.75rem;

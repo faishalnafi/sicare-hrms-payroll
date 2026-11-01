@@ -46,7 +46,7 @@ if (!empty($resolvedGuestPage)) {
 
     
     <!-- Fonts -->
-    <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Inter:wght@400;500;600&display=swap" rel="stylesheet"/>
+    <link href="https://fonts.googleapis.com/css2?family=Ubuntu:wght@300;400;500;700&display=swap" rel="stylesheet"/>
     
     <!-- Icons (Material Symbols) -->
     <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
@@ -110,9 +110,9 @@ if (!empty($resolvedGuestPage)) {
               "outline": "#767683"
             },
             fontFamily: {
-              "headline": ["Manrope"],
-              "body": ["Inter"],
-              "label": ["Inter"]
+              "headline": ["Ubuntu", "sans-serif"],
+              "body": ["Ubuntu", "sans-serif"],
+              "label": ["Ubuntu", "sans-serif"]
             },
             borderRadius: {"DEFAULT": "0.125rem", "lg": "0.25rem", "xl": "0.5rem", "full": "0.75rem"},
           },
@@ -201,6 +201,8 @@ if (!empty($resolvedGuestPage)) {
       .is-scrolling {
           scrollbar-color: rgba(0, 6, 102, 0.15) transparent;
       }
+      body { font-family: 'Ubuntu', sans-serif; }
+      h1, h2, h3 { font-family: 'Ubuntu', sans-serif; }
     </style>
 </head>
 <body class="bg-surface font-body text-on-surface antialiased flex flex-col min-h-screen">

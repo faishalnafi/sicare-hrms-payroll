@@ -131,7 +131,7 @@ if (!empty($resolvedPage)) {
               },
               fontFamily: {
                 "headline": ["Ubuntu", "sans-serif"],
-                "body": ["Inter"],
+                "body": ["Ubuntu", "sans-serif"],
               }
             }
           }
@@ -761,8 +761,8 @@ if (!empty($resolvedPage)) {
 
 
         .material-symbols-outlined { font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24; vertical-align: middle; }
-        body { font-family: 'Inter', sans-serif; }
-        h1, h2, h3 { font-family: 'Manrope', sans-serif; }
+        body { font-family: 'Ubuntu', sans-serif; }
+        h1, h2, h3 { font-family: 'Ubuntu', sans-serif; }
 
         /* Premium Gemini-style Sidebar transitions & overrides on Desktop */
         @media (min-width: 1024px) {

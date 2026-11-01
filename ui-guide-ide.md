@@ -85,7 +85,7 @@ border: 1px solid rgba(255, 255, 255, 0.15);
 ## 3. Tipografi & Penyelarasan Piksel (Pixel-Perfect Alignment)
 
 ### 3.1 Font Utama
-* Wajib menggunakan Google Fonts **Outfit** atau **Inter** dengan pemuatan fallback sistem (`'Outfit', 'Inter', 'Manrope', sans-serif`).
+* Wajib menggunakan Google Fonts **Ubuntu** dengan pemuatan fallback sistem (`'Ubuntu', sans-serif`).
 * Untuk angka jam digital/moneter, wajib menggunakan font bergaya Monospace atau Outfit dengan bobot tebal (`font-mono` atau `font-black`) agar karakter tidak bergeser saat nilai berubah.
 
 ### 3.2 Penyelarasan Vertikal & Horizontal Komponen

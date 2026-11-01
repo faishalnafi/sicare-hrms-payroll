@@ -211,7 +211,7 @@
 
         // Title
         ctx.fillStyle = '#0c145e';
-        ctx.font = '800 86px "Manrope", sans-serif';
+        ctx.font = '800 86px "Ubuntu", sans-serif';
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
         ctx.fillText(title, 240, 110);
@@ -224,7 +224,7 @@
 
         if (subtitle) {
             ctx.fillStyle = '#64748b';
-            ctx.font = '700 30px "Inter", sans-serif';
+            ctx.font = '700 30px "Ubuntu", sans-serif';
             ctx.fillText(subtitle, 256, 185);
         }
 
@@ -306,7 +306,7 @@
         ctx.fillRect(0, 0, cvs.width, cvs.height);
 
         ctx.fillStyle = '#ffffff';
-        ctx.font = 'bold 36px "Manrope", sans-serif';
+        ctx.font = 'bold 36px "Ubuntu", sans-serif';
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
 
@@ -342,7 +342,7 @@
         ctx.fillStyle = '#f5f0e8';
         ctx.fillRect(0, 0, cvs.width, cvs.height);
         ctx.fillStyle = '#0c145e';
-        ctx.font = 'bold 38px "Manrope", sans-serif';
+        ctx.font = 'bold 38px "Ubuntu", sans-serif';
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
         ctx.fillText(text, 256, 48);
