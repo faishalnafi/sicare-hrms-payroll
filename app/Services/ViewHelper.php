@@ -152,6 +152,25 @@ class ViewHelper {
             }
         }
 
+        // Fallback: If roleId is still empty, resolve dynamically by roleName
+        if (empty($roleId) && !empty($roleName)) {
+            try {
+                $dbRole = Database::getInstance()->getConnection();
+                $stmtR = $dbRole->prepare("SELECT id FROM roles WHERE name = :r LIMIT 1");
+                $stmtR->execute(['r' => $roleName]);
+                $rId = $stmtR->fetchColumn();
+                if ($rId) {
+                    $roleId = $rId;
+                    $_SESSION['role_id'] = $rId;
+                }
+            } catch (\Exception $e) {}
+
+            if (empty($roleId) && $roleName === 'candidate') {
+                $roleId = '4b5c6d7e-8f9a-0b1c-2d3e-4f5a6b7c8d9e';
+                $_SESSION['role_id'] = $roleId;
+            }
+        }
+
         $cache = SimpleCache::getInstance();
         $cacheKey = 'sidebar_menus_' . md5(($roleId ?? '') . '_' . ($deptId ?? 'null'));
         $menus = $cache->get($cacheKey);
@@ -640,9 +659,9 @@ class ViewHelper {
                 $teamMembers = $stmt->fetchAll(PDO::FETCH_ASSOC);
             }
 
-            return [$leaves, $reimbursements, $teamMembers];
+            return [$leaves, $reimbursements, $teamMembers, $hasDepartment];
         } catch (\Exception $e) {
-            return [[], [], []];
+            return [[], [], [], false];
         }
     }
 
@@ -1451,6 +1470,124 @@ class ViewHelper {
             return $stmt->fetchAll(PDO::FETCH_ASSOC);
         } catch (\Exception $e) {
             return [];
+        }
+    }
+
+    /**
+     * Get recruiter job openings list with application metrics.
+     */
+    public static function getRecruiterJobOpenings(?string $status = null, ?string $search = null): array {
+        try {
+            $db = Database::getInstance()->getConnection();
+            $sql = "
+                SELECT r.*, d.name AS department_name,
+                       (SELECT COUNT(*) FROM job_applications a WHERE a.requisition_id = r.id) AS total_applicants,
+                       (SELECT COUNT(*) FROM job_applications a WHERE a.requisition_id = r.id AND a.status = 'screening') AS screening_count,
+                       (SELECT COUNT(*) FROM job_applications a WHERE a.requisition_id = r.id AND a.status = 'interview') AS interview_count,
+                       (SELECT COUNT(*) FROM job_applications a WHERE a.requisition_id = r.id AND a.status = 'offering') AS offering_count,
+                       (SELECT COUNT(*) FROM job_applications a WHERE a.requisition_id = r.id AND a.status = 'hired') AS hired_count
+                FROM job_requisitions r
+                LEFT JOIN departments d ON r.department_id = d.id
+                WHERE 1=1
+            ";
+            $params = [];
+
+            if (!empty($status) && $status !== 'all') {
+                $sql .= " AND r.status = :status";
+                $params['status'] = $status;
+            }
+
+            if (!empty($search)) {
+                $sql .= " AND (r.title LIKE :search OR d.name LIKE :search OR r.req_number LIKE :search)";
+                $params['search'] = "%$search%";
+            }
+
+            $sql .= " ORDER BY (r.status = 'published') DESC, r.created_at DESC";
+
+            $stmt = $db->prepare($sql);
+            $stmt->execute($params);
+            return $stmt->fetchAll(PDO::FETCH_ASSOC);
+        } catch (\Exception $e) {
+            return [];
+        }
+    }
+
+    /**
+     * Get executive budget and headcount cost impact matrix.
+     */
+    public static function getExecutiveBudgetMatrix(?string $deptId = null): array {
+        try {
+            $db = Database::getInstance()->getConnection();
+            $sql = "
+                SELECT r.*, d.name AS department_name,
+                       u.first_name, u.last_name, u.email AS requester_email,
+                       (r.headcount * r.max_salary * 12) AS estimated_annual_cost,
+                       (r.headcount * r.max_salary) AS estimated_monthly_cost
+                FROM job_requisitions r
+                LEFT JOIN departments d ON r.department_id = d.id
+                LEFT JOIN users u ON r.requested_by = u.id
+                WHERE 1=1
+            ";
+            $params = [];
+
+            if (!empty($deptId) && $deptId !== 'all') {
+                $sql .= " AND r.department_id = :dept_id";
+                $params['dept_id'] = $deptId;
+            }
+
+            $sql .= " ORDER BY (r.status LIKE 'pending%') DESC, r.created_at DESC";
+
+            $stmt = $db->prepare($sql);
+            $stmt->execute($params);
+            $items = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+            // Compute summary totals
+            $totalPendingBudgetAnnual = 0;
+            $totalApprovedBudgetAnnual = 0;
+            $totalPendingHeadcount = 0;
+            $totalApprovedHeadcount = 0;
+            $deptCosts = [];
+
+            foreach ($items as $item) {
+                $annualCost = (float)$item['estimated_annual_cost'];
+                $deptName = $item['department_name'] ?? 'Umum';
+                
+                if (!isset($deptCosts[$deptName])) {
+                    $deptCosts[$deptName] = ['total_cost' => 0, 'headcount' => 0];
+                }
+                $deptCosts[$deptName]['total_cost'] += $annualCost;
+                $deptCosts[$deptName]['headcount'] += (int)$item['headcount'];
+
+                if (str_starts_with($item['status'], 'pending')) {
+                    $totalPendingBudgetAnnual += $annualCost;
+                    $totalPendingHeadcount += (int)$item['headcount'];
+                } elseif (in_array($item['status'], ['approved', 'published'])) {
+                    $totalApprovedBudgetAnnual += $annualCost;
+                    $totalApprovedHeadcount += (int)$item['headcount'];
+                }
+            }
+
+            return [
+                'items' => $items,
+                'summary' => [
+                    'pending_annual_budget' => $totalPendingBudgetAnnual,
+                    'approved_annual_budget' => $totalApprovedBudgetAnnual,
+                    'pending_headcount' => $totalPendingHeadcount,
+                    'approved_headcount' => $totalApprovedHeadcount,
+                    'dept_costs' => $deptCosts
+                ]
+            ];
+        } catch (\Exception $e) {
+            return [
+                'items' => [],
+                'summary' => [
+                    'pending_annual_budget' => 0,
+                    'approved_annual_budget' => 0,
+                    'pending_headcount' => 0,
+                    'approved_headcount' => 0,
+                    'dept_costs' => []
+                ]
+            ];
         }
     }
 }

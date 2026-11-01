@@ -207,6 +207,13 @@ foreach ($applications as $app) {
 
                                 <!-- Action Buttons (Fallback & Quick Stage Transition) -->
                                 <div class="flex items-center gap-1.5 pt-2 mt-1 border-t border-gray-100 justify-end">
+                                    <!-- Delete Button for Rejected Cards -->
+                                    <?php if ($statusKey === 'rejected'): ?>
+                                        <button type="button" onclick="deleteApplication('<?= htmlspecialchars($app['id']) ?>', '<?= htmlspecialchars(addslashes($app['candidate_name'])) ?>')" class="p-1 rounded bg-gray-100 hover:bg-red-50 text-gray-500 hover:text-red-700 border border-gray-200 hover:border-red-200 transition-colors cursor-pointer" title="Hapus Berkas Pelamar">
+                                            <span class="material-symbols-outlined text-[13px] font-bold">delete</span>
+                                        </button>
+                                    <?php endif; ?>
+
                                     <!-- Reject Quick Button -->
                                     <?php if ($statusKey !== 'rejected' && $statusKey !== 'hired'): ?>
                                         <button type="button" onclick="quickReject('<?= htmlspecialchars($app['id']) ?>', '<?= htmlspecialchars(addslashes($app['candidate_name'])) ?>')" class="p-1 rounded bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 transition-colors cursor-pointer" title="Tolak Pelamar">
@@ -377,6 +384,50 @@ foreach ($applications as $app) {
         }).then((result) => {
             if (result.isConfirmed) {
                 updateCandidateStatus(appId, 'rejected');
+            }
+        });
+    }
+
+    // Delete application
+    function deleteApplication(appId, candidateName) {
+        Swal.fire({
+            title: 'Hapus Berkas Pelamar?',
+            text: `Hapus data pelamar ${candidateName} dan bersihkan berkas CV dari sistem secara permanen?`,
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#e11d48',
+            cancelButtonColor: '#64748b',
+            confirmButtonText: 'Ya, Hapus Permanen',
+            cancelButtonText: 'Batal'
+        }).then((result) => {
+            if (result.isConfirmed) {
+                const formData = new FormData();
+                formData.append('application_id', appId);
+                formData.append('csrf_token', '<?= csrf_token() ?>');
+
+                Swal.showLoading();
+                fetch('/recruiter/ats/delete-application', {
+                    method: 'POST',
+                    body: formData
+                })
+                .then(res => res.json())
+                .then(data => {
+                    if (data.success) {
+                        Swal.fire({
+                            title: 'Terhapus!',
+                            text: data.message,
+                            icon: 'success',
+                            timer: 1500,
+                            showConfirmButton: false
+                        }).then(() => {
+                            if (window.loadPage) window.loadPage('/recruiter/ats');
+                            else window.location.reload();
+                        });
+                    } else {
+                        Swal.fire('Gagal', data.message, 'error');
+                    }
+                })
+                .catch(() => Swal.fire('Error', 'Gagal menyambung ke server.', 'error'));
             }
         });
     }

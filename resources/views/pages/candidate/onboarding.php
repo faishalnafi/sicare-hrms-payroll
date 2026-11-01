@@ -242,10 +242,19 @@ $isSubmitted = in_array($onboardingStatus, ['submitted', 'completed']);
                             <span class="material-symbols-outlined text-primary text-base">id_card</span> Foto KTP Asli <span class="text-red-500">*</span>
                         </label>
                         <?php if (!empty($user['ktp_file'])): ?>
-                            <span class="text-[10px] font-semibold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">Telah Diunggah</span>
+                            <span class="text-[10px] font-semibold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200 flex items-center gap-1">
+                                <span class="material-symbols-outlined text-xs">check_circle</span> Tersimpan
+                            </span>
                         <?php endif; ?>
                     </div>
-                    <input type="file" name="ktp_file" accept=".pdf,.jpg,.jpeg,.png" <?= empty($user['ktp_file']) ? 'required' : '' ?> class="block w-full text-xs text-on-surface-variant file:mr-4 file:py-2.5 file:px-4 file:rounded-lg file:border-0 file:text-xs file:font-bold file:bg-primary file:text-white hover:file:bg-primary/90">
+                    <input type="file" name="ktp_file" accept=".pdf,.jpg,.jpeg,.png" onchange="previewDoc(this, 'preview_ktp')" <?= empty($user['ktp_file']) ? 'required' : '' ?> class="block w-full text-xs text-on-surface-variant file:mr-4 file:py-2.5 file:px-4 file:rounded-lg file:border-0 file:text-xs file:font-bold file:bg-primary file:text-white hover:file:bg-primary/90 cursor-pointer">
+                    <div id="preview_ktp" class="hidden p-2.5 rounded-lg bg-emerald-50 border border-emerald-200 text-xs text-emerald-800 flex items-center justify-between">
+                        <div class="flex items-center gap-2 truncate">
+                            <span class="material-symbols-outlined text-base text-emerald-600">task</span>
+                            <span class="doc-name font-bold truncate"></span>
+                        </div>
+                        <span class="doc-size text-[10px] font-semibold text-emerald-600 shrink-0"></span>
+                    </div>
                 </div>
 
                 <!-- Kartu Keluarga -->
@@ -255,10 +264,19 @@ $isSubmitted = in_array($onboardingStatus, ['submitted', 'completed']);
                             <span class="material-symbols-outlined text-primary text-base">family_history</span> Kartu Keluarga (KK) <span class="text-red-500">*</span>
                         </label>
                         <?php if (!empty($user['kk_file'])): ?>
-                            <span class="text-[10px] font-semibold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">Telah Diunggah</span>
+                            <span class="text-[10px] font-semibold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200 flex items-center gap-1">
+                                <span class="material-symbols-outlined text-xs">check_circle</span> Tersimpan
+                            </span>
                         <?php endif; ?>
                     </div>
-                    <input type="file" name="kk_file" accept=".pdf,.jpg,.jpeg,.png" <?= empty($user['kk_file']) ? 'required' : '' ?> class="block w-full text-xs text-on-surface-variant file:mr-4 file:py-2.5 file:px-4 file:rounded-lg file:border-0 file:text-xs file:font-bold file:bg-primary file:text-white hover:file:bg-primary/90">
+                    <input type="file" name="kk_file" accept=".pdf,.jpg,.jpeg,.png" onchange="previewDoc(this, 'preview_kk')" <?= empty($user['kk_file']) ? 'required' : '' ?> class="block w-full text-xs text-on-surface-variant file:mr-4 file:py-2.5 file:px-4 file:rounded-lg file:border-0 file:text-xs file:font-bold file:bg-primary file:text-white hover:file:bg-primary/90 cursor-pointer">
+                    <div id="preview_kk" class="hidden p-2.5 rounded-lg bg-emerald-50 border border-emerald-200 text-xs text-emerald-800 flex items-center justify-between">
+                        <div class="flex items-center gap-2 truncate">
+                            <span class="material-symbols-outlined text-base text-emerald-600">task</span>
+                            <span class="doc-name font-bold truncate"></span>
+                        </div>
+                        <span class="doc-size text-[10px] font-semibold text-emerald-600 shrink-0"></span>
+                    </div>
                 </div>
 
                 <!-- Kartu NPWP -->
@@ -268,10 +286,19 @@ $isSubmitted = in_array($onboardingStatus, ['submitted', 'completed']);
                             <span class="material-symbols-outlined text-primary text-base">request_quote</span> Kartu NPWP <span class="text-red-500">*</span>
                         </label>
                         <?php if (!empty($user['npwp_file'])): ?>
-                            <span class="text-[10px] font-semibold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">Telah Diunggah</span>
+                            <span class="text-[10px] font-semibold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200 flex items-center gap-1">
+                                <span class="material-symbols-outlined text-xs">check_circle</span> Tersimpan
+                            </span>
                         <?php endif; ?>
                     </div>
-                    <input type="file" name="npwp_file" accept=".pdf,.jpg,.jpeg,.png" <?= empty($user['npwp_file']) ? 'required' : '' ?> class="block w-full text-xs text-on-surface-variant file:mr-4 file:py-2.5 file:px-4 file:rounded-lg file:border-0 file:text-xs file:font-bold file:bg-primary file:text-white hover:file:bg-primary/90">
+                    <input type="file" name="npwp_file" accept=".pdf,.jpg,.jpeg,.png" onchange="previewDoc(this, 'preview_npwp')" <?= empty($user['npwp_file']) ? 'required' : '' ?> class="block w-full text-xs text-on-surface-variant file:mr-4 file:py-2.5 file:px-4 file:rounded-lg file:border-0 file:text-xs file:font-bold file:bg-primary file:text-white hover:file:bg-primary/90 cursor-pointer">
+                    <div id="preview_npwp" class="hidden p-2.5 rounded-lg bg-emerald-50 border border-emerald-200 text-xs text-emerald-800 flex items-center justify-between">
+                        <div class="flex items-center gap-2 truncate">
+                            <span class="material-symbols-outlined text-base text-emerald-600">task</span>
+                            <span class="doc-name font-bold truncate"></span>
+                        </div>
+                        <span class="doc-size text-[10px] font-semibold text-emerald-600 shrink-0"></span>
+                    </div>
                 </div>
 
                 <!-- Buku Tabungan -->
@@ -281,10 +308,19 @@ $isSubmitted = in_array($onboardingStatus, ['submitted', 'completed']);
                             <span class="material-symbols-outlined text-primary text-base">account_balance_wallet</span> Halaman Depan Buku Tabungan <span class="text-red-500">*</span>
                         </label>
                         <?php if (!empty($user['bank_book_file'])): ?>
-                            <span class="text-[10px] font-semibold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">Telah Diunggah</span>
+                            <span class="text-[10px] font-semibold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200 flex items-center gap-1">
+                                <span class="material-symbols-outlined text-xs">check_circle</span> Tersimpan
+                            </span>
                         <?php endif; ?>
                     </div>
-                    <input type="file" name="bank_book_file" accept=".pdf,.jpg,.jpeg,.png" <?= empty($user['bank_book_file']) ? 'required' : '' ?> class="block w-full text-xs text-on-surface-variant file:mr-4 file:py-2.5 file:px-4 file:rounded-lg file:border-0 file:text-xs file:font-bold file:bg-primary file:text-white hover:file:bg-primary/90">
+                    <input type="file" name="bank_book_file" accept=".pdf,.jpg,.jpeg,.png" onchange="previewDoc(this, 'preview_bank')" <?= empty($user['bank_book_file']) ? 'required' : '' ?> class="block w-full text-xs text-on-surface-variant file:mr-4 file:py-2.5 file:px-4 file:rounded-lg file:border-0 file:text-xs file:font-bold file:bg-primary file:text-white hover:file:bg-primary/90 cursor-pointer">
+                    <div id="preview_bank" class="hidden p-2.5 rounded-lg bg-emerald-50 border border-emerald-200 text-xs text-emerald-800 flex items-center justify-between">
+                        <div class="flex items-center gap-2 truncate">
+                            <span class="material-symbols-outlined text-base text-emerald-600">task</span>
+                            <span class="doc-name font-bold truncate"></span>
+                        </div>
+                        <span class="doc-size text-[10px] font-semibold text-emerald-600 shrink-0"></span>
+                    </div>
                 </div>
             </div>
         </div>
@@ -364,6 +400,24 @@ function prevStep() {
     if (currentStep > 1) {
         currentStep--;
         updateWizardUI();
+    }
+}
+
+function previewDoc(input, previewId) {
+    const box = document.getElementById(previewId);
+    if (!box) return;
+    if (input.files && input.files[0]) {
+        const file = input.files[0];
+        const nameEl = box.querySelector('.doc-name');
+        const sizeEl = box.querySelector('.doc-size');
+        if (nameEl) nameEl.textContent = file.name;
+        if (sizeEl) {
+            const kb = (file.size / 1024).toFixed(1);
+            sizeEl.textContent = kb > 1024 ? (kb / 1024).toFixed(1) + ' MB' : kb + ' KB';
+        }
+        box.classList.remove('hidden');
+    } else {
+        box.classList.add('hidden');
     }
 }
 

@@ -147,6 +147,76 @@ class NotificationController {
             }
         }
 
+        // --- 3. Business Event Notifications ---
+        try {
+            $userDeptId = $_SESSION['department_id'] ?? null;
+
+            // A. Manager Pending Approvals
+            if (in_array($userRole, ['hiring_manager', 'manager']) && !empty($userDeptId)) {
+                $stmtPendingLeaves = $db->prepare("
+                    SELECT COUNT(*) FROM employee_leave_requests elr
+                    JOIN users u ON elr.user_id = u.id
+                    WHERE u.department_id = ? AND elr.status = 'pending'
+                ");
+                $stmtPendingLeaves->execute([$userDeptId]);
+                $pendingLeaves = (int)$stmtPendingLeaves->fetchColumn();
+
+                $stmtPendingClaims = $db->prepare("
+                    SELECT COUNT(*) FROM employee_reimbursement_claims erc
+                    JOIN users u ON erc.user_id = u.id
+                    WHERE u.department_id = ? AND erc.status = 'pending'
+                ");
+                $stmtPendingClaims->execute([$userDeptId]);
+                $pendingClaims = (int)$stmtPendingClaims->fetchColumn();
+
+                if ($pendingLeaves > 0 || $pendingClaims > 0) {
+                    $events[] = [
+                        'id' => 'manager_pending_' . ($pendingLeaves + $pendingClaims),
+                        'type' => 'approval',
+                        'title' => 'Persetujuan Tim Menunggu',
+                        'message' => "Terdapat " . ($pendingLeaves > 0 ? "$pendingLeaves cuti " : "") . ($pendingClaims > 0 ? "$pendingClaims klaim " : "") . "staf yang menunggu persetujuan Anda."
+                    ];
+                }
+            }
+
+            // B. Recruiter New Applicants
+            if ($userRole === 'recruiter') {
+                $stmtNewApps = $db->query("SELECT COUNT(*) FROM job_applications WHERE status = 'submitted' AND DATE(created_at) = CURRENT_DATE()");
+                $newApps = (int)$stmtNewApps->fetchColumn();
+                if ($newApps > 0) {
+                    $events[] = [
+                        'id' => 'recruiter_new_apps_' . date('Ymd') . '_' . $newApps,
+                        'type' => 'ats',
+                        'title' => 'Pelamar Baru di Portal Karir',
+                        'message' => "Ada $newApps berkas lamaran baru masuk hari ini yang siap untuk disaring di Pipeline ATS."
+                    ];
+                }
+            }
+
+            // C. Employee Status Update (Leaves & Reimbursements)
+            if ($userRole === 'employee') {
+                $stmtRecentLeave = $db->prepare("
+                    SELECT leave_type, status, updated_at 
+                    FROM employee_leave_requests 
+                    WHERE user_id = ? AND status IN ('approved', 'rejected') AND updated_at >= NOW() - INTERVAL 1 DAY
+                    ORDER BY updated_at DESC LIMIT 1
+                ");
+                $stmtRecentLeave->execute([$userId]);
+                $recentLeave = $stmtRecentLeave->fetch(PDO::FETCH_ASSOC);
+                if ($recentLeave) {
+                    $stLabel = ($recentLeave['status'] === 'approved') ? 'Disetujui' : 'Ditolak';
+                    $events[] = [
+                        'id' => 'emp_leave_' . md5($recentLeave['updated_at'] . $recentLeave['status']),
+                        'type' => 'status_update',
+                        'title' => "Pengajuan Cuti $stLabel",
+                        'message' => "Permohonan {$recentLeave['leave_type']} Anda telah resmi $stLabel oleh atasan."
+                    ];
+                }
+            }
+        } catch (\Exception $e) {
+            // Non-critical, continue output
+        }
+
         // Output JSON as SSE data
         if (!empty($events)) {
             echo "data: " . json_encode(['notifications' => $events]) . "\n\n";

@@ -121,11 +121,11 @@ try {
                         </p>
                         <div class="pt-4 border-t border-gray-50 mt-auto">
                             <?php if (isset($_SESSION['user_id'])): ?>
-                                <a href="/candidate/dashboard" class="text-[#0c145e] text-xs font-bold flex items-center gap-1 hover:text-blue-700 transition-colors">
+                                <a href="/candidate/dashboard?open_req=<?= urlencode($job['id']) ?>" class="text-[#0c145e] text-xs font-bold flex items-center gap-1 hover:text-blue-700 transition-colors">
                                     <span class="material-symbols-outlined text-[1rem]">open_in_new</span> Lamar Sekarang
                                 </a>
                             <?php else: ?>
-                                <a href="/signin" class="text-[#0c145e] text-xs font-bold flex items-center gap-1 hover:text-blue-700 transition-colors">
+                                <a href="/signin?redirect=<?= urlencode('/candidate/dashboard?open_req=' . $job['id']) ?>" class="text-[#0c145e] text-xs font-bold flex items-center gap-1 hover:text-blue-700 transition-colors">
                                     <span class="material-symbols-outlined text-[1rem]">open_in_new</span> Lamar Sekarang
                                 </a>
                             <?php endif; ?>

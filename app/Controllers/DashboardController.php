@@ -90,15 +90,32 @@ class DashboardController {
         if ($role === "employee" && $origRole !== "superadmin") {
             $db = \App\Config\Database::getInstance()->getConnection();
             $userId = $_SESSION["user_id"];
-            $currentPeriod = date("Y") . "-Q" . ceil(date("n") / 3);
 
-            $stmt = $db->prepare("SELECT COUNT(*) FROM self_reflections WHERE user_id = :user_id AND period = :period AND status IN ('submitted', 'completed')");
-            $stmt->execute(["user_id" => $userId, "period" => $currentPeriod]);
-            $hasQuarterly = $stmt->fetchColumn() > 0;
+            // Check if employee is a new hire (within 60 days) to grant an onboarding grace period
+            $isNewHire = false;
+            try {
+                $stmtHist = $db->prepare("SELECT 1 FROM employment_history WHERE user_id = :uid AND start_date >= DATE_SUB(CURRENT_DATE(), INTERVAL 60 DAY) LIMIT 1");
+                $stmtHist->execute(['uid' => $userId]);
+                $isNewHire = (bool)$stmtHist->fetchColumn();
 
-            if (!$hasQuarterly) {
-                header("Location: /employee/reflection?warning=1");
-                exit;
+                if (!$isNewHire) {
+                    $stmtUserDate = $db->prepare("SELECT 1 FROM users WHERE id = :uid AND created_at >= DATE_SUB(NOW(), INTERVAL 60 DAY) LIMIT 1");
+                    $stmtUserDate->execute(['uid' => $userId]);
+                    $isNewHire = (bool)$stmtUserDate->fetchColumn();
+                }
+            } catch (\Exception $e) {}
+
+            if (!$isNewHire) {
+                $currentPeriod = date("Y") . "-Q" . ceil(date("n") / 3);
+
+                $stmt = $db->prepare("SELECT COUNT(*) FROM self_reflections WHERE user_id = :user_id AND period = :period AND status IN ('submitted', 'completed')");
+                $stmt->execute(["user_id" => $userId, "period" => $currentPeriod]);
+                $hasQuarterly = $stmt->fetchColumn() > 0;
+
+                if (!$hasQuarterly) {
+                    header("Location: /employee/reflection?warning=1");
+                    exit;
+                }
             }
         }
 
@@ -190,15 +207,32 @@ class DashboardController {
         if ($role === "employee" && $origRole !== "superadmin" && $path !== "employee/reflection") {
             $db = \App\Config\Database::getInstance()->getConnection();
             $userId = $_SESSION["user_id"];
-            $currentPeriod = date("Y") . "-Q" . ceil(date("n") / 3);
 
-            $stmt = $db->prepare("SELECT COUNT(*) FROM self_reflections WHERE user_id = :user_id AND period = :period AND status IN ('submitted', 'completed')");
-            $stmt->execute(["user_id" => $userId, "period" => $currentPeriod]);
-            $hasQuarterly = $stmt->fetchColumn() > 0;
+            // Check if employee is a new hire (within 60 days) to grant an onboarding grace period
+            $isNewHire = false;
+            try {
+                $stmtHist = $db->prepare("SELECT 1 FROM employment_history WHERE user_id = :uid AND start_date >= DATE_SUB(CURRENT_DATE(), INTERVAL 60 DAY) LIMIT 1");
+                $stmtHist->execute(['uid' => $userId]);
+                $isNewHire = (bool)$stmtHist->fetchColumn();
 
-            if (!$hasQuarterly) {
-                header("Location: /employee/reflection?warning=1");
-                exit;
+                if (!$isNewHire) {
+                    $stmtUserDate = $db->prepare("SELECT 1 FROM users WHERE id = :uid AND created_at >= DATE_SUB(NOW(), INTERVAL 60 DAY) LIMIT 1");
+                    $stmtUserDate->execute(['uid' => $userId]);
+                    $isNewHire = (bool)$stmtUserDate->fetchColumn();
+                }
+            } catch (\Exception $e) {}
+
+            if (!$isNewHire) {
+                $currentPeriod = date("Y") . "-Q" . ceil(date("n") / 3);
+
+                $stmt = $db->prepare("SELECT COUNT(*) FROM self_reflections WHERE user_id = :user_id AND period = :period AND status IN ('submitted', 'completed')");
+                $stmt->execute(["user_id" => $userId, "period" => $currentPeriod]);
+                $hasQuarterly = $stmt->fetchColumn() > 0;
+
+                if (!$hasQuarterly) {
+                    header("Location: /employee/reflection?warning=1");
+                    exit;
+                }
             }
         }
 
@@ -233,7 +267,7 @@ class DashboardController {
                         $allowed = ($role === "recruiter");
                         break;
                     case "candidate":
-                        $allowed = ($role === "candidate");
+                        $allowed = ($role === "candidate" || $role === "employee");
                         break;
                     case "superadmin":
                         if ($path === "superadmin/audit") {

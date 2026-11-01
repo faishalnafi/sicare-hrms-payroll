@@ -96,6 +96,22 @@ $myOffers = $stmtOffers->fetchAll(PDO::FETCH_ASSOC);
                                 <p class="font-mono text-[9px] bg-white border px-2 py-1 rounded font-bold text-gray-700 break-all select-all">SIG: <?= htmlspecialchars($o['candidate_signature']) ?></p>
                                 <span class="text-[9px] text-neutral-400 font-medium block">Ditandatangani pada: <?= date('d M Y H:i', strtotime($o['signed_at'])) ?> WIB</span>
                             </div>
+
+                            <!-- Next Step CTA: Wizard Onboarding -->
+                            <div class="bg-gradient-to-r from-emerald-500/10 to-teal-500/10 border border-emerald-500/25 p-4 rounded-2xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 shadow-2xs">
+                                <div class="flex items-center gap-3">
+                                    <div class="w-10 h-10 rounded-xl bg-emerald-100 text-emerald-700 flex items-center justify-center shrink-0">
+                                        <span class="material-symbols-outlined text-xl">rocket_launch</span>
+                                    </div>
+                                    <div>
+                                        <h4 class="font-bold text-xs text-emerald-950 font-headline">Langkah Berikutnya: Wizard Onboarding</h4>
+                                        <p class="text-[11px] text-emerald-800 leading-snug">Lengkapi data administrasi legal & unggah berkas KTP, KK, NPWP untuk aktivasi akun karyawan resmi.</p>
+                                    </div>
+                                </div>
+                                <a href="/candidate/onboarding" class="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl text-xs shadow-sm transition-all flex items-center gap-1.5 shrink-0 self-stretch sm:self-auto justify-center">
+                                    Mulai Onboarding <span class="material-symbols-outlined text-sm">arrow_forward</span>
+                                </a>
+                            </div>
                         <?php endif; ?>
                     </div>
 
@@ -296,9 +312,22 @@ $myOffers = $stmtOffers->fetchAll(PDO::FETCH_ASSOC);
         .then(data => {
             if (data.success) {
                 closeSignatureModal();
-                Swal.fire('Kontrak Ditandatangani!', data.message, 'success').then(() => {
-                    if (window.loadPage) window.loadPage('/candidate/offerings');
-                    else window.location.reload();
+                Swal.fire({
+                    title: 'Kontrak Berhasil Ditandatangani!',
+                    text: 'Selamat bergabung dengan tim kami! Langkah berikutnya adalah melengkapi data administrasi pada Wizard Onboarding Karyawan.',
+                    icon: 'success',
+                    showCancelButton: true,
+                    confirmButtonText: 'Lanjut ke Onboarding',
+                    cancelButtonText: 'Tetap di Halaman Ini',
+                    confirmButtonColor: '#059669',
+                    cancelButtonColor: '#64748b'
+                }).then((res) => {
+                    if (res.isConfirmed) {
+                        window.location.href = '/candidate/onboarding';
+                    } else {
+                        if (window.loadPage) window.loadPage('/candidate/offerings');
+                        else window.location.reload();
+                    }
                 });
             } else {
                 Swal.fire('Gagal', data.message, 'error');

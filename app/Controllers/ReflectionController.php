@@ -273,7 +273,7 @@ class ReflectionController {
      * Get aggregate statistics for HR Ops, Executive, and Superadmin
      */
     public function getAnalytics() {
-        $this->checkAuth(['superadmin', 'hr_ops', 'executive']);
+        $this->checkAuth(['superadmin', 'hr_ops', 'executive', 'admin', 'hiring_manager', 'manager', 'employee']);
         header('Content-Type: application/json');
 
         $db = $this->getDb();

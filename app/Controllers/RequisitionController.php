@@ -48,7 +48,7 @@ class RequisitionController {
      * Store new Job Requisition (Submitted by Hiring Manager)
      */
     public function store() {
-        $role = $this->checkAuth(['hiring_manager', 'superadmin', 'executive'], true);
+        $role = $this->checkAuth(['hiring_manager', 'manager', 'superadmin', 'executive'], true);
         header('Content-Type: application/json');
 
         $db = $this->getDb();
@@ -152,7 +152,7 @@ class RequisitionController {
      * Approve Job Requisition at the current stage
      */
     public function approve() {
-        $role = $this->checkAuth(['executive', 'superadmin', 'hiring_manager'], true);
+        $role = $this->checkAuth(['executive', 'superadmin', 'hiring_manager', 'manager'], true);
         header('Content-Type: application/json');
 
         $db = $this->getDb();
@@ -681,20 +681,26 @@ class RequisitionController {
         }
 
         $resumePath = null;
+        $uploadedResume = null;
         if (isset($_FILES['resume_file']) && $_FILES['resume_file']['error'] === UPLOAD_ERR_OK) {
-            $file = $_FILES['resume_file'];
-            if ($file['size'] > 5242880) {
-                echo json_encode(['success' => false, 'message' => 'Ukuran file CV/Resume maksimal 5MB.']);
+            $uploadedResume = $_FILES['resume_file'];
+        } elseif (isset($_FILES['resume']) && $_FILES['resume']['error'] === UPLOAD_ERR_OK) {
+            $uploadedResume = $_FILES['resume'];
+        }
+
+        if ($uploadedResume) {
+            if ($uploadedResume['size'] > 10485760) { // Max 10MB
+                echo json_encode(['success' => false, 'message' => 'Ukuran file CV/Resume maksimal 10MB.']);
                 return;
             }
             $uploadDir = __DIR__ . '/../../public/uploads/resumes/';
             if (!file_exists($uploadDir)) {
                 mkdir($uploadDir, 0755, true);
             }
-            $ext = pathinfo($file['name'], PATHINFO_EXTENSION);
+            $ext = pathinfo($uploadedResume['name'], PATHINFO_EXTENSION);
             if (empty($ext)) $ext = 'pdf';
             $filename = 'cv_' . time() . '_' . mt_rand(1000, 9999) . '.' . $ext;
-            if (move_uploaded_file($file['tmp_name'], $uploadDir . $filename)) {
+            if (move_uploaded_file($uploadedResume['tmp_name'], $uploadDir . $filename)) {
                 $resumePath = '/uploads/resumes/' . $filename;
             }
         }
@@ -798,5 +804,45 @@ class RequisitionController {
             echo json_encode(['success' => false, 'message' => 'Kesalahan server: ' . $e->getMessage()]);
         }
     }
-}
 
+    /**
+     * Delete / Archive job application (Recruiter, HR Ops, Superadmin)
+     */
+    public function deleteApplication() {
+        $this->checkAuth(['recruiter', 'superadmin', 'hr_ops'], true);
+        header('Content-Type: application/json');
+
+        $appId = trim($_POST['application_id'] ?? '');
+        if (empty($appId)) {
+            echo json_encode(['success' => false, 'message' => 'ID pelamar wajib ditentukan.']);
+            return;
+        }
+
+        try {
+            $db = $this->getDb();
+            // Fetch resume path to clean up
+            $stmt = $db->prepare("SELECT resume_path FROM job_applications WHERE id = :id");
+            $stmt->execute(['id' => $appId]);
+            $resume = $stmt->fetchColumn();
+
+            // Delete record
+            $stmtDel = $db->prepare("DELETE FROM job_applications WHERE id = :id");
+            $stmtDel->execute(['id' => $appId]);
+
+            // Clean up file if present
+            if (!empty($resume)) {
+                $filePath = __DIR__ . '/../../public' . $resume;
+                if (file_exists($filePath)) {
+                    @unlink($filePath);
+                }
+            }
+
+            echo json_encode([
+                'success' => true,
+                'message' => 'Berkas lamaran kandidat berhasil dihapus / diarsipkan.'
+            ]);
+        } catch (\Exception $e) {
+            echo json_encode(['success' => false, 'message' => 'Gagal menghapus lamaran: ' . $e->getMessage()]);
+        }
+    }
+}
