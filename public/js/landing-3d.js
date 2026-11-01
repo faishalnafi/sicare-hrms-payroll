@@ -1,7 +1,7 @@
 /**
  * siCare - 3D Floating Interactive Isometric Grid
- * - 9 individual 3D beveled blocks with Google Pastel color palette
- * - Enlarged block size with extra-large, centered 2D icons
+ * - 9 individual 3D beveled blocks with Official Google Solid Colors (Blue, Red, Yellow, Green)
+ * - Extra-large, centered 2D icons in crisp white with subtle depth shadow
  * - Staggered floating wave animation
  * - Interactive raycaster hover (blocks elevate and react on hover/click)
  * - Mouse parallax & 3D tilt
@@ -12,20 +12,20 @@
     const container = document.getElementById('sicare-3d-container');
     if (!container || typeof THREE === 'undefined') return;
 
-    // --- Google Pastel Colors & 9 Items with Unicode fallbacks ---
+    // --- Official Google Solid Colors & 9 Items with Unicode fallbacks ---
     const gridItems = [
         // Row 0
-        { row: 0, col: 0, icon: 'work', unicode: '\ue8f9', color: '#7baaf7', label: 'Lowongan Kerja' },       // Google Pastel Blue
-        { row: 0, col: 1, icon: 'badge', unicode: '\uea67', color: '#f28b82', label: 'Kartu Pegawai' },       // Google Pastel Red
-        { row: 0, col: 2, icon: 'groups', unicode: '\uf233', color: '#81c995', label: 'Struktur Tim' },       // Google Pastel Green
+        { row: 0, col: 0, icon: 'work', unicode: '\ue8f9', color: '#4285F4', label: 'Lowongan Kerja' },       // Google Blue
+        { row: 0, col: 1, icon: 'badge', unicode: '\uea67', color: '#EA4335', label: 'Kartu Pegawai' },       // Google Red
+        { row: 0, col: 2, icon: 'groups', unicode: '\uf233', color: '#34A853', label: 'Struktur Tim' },       // Google Green
         // Row 1
-        { row: 1, col: 0, icon: 'assignment', unicode: '\ue85d', color: '#fdd663', label: 'Tugas & Cuti' },   // Google Pastel Yellow
-        { row: 1, col: 1, icon: 'engineering', unicode: '\uea3d', color: '#8ab4f8', label: 'Operasional' },   // Google Pastel Sky Blue
-        { row: 1, col: 2, icon: 'corporate_fare', unicode: '\ue7e7', color: '#f6aea9', label: 'Departemen' }, // Google Pastel Soft Coral
+        { row: 1, col: 0, icon: 'assignment', unicode: '\ue85d', color: '#FBBC04', label: 'Tugas & Cuti' },   // Google Yellow
+        { row: 1, col: 1, icon: 'engineering', unicode: '\uea3d', color: '#1a73e8', label: 'Operasional' },   // Google Deep Blue
+        { row: 1, col: 2, icon: 'corporate_fare', unicode: '\ue7e7', color: '#d93025', label: 'Departemen' }, // Google Deep Red
         // Row 2
-        { row: 2, col: 0, icon: 'co_present', unicode: '\ueaf0', color: '#a8dab5', label: 'Presensi ESS' },   // Google Pastel Mint Green
-        { row: 2, col: 1, icon: 'leaderboard', unicode: '\uf20c', color: '#fde293', label: 'KPI & Laporan' }, // Google Pastel Warm Amber
-        { row: 2, col: 2, icon: 'handshake', unicode: '\uebc5', color: '#90caf9', label: 'Onboarding' }       // Google Pastel Cornflower
+        { row: 2, col: 0, icon: 'co_present', unicode: '\ueaf0', color: '#1e8e3e', label: 'Presensi ESS' },   // Google Deep Green
+        { row: 2, col: 1, icon: 'leaderboard', unicode: '\uf20c', color: '#f9ab00', label: 'KPI & Laporan' }, // Google Deep Amber
+        { row: 2, col: 2, icon: 'handshake', unicode: '\uebc5', color: '#4285F4', label: 'Onboarding' }       // Google Blue
     ];
 
     // --- Scene, Camera, Renderer ---
@@ -49,7 +49,7 @@
     renderer.shadowMap.enabled = true;
     renderer.shadowMap.type = THREE.PCFSoftShadowMap;
     renderer.toneMapping = THREE.ACESFilmicToneMapping;
-    renderer.toneMappingExposure = 1.18;
+    renderer.toneMappingExposure = 1.05; // Balanced exposure to keep colors deep and saturated
     container.innerHTML = '';
     container.appendChild(renderer.domElement);
 
@@ -61,14 +61,14 @@
     masterGroup.rotation.y = -Math.PI / 8; // -22.5 deg
     masterGroup.rotation.x = Math.PI / 14; // ~12 deg
 
-    // --- Soft Ambient & Sunlight ---
-    const ambientLight = new THREE.AmbientLight(0xffffff, 1.85);
+    // --- Vibrant Directional Lighting ---
+    const ambientLight = new THREE.AmbientLight(0xffffff, 1.15); // Not over-bright to maintain solid saturation
     scene.add(ambientLight);
 
-    const hemiLight = new THREE.HemisphereLight(0xffffff, 0xf1f5f9, 0.9);
+    const hemiLight = new THREE.HemisphereLight(0xffffff, 0x334155, 0.65);
     scene.add(hemiLight);
 
-    const sunLight = new THREE.DirectionalLight(0xffffff, 1.6);
+    const sunLight = new THREE.DirectionalLight(0xffffff, 1.9);
     sunLight.position.set(16, 26, 18);
     sunLight.castShadow = true;
     sunLight.shadow.mapSize.width = 1024;
@@ -83,13 +83,13 @@
     sunLight.shadow.bias = -0.0004;
     scene.add(sunLight);
 
-    const fillLight = new THREE.DirectionalLight(0xe0f2fe, 0.5);
+    const fillLight = new THREE.DirectionalLight(0x93c5fd, 0.4);
     fillLight.position.set(-16, 12, -15);
     scene.add(fillLight);
 
     // --- Soft Contact Ground Shadow ---
     const shadowPlaneGeo = new THREE.PlaneGeometry(32, 32);
-    const shadowPlaneMat = new THREE.ShadowMaterial({ opacity: 0.13 });
+    const shadowPlaneMat = new THREE.ShadowMaterial({ opacity: 0.16 });
     const shadowPlane = new THREE.Mesh(shadowPlaneGeo, shadowPlaneMat);
     shadowPlane.rotation.x = -Math.PI / 2;
     shadowPlane.position.y = -2.4;
@@ -97,8 +97,8 @@
     masterGroup.add(shadowPlane);
 
     // --- Geometry: Rounded 3D Block (Enlarged size) ---
-    const blockSize = 3.55;        // Enlarged block size
-    const blockThickness = 0.95;   // Chunky tactile 3D thickness
+    const blockSize = 3.55;        // Large chunky block size
+    const blockThickness = 0.95;   // 3D extruded depth
     const cornerRadius = 0.65;     // Smooth rounded corner
 
     // Create a 2D rounded rectangle shape
@@ -127,21 +127,8 @@
     blockGeo.rotateX(Math.PI / 2);
     blockGeo.center();
 
-    // --- Helper: Darken or Lighten Colors ---
-    function adjustColorBrightness(hex, percent) {
-        let num = parseInt(hex.replace('#', ''), 16);
-        let amt = Math.round(2.55 * percent);
-        let R = (num >> 16) + amt;
-        let G = (num >> 8 & 0x00FF) + amt;
-        let B = (num & 0x0000FF) + amt;
-        return '#' + (0x1000000 + (R < 255 ? (R < 1 ? 0 : R) : 255) * 0x10000 +
-            (G < 255 ? (G < 1 ? 0 : G) : 255) * 0x100 +
-            (B < 255 ? (B < 1 ? 0 : B) : 255))
-            .toString(16).slice(1);
-    }
-
-    // --- Texture Generator: Extra-Large Full-Centered 2D Icon ---
-    function makeIconTexture(iconName, unicodeGlyph, pastelHex) {
+    // --- Texture Generator: Solid Google Color with Extra-Large Centered 2D Icon ---
+    function makeIconTexture(iconName, unicodeGlyph, solidHex) {
         const cvs = document.createElement('canvas');
         cvs.width = 512;
         cvs.height = 512;
@@ -150,15 +137,12 @@
         function renderCanvas() {
             ctx.clearRect(0, 0, cvs.width, cvs.height);
 
-            // Google Pastel Background with gentle radial gradient
-            const grad = ctx.createRadialGradient(256, 256, 30, 256, 256, 320);
-            grad.addColorStop(0, pastelHex);
-            grad.addColorStop(1, adjustColorBrightness(pastelHex, -8));
-            ctx.fillStyle = grad;
+            // Rich Solid Google Color
+            ctx.fillStyle = solidHex;
             ctx.fillRect(0, 0, 512, 512);
 
-            // Subtle smooth inner border
-            ctx.strokeStyle = 'rgba(255, 255, 255, 0.35)';
+            // Crisp subtle inner border
+            ctx.strokeStyle = 'rgba(255, 255, 255, 0.22)';
             ctx.lineWidth = 10;
             ctx.strokeRect(5, 5, 502, 502);
 
@@ -168,23 +152,23 @@
             ctx.textAlign = 'center';
             ctx.textBaseline = 'middle';
 
-            // Subtle drop shadow under the icon for crisp contrast
-            ctx.shadowColor = 'rgba(0, 0, 0, 0.12)';
+            // High-contrast clean drop shadow under white icon
+            ctx.shadowColor = 'rgba(0, 0, 0, 0.25)';
             ctx.shadowBlur = 18;
             ctx.shadowOffsetY = 6;
 
             ctx.font = 'normal 360px "Material Symbols Outlined", sans-serif';
 
-            // Optical center adjustment (+6px on Y for perfect glyph center)
+            // Center alignment with optical compensation
             const glyphToDraw = unicodeGlyph || iconName;
             ctx.fillText(glyphToDraw, 256, 262);
             ctx.restore();
 
-            // Subtle top highlight sheen
+            // Subtle top gloss sheen for sleek 3D look
             const sheen = ctx.createLinearGradient(0, 0, 512, 512);
-            sheen.addColorStop(0, 'rgba(255, 255, 255, 0.22)');
-            sheen.addColorStop(0.4, 'rgba(255, 255, 255, 0.0)');
-            sheen.addColorStop(1, 'rgba(0, 0, 0, 0.08)');
+            sheen.addColorStop(0, 'rgba(255, 255, 255, 0.16)');
+            sheen.addColorStop(0.35, 'rgba(255, 255, 255, 0.0)');
+            sheen.addColorStop(1, 'rgba(0, 0, 0, 0.10)');
             ctx.fillStyle = sheen;
             ctx.fillRect(0, 0, 512, 512);
         }
@@ -204,22 +188,22 @@
     }
 
     // --- Build 3x3 Grid of 3D Blocks ---
-    const blockSpacing = 4.45;     // Spacing proportional to 3.55 block size
+    const blockSpacing = 4.45;
     const blocks = [];
 
     gridItems.forEach((item) => {
         const topTexture = makeIconTexture(item.icon, item.unicode, item.color);
 
-        // Matching side material
+        // Solid rich side material
         const sideMat = new THREE.MeshStandardMaterial({
             color: new THREE.Color(item.color),
-            roughness: 0.35,
+            roughness: 0.24,
             metalness: 0.08
         });
 
         const topMat = new THREE.MeshStandardMaterial({
             map: topTexture,
-            roughness: 0.25,
+            roughness: 0.22,
             metalness: 0.05
         });
 
