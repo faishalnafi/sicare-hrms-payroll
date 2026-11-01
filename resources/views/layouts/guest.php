@@ -32,14 +32,15 @@ if (!empty($resolvedGuestPage)) {
     <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
     <title><?= htmlspecialchars($pageTitle) ?></title>
     <!-- Favicon from Uploaded Logo -->
-    <link rel="icon" type="image/x-icon" href="<?= htmlspecialchars($appLogoImage ?: '/favicon.ico') ?>"/>
+    <link rel="icon" type="image/png" href="<?= htmlspecialchars($appLogoImage ?: 'https://support.nafii.my.id/icon/domains.png') ?>"/>
+    <link rel="shortcut icon" href="<?= htmlspecialchars($appLogoImage ?: 'https://support.nafii.my.id/icon/domains.png') ?>"/>
     
     <!-- PWA Meta Tags & Manifest -->
     <meta name="theme-color" content="#000666"/>
     <meta name="apple-mobile-web-app-capable" content="yes"/>
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
     <meta name="apple-mobile-web-app-title" content="<?= htmlspecialchars($appName) ?>"/>
-    <link rel="apple-touch-icon" href="<?= htmlspecialchars($appLogoImage ?: '/images/icons/icon-192x192.png') ?>"/>
+    <link rel="apple-touch-icon" href="<?= htmlspecialchars($appLogoImage ?: 'https://support.nafii.my.id/icon/domains.png') ?>"/>
     <link rel="manifest" href="/manifest.php"/>
     
 

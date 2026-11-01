@@ -89,19 +89,20 @@ if (!empty($resolvedPage)) {
     <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
     <title><?= htmlspecialchars($pageTitle) ?></title>
     <!-- Favicon from Uploaded Logo -->
-    <link rel="icon" type="image/x-icon" href="<?= htmlspecialchars($appLogoImage ?: '/favicon.ico') ?>"/>
+    <link rel="icon" type="image/png" href="<?= htmlspecialchars($appLogoImage ?: 'https://support.nafii.my.id/icon/domains.png') ?>"/>
+    <link rel="shortcut icon" href="<?= htmlspecialchars($appLogoImage ?: 'https://support.nafii.my.id/icon/domains.png') ?>"/>
     
     <!-- PWA Meta Tags & Manifest -->
     <meta name="theme-color" content="#000666"/>
     <meta name="apple-mobile-web-app-capable" content="yes"/>
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
     <meta name="apple-mobile-web-app-title" content="<?= htmlspecialchars($appName) ?>"/>
-    <link rel="apple-touch-icon" href="<?= htmlspecialchars($appLogoImage ?: '/images/icons/icon-192x192.png') ?>"/>
+    <link rel="apple-touch-icon" href="<?= htmlspecialchars($appLogoImage ?: 'https://support.nafii.my.id/icon/domains.png') ?>"/>
     <link rel="manifest" href="/manifest.php"/>
 
     
     <!-- Fonts & Icons -->
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Manrope:wght@700;800&display=swap" rel="stylesheet"/>
+    <link href="https://fonts.googleapis.com/css2?family=Ubuntu:wght@300;400;500;700&display=swap" rel="stylesheet"/>
     <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
     <!-- Tailwind -->
     <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
@@ -129,7 +130,7 @@ if (!empty($resolvedPage)) {
                 "outline-variant": "var(--color-outline-variant, #c6c5d4)"
               },
               fontFamily: {
-                "headline": ["Manrope"],
+                "headline": ["Ubuntu", "sans-serif"],
                 "body": ["Inter"],
               }
             }
