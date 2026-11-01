@@ -15,6 +15,13 @@ $dotenv->load();
 // Set Default Timezone to Asia/Jakarta to ensure accurate dates and times
 date_default_timezone_set($_ENV['APP_TIMEZONE'] ?? 'Asia/Jakarta');
 
+// Aggressive Anti-Cache HTTP Response Headers (Crucial for Safari, Samsung Internet, and Non-Chrome Browsers)
+if (!headers_sent()) {
+    header("Cache-Control: no-store, no-cache, must-revalidate, max-age=0, post-check=0, pre-check=0");
+    header("Pragma: no-cache");
+    header("Expires: Mon, 26 Jul 1997 05:00:00 GMT");
+}
+
 // Configure PHP Session Parameters centrally
 ini_set('session.use_strict_mode', 1);
 ini_set('session.use_cookies', 1);
@@ -92,24 +99,55 @@ function renderView($viewPath, $data = []) {
     return "View not found: " . $viewPath;
 }
 
-// Route mapping
-if ($method === 'GET' && $path === 'database/migrate') {
+// Route mapping for easy Web UI Database Setup & Migration
+if ($path === 'setup' || $path === 'install' || $path === 'database/migrate') {
     if (session_status() === PHP_SESSION_NONE) {
         session_start();
     }
-    // Strict security check: Only logged-in Super Admins can run migration
-    if (!isset($_SESSION['user_id']) || ($_SESSION['role'] ?? '') !== 'superadmin') {
+
+    $lockFile = __DIR__ . '/../storage/installed.lock';
+    $isSuperAdmin = (isset($_SESSION['user_id']) && ($_SESSION['role'] ?? '') === 'superadmin');
+    $force = (isset($_GET['force']) && $_GET['force'] === '1');
+
+    // 🔒 Security Lock: If installation was completed before, block access unless Super Admin forces re-run
+    if (file_exists($lockFile) && !($isSuperAdmin && $force)) {
         header('HTTP/1.1 403 Forbidden');
-        header('Content-Type: text/plain; charset=utf-8');
-        echo "403 Forbidden: Akses ditolak. Hanya akun Super Admin yang diizinkan memicu migrasi database.";
+        $lockDate = date('d F Y H:i:s', filemtime($lockFile));
+        require __DIR__ . '/../resources/views/pages/setup_locked.php';
         exit;
     }
-    header('Content-Type: text/plain; charset=utf-8');
+    
+    // Capture execution log
+    ob_start();
+    $status = 'success';
     try {
         require_once __DIR__ . '/../database/update_schema.php';
-    } catch (\Exception $e) {
-        echo "ERROR: " . $e->getMessage() . "\n";
+        require_once __DIR__ . '/../database/seed_extra_depts.php';
+        require_once __DIR__ . '/../database/seed_extra_jobs.php';
+
+        // Write installation lock file upon successful execution
+        if (!file_exists(dirname($lockFile))) {
+            @mkdir(dirname($lockFile), 0755, true);
+        }
+        file_put_contents($lockFile, json_encode([
+            'installed_at' => date('Y-m-d H:i:s'),
+            'ip' => $_SERVER['REMOTE_ADDR'] ?? '127.0.0.1',
+            'user_agent' => $_SERVER['HTTP_USER_AGENT'] ?? 'CLI/Web'
+        ], JSON_PRETTY_PRINT));
+
+    } catch (\Throwable $e) {
+        $status = 'error';
+        echo "\n[!] ERROR: " . $e->getMessage() . "\n";
     }
+    $rawLog = ob_get_clean();
+
+    if (isset($_GET['format']) && $_GET['format'] === 'plain') {
+        header('Content-Type: text/plain; charset=utf-8');
+        echo $rawLog;
+        exit;
+    }
+
+    require __DIR__ . '/../resources/views/pages/setup.php';
     exit;
 }
 if ($method === 'GET' && str_starts_with($path, 'storage/secured_storage/onboarding/')) {
@@ -386,6 +424,9 @@ if ($method === 'POST' && $path === 'auth/login') {
 } elseif ($method === 'POST' && $path === 'hrops/employees/save') {
     app(\App\Controllers\EmployeeMasterController::class)->save();
     exit;
+} elseif ($method === 'POST' && $path === 'hrops/employees/update-metode') {
+    app(\App\Controllers\EmployeeMasterController::class)->updateMetodePresensi();
+    exit;
 } elseif ($method === 'POST' && $path === 'hrops/employees/delete') {
     app(\App\Controllers\EmployeeMasterController::class)->delete();
     exit;
@@ -516,6 +557,9 @@ if ($method === 'POST' && $path === 'auth/login') {
     exit;
 } elseif ($method === 'POST' && $path === 'api/v1/attendance') {
     app(\App\Controllers\ApiController::class)->syncAttendance();
+    exit;
+} elseif ($method === 'POST' && ($path === 'admin/mass-attendance/process' || $path === 'superadmin/mass-attendance/process')) {
+    app(\App\Controllers\AttendanceController::class)->processMassAttendance();
     exit;
 
 // --- Audit Log Routes (Bab 2) ---

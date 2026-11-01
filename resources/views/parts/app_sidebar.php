@@ -102,6 +102,32 @@ if ($sessRole === 'superadmin') {
     ];
 }
 
+$effectiveRole = $sessRole;
+
+if (in_array($effectiveRole, ['admin', 'superadmin'])) {
+    $hasMassMenu = false;
+    foreach ($menus as $m) {
+        if (isset($m['link']) && str_contains($m['link'], 'mass-attendance')) {
+            $hasMassMenu = true;
+            break;
+        }
+    }
+    if (!$hasMassMenu) {
+        $link = ($effectiveRole === 'superadmin') ? '/superadmin/mass-attendance' : '/admin/mass-attendance';
+        $insertIdx = count($menus);
+        foreach ($menus as $idx => $m) {
+            if (isset($m['link']) && (str_contains($m['link'], '/users') || str_contains($m['link'], '/departments'))) {
+                $insertIdx = $idx + 1;
+            }
+        }
+        array_splice($menus, $insertIdx, 0, [[
+            'title' => 'Presensi Massal',
+            'icon'  => 'contactless',
+            'link'  => $link
+        ]]);
+    }
+}
+
 $requestUri = parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH);
 $currentUri = '/' . trim($requestUri, '/');
 ?>
@@ -229,22 +255,13 @@ window.toggleSidebarSubmenu = function(id) {
             $cleanLink = rtrim($menu['link'], '/');
             $isActive = ($cleanUri === $cleanLink || str_ends_with($cleanUri, $cleanLink));
             
-            // Check if menu is locked
-            $isDisabled = ($isReflectionIncomplete && $menu['link'] !== '/employee/reflection');
-            
-            if ($isDisabled) {
-                $activeClass = 'text-gray-400 bg-gray-100/50 cursor-not-allowed opacity-50 select-none';
-                $linkHref = 'javascript:void(0);';
-                $onclickAttr = 'onclick="Swal.fire({title: \'Refleksi Wajib Diisi\', text: \'Anda wajib menyelesaikan pengisian Refleksi Kinerja & Rencana Karir (IDP) terlebih dahulu sebelum dapat mengakses menu lainnya.\', icon: \'warning\', confirmButtonColor: \'#000666\'});"';
-            } else {
-                $activeClass = $isActive 
-                    ? 'bg-primary/10 text-primary font-bold shadow-[0_4px_12px_rgba(0,6,102,0.02)]' 
-                    : 'text-on-surface-variant hover:bg-surface-container-low hover:text-primary transition-all duration-200';
-                $linkHref = htmlspecialchars($menu['link']);
-                $onclickAttr = '';
-            }
+            $activeClass = $isActive 
+                ? 'bg-primary/10 text-primary font-bold shadow-[0_4px_12px_rgba(0,6,102,0.02)]' 
+                : 'text-on-surface-variant hover:bg-surface-container-low hover:text-primary transition-all duration-200';
+            $linkHref = htmlspecialchars($menu['link']);
+            $onclickAttr = '';
         ?>
-        <a href="<?php echo $linkHref; ?>" <?= $onclickAttr ?> <?php echo !$isDisabled ? 'data-spa' : ''; ?> class="block" data-tooltip="<?php echo htmlspecialchars($menu['title']); ?>">
+        <a href="<?php echo $linkHref; ?>" <?= $onclickAttr ?> data-spa class="block" data-tooltip="<?php echo htmlspecialchars($menu['title']); ?>">
             <div class="rounded-xl p-3 flex items-center justify-start lg:justify-center lg:group-hover:justify-start xl:justify-start gap-3 group cursor-pointer transition-all duration-200 <?php echo $activeClass; ?>">
                 <span class="material-symbols-outlined flex-shrink-0 transition-colors <?php echo $isActive ? 'text-primary' : 'text-on-surface-variant group-hover:text-primary'; ?>"><?php echo htmlspecialchars($menu['icon']); ?></span>
                 <span class="text-sm font-medium flex-grow whitespace-nowrap transition-colors <?php echo $isActive ? 'text-primary' : 'text-on-surface-variant group-hover:text-primary'; ?>"><?php echo htmlspecialchars($menu['title']); ?></span>

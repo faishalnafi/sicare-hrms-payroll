@@ -16,55 +16,55 @@ class CreateRolesTable extends Migration {
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
         ");
 
-        // 2. Seed 8 core roles
+        // 2. Seed 8 core roles with updated Extracurricular display names
         $roles = [
             [
                 'id' => '8f5d7b6c-9c3f-4e08-8e67-d86b976f92c1',
                 'name' => 'superadmin',
-                'display_name' => 'Super Administrator',
-                'description' => 'System administrator with unrestricted global access.'
+                'display_name' => 'Super Admin',
+                'description' => 'Administrator sistem dengan akses global penuh.'
             ],
             [
                 'id' => '3d6e5c8a-7b2f-4c19-9d58-e4b9c1f2d3a4',
                 'name' => 'executive',
-                'display_name' => 'Executive Management (C-Level)',
-                'description' => 'Dewan direksi (CEO, CFO, CTO, dll.) dan pengawas makro.'
+                'display_name' => 'Pengurus Eksekutif',
+                'description' => 'Pengurus eksekutif ekstrakurikuler.'
             ],
             [
                 'id' => '1b9c8d7e-6f5a-4b3c-8d2e-1a0f9e8d7c6b',
                 'name' => 'admin',
-                'display_name' => 'Operational Administrator',
-                'description' => 'Pengelola departemen, manajemen pengguna, dan konfigurasi sistem.'
+                'display_name' => 'Admin',
+                'description' => 'Pengelola administrasi dan konfigurasi sistem.'
             ],
             [
                 'id' => '7e5d8c6b-9a4f-4e3d-8c2b-1a0f9e8d7c6b',
                 'name' => 'hiring_manager',
-                'display_name' => 'Hiring Manager (Kepala Divisi)',
-                'description' => 'Pimpinan departemen / divisi.'
+                'display_name' => 'Kepala / Koordinator Divisi',
+                'description' => 'Kepala atau koordinator divisi/departemen operasional.'
             ],
             [
                 'id' => '9c8d7e6f-5a4b-3c2d-1e0f-9a8b7c6d5e4f',
                 'name' => 'hr_ops',
-                'display_name' => 'HR Operations',
-                'description' => 'Pengelola administrasi karyawan, cuti, absensi, dan penggajian.'
+                'display_name' => 'Pengurus BPH (Badan Pengurus Harian)',
+                'description' => 'Pengurus Badan Pengurus Harian yang mengelola administrasi & anggota.'
             ],
             [
                 'id' => '5a4b3c2d-1e0f-9a8b-7c6d-5e4f3a2b1c0d',
                 'name' => 'recruiter',
-                'display_name' => 'Recruiter (Talent Acquisition)',
-                'description' => 'Pengelola lowongan kerja, seleksi pelamar, dan offering letter.'
+                'display_name' => 'Rekruter (Tim Rekrutmen)',
+                'description' => 'Tim panitia yang bertugas merekrut dan menyeleksi calon anggota baru.'
             ],
             [
                 'id' => '2d3e4f5a-6b7c-8d9e-0f1a-2b3c4d5e6f7a',
                 'name' => 'employee',
-                'display_name' => 'Functional Employee',
-                'description' => 'Karyawan perusahaan dengan akses modul mandiri (ESS).'
+                'display_name' => 'Anggota / Staff',
+                'description' => 'Anggota resmi atau staff aktif ekstrakurikuler.'
             ],
             [
                 'id' => '4b5c6d7e-8f9a-0b1c-2d3e-4f5a6b7c8d9e',
                 'name' => 'candidate',
-                'display_name' => 'Job Candidate',
-                'description' => 'Pelamar kerja eksternal di portal rekrutmen.'
+                'display_name' => 'Pendaftar (Calon Anggota)',
+                'description' => 'Calon anggota baru yang mendaftar ke divisi ekstrakurikuler.'
             ]
         ];
 

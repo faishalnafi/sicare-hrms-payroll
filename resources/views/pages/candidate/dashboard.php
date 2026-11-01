@@ -53,38 +53,117 @@ if ($userId) {
 <div class="space-y-6">
     <!-- Header Banner -->
     <div class="bg-gradient-to-r from-[#000666] to-[#0c145e] text-white p-6 md:p-8 rounded-3xl shadow-xl relative overflow-hidden flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
-        <div class="relative z-10 space-y-1 max-w-xl">
+        <div class="relative z-10 space-y-2 max-w-2xl">
             <div class="inline-flex items-center gap-2 px-3 py-1 bg-white/10 backdrop-blur-md rounded-full text-xs font-bold text-blue-200 border border-white/10 mb-1">
-                <span class="material-symbols-outlined text-xs text-amber-400">star</span> Portal Karir Kandidat
+                <span class="material-symbols-outlined text-xs text-amber-400">star</span> Dashboard Rekrutmen Anggota Ekstrakurikuler
             </div>
-            <h1 class="text-2xl md:text-3xl font-headline font-extrabold text-white">Dashboard Lowongan Pekerjaan</h1>
+            <h1 class="text-2xl md:text-3xl font-headline font-extrabold text-white">Selamat Datang, <?= htmlspecialchars($userName) ?>!</h1>
             <p class="text-blue-100 text-xs md:text-sm leading-relaxed">
-                Halo, <b><?= htmlspecialchars($userName) ?></b>! Temukan posisi terbaik yang sesuai dengan keahlian dan minat karir Anda di perusahaan kami.
+                Pilih Divisi Operasional yang diminati di bawah ini untuk mendaftar sebagai Calon Anggota Baru.
             </p>
+            
+            <!-- Candidate Information Pills -->
+            <div class="pt-2 flex flex-wrap items-center gap-2 text-xs">
+                <?php if (!empty($candProfile['rombel'])): ?>
+                    <span class="px-3 py-1 rounded-lg bg-white/15 backdrop-blur-md text-white font-bold flex items-center gap-1.5 border border-white/20">
+                        <span class="material-symbols-outlined text-xs text-amber-300">school</span> Rombel: <?= htmlspecialchars($candProfile['rombel']) ?>
+                    </span>
+                <?php endif; ?>
+                <?php if (!empty($candProfile['angkatan_masuk'])): ?>
+                    <span class="px-3 py-1 rounded-lg bg-white/15 backdrop-blur-md text-white font-bold flex items-center gap-1.5 border border-white/20">
+                        <span class="material-symbols-outlined text-xs text-blue-300">calendar_month</span> <?= htmlspecialchars($candProfile['angkatan_masuk']) ?>
+                    </span>
+                <?php endif; ?>
+                <?php if (!empty($candProfile['bulan_bergabung'])): ?>
+                    <span class="px-3 py-1 rounded-lg bg-white/15 backdrop-blur-md text-white font-bold flex items-center gap-1.5 border border-white/20">
+                        <span class="material-symbols-outlined text-xs text-emerald-300">event</span> Bergabung: <?= htmlspecialchars($candProfile['bulan_bergabung']) ?>
+                    </span>
+                <?php endif; ?>
+                <?php if (!empty($candProfile['no_telepon'])): ?>
+                    <span class="px-3 py-1 rounded-lg bg-white/15 backdrop-blur-md text-white font-bold flex items-center gap-1.5 border border-white/20">
+                        <span class="material-symbols-outlined text-xs text-green-400">chat</span> WA: <?= htmlspecialchars($candProfile['no_telepon']) ?>
+                    </span>
+                <?php endif; ?>
+            </div>
         </div>
         
         <!-- Quick Stats -->
         <div class="relative z-10 flex items-center gap-3 w-full md:w-auto shrink-0">
-            <div class="bg-white/10 backdrop-blur-md border border-white/15 p-3.5 rounded-2xl text-center min-w-[110px]">
+            <div class="bg-white/10 backdrop-blur-md border border-white/15 p-3.5 rounded-2xl text-center min-w-[120px]">
                 <span class="block text-2xl font-extrabold text-white"><?= count($publishedJobs) ?></span>
-                <span class="text-[10px] font-bold text-blue-200 uppercase tracking-wider">Lowongan Aktif</span>
+                <span class="text-[10px] font-bold text-blue-200 uppercase tracking-wider">Divisi Pilihan</span>
             </div>
-            <div class="bg-white/10 backdrop-blur-md border border-white/15 p-3.5 rounded-2xl text-center min-w-[110px]">
+            <div class="bg-white/10 backdrop-blur-md border border-white/15 p-3.5 rounded-2xl text-center min-w-[120px]">
                 <span class="block text-2xl font-extrabold text-amber-300"><?= count($myApplications) ?></span>
-                <span class="text-[10px] font-bold text-blue-200 uppercase tracking-wider">Lamaran Saya</span>
+                <span class="text-[10px] font-bold text-blue-200 uppercase tracking-wider">Pendaftaran Saya</span>
             </div>
         </div>
     </div>
+
+    <!-- Status Tracking Section if Candidate Has Submitted Applications -->
+    <?php if (!empty($myApplications)): ?>
+        <div class="bg-surface-container-lowest border border-outline-variant/15 p-6 rounded-3xl shadow-2xs space-y-4">
+            <div class="flex items-center justify-between">
+                <h3 class="text-base font-headline font-bold text-[#000666] flex items-center gap-2">
+                    <span class="material-symbols-outlined text-amber-500">assignment_turned_in</span> Status Pendaftaran Divisi Anda
+                </h3>
+                <span class="text-xs font-semibold text-on-surface-variant"><?= count($myApplications) ?> Pendaftaran</span>
+            </div>
+            
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <?php foreach ($myApplications as $app): ?>
+                    <?php
+                        $statusRaw = strtolower($app['status'] ?? 'submitted');
+                        $statusBadgeClass = 'bg-amber-50 text-amber-700 border-amber-200';
+                        $statusLabel = 'Seleksi Berkas';
+                        $statusIcon = 'folder_open';
+
+                        if (in_array($statusRaw, ['interview', 'interview_scheduled'])) {
+                            $statusBadgeClass = 'bg-blue-50 text-blue-700 border-blue-200';
+                            $statusLabel = 'Wawancara Divisi';
+                            $statusIcon = 'record_voice_over';
+                        } elseif (in_array($statusRaw, ['hired', 'offered', 'accepted'])) {
+                            $statusBadgeClass = 'bg-emerald-50 text-emerald-700 border-emerald-200';
+                            $statusLabel = 'Diterima - Lolos Seleksi';
+                            $statusIcon = 'check_circle';
+                        } elseif ($statusRaw === 'rejected') {
+                            $statusBadgeClass = 'bg-red-50 text-red-700 border-red-200';
+                            $statusLabel = 'Belum Lolos Seleksi';
+                            $statusIcon = 'cancel';
+                        }
+
+                        // Fetch job details
+                        $reqStmt = $db->prepare("SELECT title FROM job_requisitions WHERE id = :rid");
+                        $reqStmt->execute(['rid' => $app['requisition_id']]);
+                        $reqJob = $reqStmt->fetch(PDO::FETCH_ASSOC);
+                        $jobTitle = $reqJob['title'] ?? 'Pendaftaran Divisi';
+                    ?>
+                    <div class="p-4 rounded-2xl border border-outline-variant/15 bg-surface-container-low flex flex-col justify-between gap-3">
+                        <div>
+                            <div class="flex items-center justify-between mb-2">
+                                <span class="px-3 py-1 rounded-full text-xs font-extrabold border <?= $statusBadgeClass ?> flex items-center gap-1.5">
+                                    <span class="material-symbols-outlined text-sm"><?= $statusIcon ?></span> <?= $statusLabel ?>
+                                </span>
+                                <span class="text-[10px] text-on-surface-variant/70 font-medium"><?= date('d M Y', strtotime($app['created_at'] ?? 'now')) ?></span>
+                            </div>
+                            <h4 class="text-sm font-bold text-[#0c145e]"><?= htmlspecialchars($jobTitle) ?></h4>
+                            <p class="text-xs text-on-surface-variant mt-1">Nama Pendaftar: <b><?= htmlspecialchars($app['candidate_name'] ?? $userName) ?></b></p>
+                        </div>
+                    </div>
+                <?php endforeach; ?>
+            </div>
+        </div>
+    <?php endif; ?>
 
     <!-- Search Bar & Filters -->
     <div class="bg-surface-container-lowest border border-outline-variant/15 p-4 rounded-2xl shadow-2xs flex flex-col sm:flex-row items-center justify-between gap-4">
         <div class="relative w-full sm:w-80">
             <span class="material-symbols-outlined absolute left-3.5 top-1/2 -translate-y-1/2 text-on-surface-variant/60 text-lg">search</span>
-            <input type="text" id="candJobSearch" placeholder="Cari posisi..." class="w-full pl-10 pr-4 py-2.5 rounded-xl border border-outline-variant/30 bg-surface-container-low focus:outline-none focus:border-primary text-xs font-semibold text-on-surface" />
+            <input type="text" id="candJobSearch" placeholder="Cari divisi operasional..." class="w-full pl-10 pr-4 py-2.5 rounded-xl border border-outline-variant/30 bg-surface-container-low focus:outline-none focus:border-primary text-xs font-semibold text-on-surface" />
         </div>
         <div class="text-xs text-on-surface-variant font-medium flex items-center gap-2">
-            <span class="material-symbols-outlined text-sm text-primary">work</span>
-            <span>Menampilkan <b><?= count($publishedJobs) ?></b> Lowongan Kerja Aktif</span>
+            <span class="material-symbols-outlined text-sm text-primary">groups</span>
+            <span>Menampilkan <b><?= count($publishedJobs) ?></b> Divisi Operasional Terbuka</span>
         </div>
     </div>
 

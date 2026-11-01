@@ -60,7 +60,7 @@ class ViewHelper {
 
         try {
             $db = Database::getInstance()->getConnection();
-            $stmt = $db->prepare("SELECT id, first_name, last_name, email, role, role_id, department_id, profile_picture FROM users WHERE id = :id LIMIT 1");
+            $stmt = $db->prepare("SELECT id, first_name, last_name, email, role, role_id, department_id, profile_picture, metode_presensi, home_latitude, home_longitude, id_kartu, id_qrcode FROM users WHERE id = :id LIMIT 1");
             $stmt->execute(['id' => $userId]);
             $user = $stmt->fetch(PDO::FETCH_ASSOC);
             return $user ?: null;
@@ -101,31 +101,8 @@ class ViewHelper {
      * Check if employee's quarterly reflection is incomplete.
      */
     public static function isReflectionIncomplete(?string $userId = null): bool {
-        if (session_status() === PHP_SESSION_NONE) {
-            session_start();
-        }
-        $role = $_SESSION['role'] ?? '';
-        $originalRole = $_SESSION['original_role'] ?? '';
-        if ($role === 'superadmin' || $originalRole === 'superadmin') {
-            return false;
-        }
-
-        if (empty($userId) && isset($_SESSION['user_id'])) {
-            $userId = $_SESSION['user_id'];
-        }
-        if (empty($userId)) {
-            return false;
-        }
-
-        try {
-            $db = Database::getInstance()->getConnection();
-            $currentPeriod = date('Y') . '-Q' . ceil(date('n') / 3);
-            $stmt = $db->prepare("SELECT COUNT(*) FROM self_reflections WHERE user_id = :user_id AND period = :period AND status IN ('submitted', 'completed')");
-            $stmt->execute(['user_id' => $userId, 'period' => $currentPeriod]);
-            return ($stmt->fetchColumn() == 0);
-        } catch (\Exception $e) {
-            return false;
-        }
+        // Refleksi diri tidak lagi memblokir akses atau menu karyawan
+        return false;
     }
 
     /**
@@ -138,8 +115,10 @@ class ViewHelper {
         if ($deptId === null && isset($_SESSION['department_id'])) {
             $deptId = $_SESSION['department_id'];
         }
-        if ($roleName === null && isset($_SESSION['role'])) {
-            $roleName = $_SESSION['role'];
+        if ($roleName === null) {
+            // PENTING: Selalu gunakan role efektif ($_SESSION['role']) agar saat SuperAdmin
+            // melakukan impersonasi karyawan, tampilan menu persis seperti karyawan asli.
+            $roleName = $_SESSION['role'] ?? 'candidate';
         }
 
         if (empty($roleId) && isset($_SESSION['user_id'])) {
@@ -193,11 +172,32 @@ class ViewHelper {
 
         if (isset($menus) && is_array($menus)) {
             $menus = array_filter($menus, function($m) use ($roleName) {
-                if (isset($m['title']) && strtolower($m['title']) === 'pedoman penomoran') {
+                $link  = $m['link']  ?? '';
+                $title = strtolower($m['title'] ?? '');
+
+                // Sembunyikan menu keuangan dari semua role
+                if (str_contains($link, 'finance') || str_contains($link, 'reimbursement') || str_contains($link, 'payroll')) {
+                    return false;
+                }
+
+                // Refleksi Diri: HANYA untuk non-employee (hr_ops, admin, superadmin, dst)
+                if ($title === 'refleksi diri' || str_contains($link, 'reflection')) {
+                    return in_array($roleName, ['admin', 'superadmin', 'hr_ops', 'hiring_manager']);
+                }
+
+                // Pedoman Penomoran: HANYA untuk admin & superadmin
+                if ($title === 'pedoman penomoran' || str_contains($link, 'numbering')) {
                     return in_array($roleName, ['admin', 'superadmin']);
                 }
+
+                // Presensi Massal: HANYA untuk admin & superadmin
+                if (str_contains($link, 'mass-attendance')) {
+                    return in_array($roleName, ['admin', 'superadmin']);
+                }
+
                 return true;
             });
+            $menus = array_values($menus);
 
             $roleFolder = $roleName;
             if ($roleName === 'hiring_manager') $roleFolder = 'manager';
@@ -210,6 +210,24 @@ class ViewHelper {
                     'link' => '/' . $roleFolder . '/apps'
                 ];
                 array_splice($menus, 1, 0, [$appsMenu]);
+            }
+
+            if (in_array($roleName, ['admin', 'superadmin'])) {
+                $hasMassMenu = false;
+                foreach ($menus as $m) {
+                    if (isset($m['link']) && (str_contains($m['link'], 'mass-attendance'))) {
+                        $hasMassMenu = true;
+                        break;
+                    }
+                }
+                if (!$hasMassMenu) {
+                    $massRoute = '/' . ($roleName === 'superadmin' ? 'superadmin' : 'admin') . '/mass-attendance';
+                    $menus[] = [
+                        'title' => 'Presensi Massal',
+                        'icon' => 'contactless',
+                        'link' => $massRoute
+                    ];
+                }
             }
         }
 
@@ -328,14 +346,14 @@ class ViewHelper {
             $rolesList = $stmt->fetchAll(PDO::FETCH_ASSOC);
         } catch (\Exception $e) {
             $rolesList = [
-                ['code' => 'superadmin', 'name' => 'Super Administrator'],
-                ['code' => 'admin', 'name' => 'Operational Administrator'],
-                ['code' => 'executive', 'name' => 'Executive Management (C-Level)'],
-                ['code' => 'hiring_manager', 'name' => 'Hiring Manager (Kepala Divisi)'],
-                ['code' => 'hr_ops', 'name' => 'HR Operations'],
-                ['code' => 'recruiter', 'name' => 'Recruiter (Talent Acquisition)'],
-                ['code' => 'employee', 'name' => 'Functional Employee'],
-                ['code' => 'candidate', 'name' => 'Job Candidate']
+                ['code' => 'superadmin', 'name' => 'Super Admin'],
+                ['code' => 'admin', 'name' => 'Admin'],
+                ['code' => 'executive', 'name' => 'Pengurus Eksekutif'],
+                ['code' => 'hiring_manager', 'name' => 'Kepala / Koordinator Divisi'],
+                ['code' => 'hr_ops', 'name' => 'Pengurus BPH (Badan Pengurus Harian)'],
+                ['code' => 'recruiter', 'name' => 'Rekruter (Tim Rekrutmen)'],
+                ['code' => 'employee', 'name' => 'Anggota / Staff'],
+                ['code' => 'candidate', 'name' => 'Pendaftar (Calon Anggota)']
             ];
         }
 
@@ -1435,7 +1453,7 @@ class ViewHelper {
             $params = [];
 
             if (!empty($search)) {
-                $sql .= " AND (r.job_title LIKE :search OR r.requirements LIKE :search OR d.name LIKE :search)";
+                $sql .= " AND (r.title LIKE :search OR r.job_description LIKE :search OR r.requirements LIKE :search OR d.name LIKE :search)";
                 $params['search'] = "%$search%";
             }
 
@@ -1448,6 +1466,19 @@ class ViewHelper {
 
             $stmt = $db->prepare($sql);
             $stmt->execute($params);
+            return $stmt->fetchAll(PDO::FETCH_ASSOC);
+        } catch (\Exception $e) {
+            return [];
+        }
+    }
+
+    /**
+     * Get list of all departments.
+     */
+    public static function getDepartments(): array {
+        try {
+            $db = Database::getInstance()->getConnection();
+            $stmt = $db->query("SELECT id, name, parent_id, level FROM departments ORDER BY level ASC, name ASC");
             return $stmt->fetchAll(PDO::FETCH_ASSOC);
         } catch (\Exception $e) {
             return [];

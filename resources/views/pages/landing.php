@@ -4,19 +4,19 @@
         <div class="flex-1 space-y-8 z-10">
             <div class="inline-flex items-center gap-2 px-3 py-1 bg-tertiary-fixed rounded-full text-on-tertiary-fixed text-xs font-bold tracking-wider">
                 <span class="material-symbols-outlined text-sm" data-icon="verified" style="font-variation-settings: 'FILL' 1;">verified</span>
-                HRIS & ATS INTEGRATED
+                REKRUTMEN & MANAJEMEN EKSTRAKURIKULER
             </div>
             <h1 class="text-5xl lg:text-7xl font-headline font-extrabold tracking-tight text-primary leading-[1.1]">
-                Portal Karir & Manajemen Karyawan
+                Portal Rekrutmen & Manajemen Anggota
             </h1>
             <p class="text-xl text-on-surface-variant max-w-xl leading-relaxed">
-                Satu pintu menuju seluruh ekosistem HR perusahaan. Akses pendaftaran karir, portal karyawan mandiri (ESS), hingga administrasi operasional dalam satu dasbor terintegrasi yang aman.
+                Satu pintu menuju seluruh ekosistem rekrutmen dan manajemen anggota ekstrakurikuler. Akses pendaftaran calon anggota, 4 divisi operasional, hingga administrasi keanggotaan dalam satu dasbor terintegrasi yang aman.
             </p>
             <div class="flex flex-wrap gap-4">
                 <?php if (isset($_SESSION['user_id'])): ?>
-                    <a href="/dashboard" class="px-6 py-3 bg-[#000666] text-white rounded-lg font-bold font-headline hover:bg-[#0c145e] hover:shadow-lg transition-all flex items-center gap-2">
+                    <a href="/candidate/dashboard" class="px-6 py-3 bg-[#000666] text-white rounded-lg font-bold font-headline hover:bg-[#0c145e] hover:shadow-lg transition-all flex items-center gap-2">
                         <span class="material-symbols-outlined text-xl">dashboard</span>
-                        Ke Dashboard
+                        Ke Dashboard Kandidat
                     </a>
                 <?php else: ?>
                     <a href="/signin" class="px-6 py-3 bg-[#000666] text-white rounded-lg font-bold font-headline hover:bg-[#0c145e] hover:shadow-lg transition-all flex items-center gap-2">
@@ -32,42 +32,42 @@
         </div>
         <div class="flex-1 relative pl-0 md:pl-10">
             <div class="w-full aspect-square rounded-[2.5rem] bg-[#0c145e] p-8 flex flex-col justify-between shadow-2xl relative z-0">
-                <!-- 3x3 Grid -->
+                <!-- 3x3 Grid Icon Hub -->
                 <div class="grid grid-cols-3 gap-4 flex-grow">
-                    <div class="bg-[#243b91] rounded-2xl flex items-center justify-center hover:bg-[#2d49b3] transition-colors cursor-pointer">
-                        <span class="material-symbols-outlined text-white/80 text-4xl">work</span>
+                    <div class="bg-[#243b91] rounded-2xl flex items-center justify-center hover:bg-[#2d49b3] transition-colors cursor-pointer" title="Post Production">
+                        <span class="material-symbols-outlined text-white/80 text-4xl">movie_edit</span>
                     </div>
-                    <div class="bg-[#3e2f6b] rounded-2xl flex items-center justify-center hover:bg-[#4c3983] transition-colors cursor-pointer">
-                        <span class="material-symbols-outlined text-white/80 text-4xl">badge</span>
+                    <div class="bg-[#3e2f6b] rounded-2xl flex items-center justify-center hover:bg-[#4c3983] transition-colors cursor-pointer" title="Editorial">
+                        <span class="material-symbols-outlined text-white/80 text-4xl">edit_note</span>
                     </div>
-                    <div class="bg-[#322c7a] rounded-2xl flex items-center justify-center hover:bg-[#3d3694] transition-colors cursor-pointer">
+                    <div class="bg-[#322c7a] rounded-2xl flex items-center justify-center hover:bg-[#3d3694] transition-colors cursor-pointer" title="Broadcast">
+                        <span class="material-symbols-outlined text-white/80 text-4xl">mic</span>
+                    </div>
+                    
+                    <div class="bg-[#1f4277] rounded-2xl flex items-center justify-center hover:bg-[#265091] transition-colors cursor-pointer" title="Visual Production">
+                        <span class="material-symbols-outlined text-white/80 text-4xl">videocam</span>
+                    </div>
+                    <div class="bg-[#423d61] rounded-2xl flex items-center justify-center hover:bg-[#524c78] transition-colors cursor-pointer" title="BPH">
                         <span class="material-symbols-outlined text-white/80 text-4xl">groups</span>
                     </div>
-                    
-                    <div class="bg-[#1f4277] rounded-2xl flex items-center justify-center hover:bg-[#265091] transition-colors cursor-pointer">
-                        <span class="material-symbols-outlined text-white/80 text-4xl">assignment</span>
-                    </div>
-                    <div class="bg-[#423d61] rounded-2xl flex items-center justify-center hover:bg-[#524c78] transition-colors cursor-pointer">
-                        <span class="material-symbols-outlined text-white/80 text-4xl">engineering</span>
-                    </div>
-                    <div class="bg-[#1e4682] rounded-2xl flex items-center justify-center hover:bg-[#25559c] transition-colors cursor-pointer">
-                        <span class="material-symbols-outlined text-white/80 text-4xl">corporate_fare</span>
+                    <div class="bg-[#1e4682] rounded-2xl flex items-center justify-center hover:bg-[#25559c] transition-colors cursor-pointer" title="Evaluasi">
+                        <span class="material-symbols-outlined text-white/80 text-4xl">fact_check</span>
                     </div>
                     
-                    <div class="bg-[#3c2a6d] rounded-2xl flex items-center justify-center hover:bg-[#4a3485] transition-colors cursor-pointer">
+                    <div class="bg-[#3c2a6d] rounded-2xl flex items-center justify-center hover:bg-[#4a3485] transition-colors cursor-pointer" title="Wawancara">
                         <span class="material-symbols-outlined text-white/80 text-4xl">co_present</span>
                     </div>
-                    <div class="bg-[#1c3f87] rounded-2xl flex items-center justify-center hover:bg-[#234da3] transition-colors cursor-pointer">
+                    <div class="bg-[#1c3f87] rounded-2xl flex items-center justify-center hover:bg-[#234da3] transition-colors cursor-pointer" title="Statistik">
                         <span class="material-symbols-outlined text-white/80 text-4xl">leaderboard</span>
                     </div>
-                    <div class="bg-[#433660] rounded-2xl flex items-center justify-center hover:bg-[#544378] transition-colors cursor-pointer">
-                        <span class="material-symbols-outlined text-white/80 text-4xl">handshake</span>
+                    <div class="bg-[#433660] rounded-2xl flex items-center justify-center hover:bg-[#544378] transition-colors cursor-pointer" title="Keanggotaan">
+                        <span class="material-symbols-outlined text-white/80 text-4xl">verified</span>
                     </div>
                 </div>
                 
                 <!-- Bottom Text inside dark box -->
                 <div class="mt-6 pr-4 text-right">
-                    <p class="text-[#a0a5db] text-sm font-medium">Akses Semua Layanan Dalam Satu Portal</p>
+                    <p class="text-[#a0a5db] text-sm font-medium">Akses Semua Layanan Ekstrakurikuler Dalam Satu Portal</p>
                 </div>
             </div>
             
@@ -100,7 +100,7 @@ try {
     ");
     $totalJobsCount = (int)$stmtCount->fetchColumn();
 
-    // Limit to 12 jobs (3 rows x 4 columns)
+    // Limit to 12 jobs
     $stmtJobs = $db->query("
         SELECT r.*, d.name AS dept_name 
         FROM job_requisitions r
@@ -120,26 +120,26 @@ try {
     <div class="max-w-7xl mx-auto space-y-8">
         <div class="flex flex-col md:flex-row justify-between items-start md:items-end gap-6">
             <div class="space-y-2">
-                <h2 class="text-3xl font-headline font-bold text-[#0c145e]">Daftar Lowongan yang Dibuka</h2>
-                <p class="text-gray-500 max-w-2xl text-sm">Temukan posisi yang sesuai dengan keahlian Anda dan bergabunglah dengan tim profesional kami.</p>
+                <h2 class="text-3xl font-headline font-bold text-[#0c145e]">Daftar Divisi Operasional Terbuka</h2>
+                <p class="text-gray-500 max-w-2xl text-sm">Temukan divisi operasional yang sesuai dengan minat & bakat Anda, lalu bergabunglah menjadi anggota baru.</p>
             </div>
             <div class="w-full md:w-auto">
                 <div class="relative">
                     <span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-[1.2rem]">search</span>
-                    <input type="text" id="jobSearch" placeholder="Cari posisi..." class="w-full md:w-72 pl-10 pr-4 py-2.5 rounded-xl border border-gray-200 focus:outline-none focus:border-[#0c145e] focus:ring-1 focus:ring-[#0c145e] text-xs font-semibold bg-white shadow-2xs">
+                    <input type="text" id="jobSearch" placeholder="Cari divisi..." class="w-full md:w-72 pl-10 pr-4 py-2.5 rounded-xl border border-gray-200 focus:outline-none focus:border-[#0c145e] focus:ring-1 focus:ring-[#0c145e] text-xs font-semibold bg-white shadow-2xs">
                 </div>
             </div>
         </div>
         
-        <!-- Application Grid (Max 4 per row, Max 3 rows = 12 cards) -->
+        <!-- Application Grid -->
         <div id="jobGrid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
             <?php if (empty($publishedJobs)): ?>
                 <div class="col-span-full bg-white p-12 rounded-3xl border border-gray-100 text-center space-y-3 shadow-sm">
                     <div class="w-16 h-16 bg-blue-50 text-[#0c145e] rounded-2xl flex items-center justify-center mx-auto border border-blue-100">
-                        <span class="material-symbols-outlined text-3xl">work_off</span>
+                        <span class="material-symbols-outlined text-3xl">groups</span>
                     </div>
-                    <h3 class="text-lg font-headline font-bold text-[#0c145e]">Belum Ada Lowongan Aktif</h3>
-                    <p class="text-sm text-gray-500 max-w-md mx-auto">Saat ini belum ada lowongan pekerjaan baru yang dipublikasikan ke portal karir. Silakan cek kembali secara berkala.</p>
+                    <h3 class="text-lg font-headline font-bold text-[#0c145e]">Belum Ada Pendaftaran Divisi Terbuka</h3>
+                    <p class="text-sm text-gray-500 max-w-md mx-auto">Saat ini belum ada pendaftaran divisi baru yang dibuka. Silakan cek kembali secara berkala.</p>
                 </div>
             <?php else: ?>
                 <?php foreach ($publishedJobs as $job): ?>
@@ -167,21 +167,21 @@ try {
                             </div>
                         <?php else: ?>
                             <div class="w-12 h-12 rounded-xl flex items-center justify-center mb-4 border shrink-0" style="background-color: <?= $colorVal ?>15; border-color: <?= $colorVal ?>30; color: <?= $colorVal ?>;">
-                                <span class="material-symbols-outlined text-[1.4rem]"><?= htmlspecialchars(!empty($job['icon']) ? $job['icon'] : 'work') ?></span>
+                                <span class="material-symbols-outlined text-[1.4rem]"><?= htmlspecialchars(!empty($job['icon']) ? $job['icon'] : 'groups') ?></span>
                             </div>
                         <?php endif; ?>
-                        <h3 class="text-base font-headline font-bold text-[#0c145e] mb-2"><?= htmlspecialchars($job['title'] ?? $job['job_title'] ?? 'Posisi Pekerjaan') ?></h3>
+                        <h3 class="text-base font-headline font-bold text-[#0c145e] mb-2"><?= htmlspecialchars($job['title'] ?? $job['job_title'] ?? 'Divisi Operasional') ?></h3>
                         <p class="text-[0.8rem] text-gray-500 leading-relaxed mb-6 flex-grow line-clamp-3">
-                            <?= htmlspecialchars(($job['job_description'] ?? '') !== '' ? $job['job_description'] : 'Mencari kandidat berbakat untuk bergabung dengan tim kami.') ?>
+                            <?= htmlspecialchars(($job['job_description'] ?? '') !== '' ? $job['job_description'] : 'Mencari anggota baru berbakat untuk bergabung dengan divisi kami.') ?>
                         </p>
                         <div class="pt-4 border-t border-gray-50 mt-auto">
                             <?php if (isset($_SESSION['user_id'])): ?>
                                 <a href="/candidate/dashboard" class="text-[#0c145e] text-xs font-bold flex items-center gap-1 hover:text-blue-700 transition-colors">
-                                    <span class="material-symbols-outlined text-[1rem]">open_in_new</span> Lamar Sekarang
+                                    <span class="material-symbols-outlined text-[1rem]">open_in_new</span> Pilih Divisi Ini
                                 </a>
                             <?php else: ?>
-                                <a href="/signin" class="text-[#0c145e] text-xs font-bold flex items-center gap-1 hover:text-blue-700 transition-colors">
-                                    <span class="material-symbols-outlined text-[1rem]">open_in_new</span> Lamar Sekarang
+                                <a href="/signup" class="text-[#0c145e] text-xs font-bold flex items-center gap-1 hover:text-blue-700 transition-colors">
+                                    <span class="material-symbols-outlined text-[1rem]">open_in_new</span> Pilih Divisi Ini
                                 </a>
                             <?php endif; ?>
                         </div>
@@ -190,10 +190,10 @@ try {
             <?php endif; ?>
         </div>
 
-        <!-- View All Careers Link Button -->
+        <!-- View All Link Button -->
         <div class="text-center pt-4">
             <a href="/careers" class="inline-flex items-center gap-2 px-6 py-3 bg-[#0c145e] hover:bg-[#152187] text-white rounded-2xl font-bold text-xs transition-all shadow-md hover:shadow-lg">
-                <span>Lihat Semua Lowongan Karir (<?= $totalJobsCount ?>)</span>
+                <span>Lihat Semua Pendaftaran Divisi (<?= $totalJobsCount ?>)</span>
                 <span class="material-symbols-outlined text-base">arrow_forward</span>
             </a>
         </div>
@@ -208,26 +208,26 @@ try {
             <div class="absolute top-0 right-0 -mr-20 -mt-20 w-80 h-80 bg-blue-600/20 rounded-full blur-3xl pointer-events-none"></div>
             
             <div class="relative z-10 max-w-2xl space-y-3">
-                <h2 class="text-3xl md:text-4xl font-headline font-bold text-white">Mulai Karir Anda Bersama Kami</h2>
+                <h2 class="text-3xl md:text-4xl font-headline font-bold text-white">Mulai Perjalanan Ekstrakurikuler Anda</h2>
                 <p class="text-indigo-200 text-sm md:text-base leading-relaxed max-w-xl">
-                    Buat akun pelamar sekarang untuk mulai mengirimkan lamaran, melacak status rekrutmen secara real-time, dan mendapatkan notifikasi lowongan terbaru.
+                    Buat akun pendaftar sekarang untuk mendaftar divisi, melacak status seleksi secara real-time, dan bergabung sebagai anggota aktif.
                 </p>
             </div>
             
             <div class="relative z-10 flex flex-col sm:flex-row gap-4 w-full md:w-auto shrink-0">
                 <?php if (isset($_SESSION['user_id'])): ?>
-                    <a href="/dashboard" class="px-6 py-3 bg-white text-[#0b1257] rounded-lg font-bold hover:bg-gray-100 transition-all flex items-center justify-center gap-2 shadow-lg text-sm">
+                    <a href="/candidate/dashboard" class="px-6 py-3 bg-white text-[#0b1257] rounded-lg font-bold hover:bg-gray-100 transition-all flex items-center justify-center gap-2 shadow-lg text-sm">
                         <span class="material-symbols-outlined text-[1.1rem]">dashboard</span>
                         Ke Dashboard
                     </a>
                 <?php else: ?>
                     <a href="/signin" class="px-6 py-3 bg-white text-[#0b1257] rounded-lg font-bold hover:bg-gray-100 transition-all flex items-center justify-center gap-2 shadow-lg text-sm">
                         <span class="material-symbols-outlined text-[1.1rem]">login</span>
-                        Masuk Pelamar
+                        Masuk Pendaftar
                     </a>
                     <a href="/signup" class="px-6 py-3 bg-[#242c75] border border-indigo-400/30 text-white rounded-lg font-bold hover:bg-[#31398c] transition-all flex items-center justify-center gap-2 text-sm shadow-sm">
                         <span class="material-symbols-outlined text-[1.1rem]">person_add</span>
-                        Buat Akun Karir
+                        Daftar Akun Anggota
                     </a>
                 <?php endif; ?>
             </div>

@@ -55,17 +55,11 @@ class CreateDepartmentsAndSeedDefaults extends Migration {
         // 3. Seed default departments (idempoten via INSERT IGNORE)
         // ============================================================
         $depts = [
-            ['dept-it', 'Information Technology', null, 1],
-            ['dept-hr', 'Human Resources', null, 1],
-            ['dept-finance', 'Finance & Accounting', null, 1],
-            ['dept-marketing', 'Marketing & Sales', null, 1],
-            ['dept-ops', 'Operations', null, 1],
-            ['dept-it-fe', 'Frontend Development', 'dept-it', 2],
-            ['dept-it-be', 'Backend Development', 'dept-it', 2],
-            ['dept-it-eng', 'Software Engineering', 'dept-it', 2],
-            ['dept-it-ops', 'IT Operations', 'dept-it', 2],
-            ['dept-hr-ops', 'HR Operations', 'dept-hr', 2],
-            ['dept-hr-ta', 'Talent Acquisition', 'dept-hr', 2],
+            ['dept-bph', 'Badan Pengurus Harian (BPH)', null, 1],
+            ['dept-postprod', 'Post Production Department', null, 1],
+            ['dept-editorial', 'Editorial Department', null, 1],
+            ['dept-broadcast', 'Broadcast Department', null, 1],
+            ['dept-visprod', 'Visual Production Department', null, 1],
         ];
 
         $stmtDept = $this->db->prepare("
@@ -75,7 +69,7 @@ class CreateDepartmentsAndSeedDefaults extends Migration {
         foreach ($depts as $d) {
             $stmtDept->execute($d);
         }
-        echo "Seeded default departments (11 rows, IGNORE duplicates).\n";
+        echo "Seeded default extracurricular departments (5 rows, IGNORE duplicates).\n";
 
         // ============================================================
         // 4. Seed default global_settings (idempoten via ON DUPLICATE KEY)

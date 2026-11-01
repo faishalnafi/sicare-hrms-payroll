@@ -11,19 +11,19 @@
     <!-- Left Column: Editorial Content -->
     <div class="w-full lg:w-5/12 space-y-8 lg:pr-8">
         <div class="space-y-4">
-            <h1 class="text-4xl lg:text-5xl font-headline font-extrabold text-primary leading-tight tracking-tighter">Mulai <br/><span class="text-secondary">Karir Cemerlang</span> Anda.</h1>
-            <p class="text-on-surface-variant text-base max-w-md leading-relaxed">Bergabunglah dengan tim kami untuk menciptakan inovasi dan memberikan dampak positif. Lengkapi profil Anda secara komprehensif untuk memulai proses rekrutmen.</p>
+            <h1 class="text-4xl lg:text-5xl font-headline font-extrabold text-primary leading-tight tracking-tighter">Pendaftaran <br/><span class="text-secondary">Anggota Ekstrakurikuler</span></h1>
+            <p class="text-on-surface-variant text-base max-w-md leading-relaxed">Bergabunglah bersama kami untuk mengembangkan minat dan bakat Anda. Isi formulir pendaftaran di bawah ini untuk memulai proses rekrutmen anggota baru.</p>
         </div>
         <div class="grid grid-cols-1 sm:grid-cols-2 gap-6">
             <div class="p-6 rounded-xl bg-surface-container-low">
-                <span class="material-symbols-outlined text-primary mb-3 text-3xl">work_history</span>
-                <h3 class="font-headline font-bold text-primary">Proses Transparan</h3>
-                <p class="text-sm text-on-surface-variant mt-1">Lacak status lamaran Anda secara real-time dari satu dasbor.</p>
+                <span class="material-symbols-outlined text-primary mb-3 text-3xl">groups</span>
+                <h3 class="font-headline font-bold text-primary">4 Divisi Operasional</h3>
+                <p class="text-sm text-on-surface-variant mt-1">Post Production, Editorial, Broadcast, dan Visual Production.</p>
             </div>
             <div class="p-6 rounded-xl bg-surface-container-low">
-                <span class="material-symbols-outlined text-primary mb-3 text-3xl">admin_panel_settings</span>
-                <h3 class="font-headline font-bold text-primary">Data Aman</h3>
-                <p class="text-sm text-on-surface-variant mt-1">Privasi dan dokumen pelamar terjamin kerahasiaannya.</p>
+                <span class="material-symbols-outlined text-primary mb-3 text-3xl">verified_user</span>
+                <h3 class="font-headline font-bold text-primary">Proses Mudah</h3>
+                <p class="text-sm text-on-surface-variant mt-1">Daftar akun, lalu pilih divisi minat Anda langsung dari Dashboard Kandidat.</p>
             </div>
         </div>
     </div>
@@ -35,8 +35,8 @@
         
         <div class="bg-surface-container-lowest custom-shadow rounded-xl p-8 lg:p-10 border border-outline-variant/15 max-h-[85vh] overflow-y-auto custom-scrollbar">
             <div class="mb-6">
-                <h2 class="text-2xl font-headline font-extrabold text-[#000767] mb-2">Pendaftaran Kandidat</h2>
-                <p class="text-on-surface-variant text-sm">Mohon isi data diri Anda dengan lengkap dan unggah dokumen pendukung.</p>
+                <h2 class="text-2xl font-headline font-extrabold text-[#000767] mb-2">Formulir Pendaftaran Akun</h2>
+                <p class="text-on-surface-variant text-sm">Lengkapi data diri Anda di bawah ini dengan benar.</p>
             </div>
 
             <!-- Alert Messages -->
@@ -66,57 +66,117 @@
                     <p class="mt-1 text-sm text-red-700 font-medium"><?= htmlspecialchars($error) ?></p>
                 </div>
             </div>
-            <?php elseif (isset($info) && !empty($info)): ?>
-            <!-- Pesan Peringatan (Warning) -->
-            <div class="mb-6 bg-[#fffbeb] border border-[#fcd34d] rounded-xl p-4 flex items-start gap-3 shadow-sm transition-all font-body">
-                <div class="bg-amber-100 p-1.5 rounded-full shrink-0 flex items-center justify-center">
-                    <span class="material-symbols-outlined text-amber-600 text-sm">warning</span>
-                </div>
-                <div>
-                    <h4 class="text-sm font-bold text-amber-800 font-headline">Pemberitahuan</h4>
-                    <p class="mt-1 text-sm text-amber-700 font-medium"><?= htmlspecialchars($info) ?></p>
-                </div>
-            </div>
             <?php endif; ?>
             
-            <form id="signupForm" class="space-y-6" action="/auth/register" method="POST" enctype="multipart/form-data">
+            <form id="signupForm" class="space-y-6" action="/auth/register" method="POST">
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <!-- Nama Lengkap -->
                     <div class="space-y-2 md:col-span-2">
-                        <label class="text-xs font-bold text-on-surface-variant uppercase tracking-widest ml-1" for="nama">Nama Lengkap</label>
+                        <label class="text-xs font-bold text-on-surface-variant uppercase tracking-widest ml-1" for="nama">Nama Lengkap <span class="text-red-500">*</span></label>
                         <div class="relative">
-                            <input required name="nama" class="w-full bg-surface-container-high border-none rounded-lg px-4 py-3 focus:ring-0 focus:bg-surface-container-lowest focus:border-b-2 focus:border-primary transition-all text-on-surface placeholder:text-outline/50" id="nama" placeholder="Masukkan nama sesuai KTP" type="text"/>
+                            <input required name="nama" class="w-full bg-surface-container-high border-none rounded-lg px-4 py-3 focus:ring-0 focus:bg-surface-container-lowest focus:border-b-2 focus:border-primary transition-all text-on-surface placeholder:text-outline/50" id="nama" placeholder="Masukkan nama lengkap Anda" type="text"/>
                         </div>
                     </div>
                     
-                    <!-- Email Aktif -->
+                    <!-- Rombel (Dropdown) -->
                     <div class="space-y-2">
-                        <label class="text-xs font-bold text-on-surface-variant uppercase tracking-widest ml-1" for="email">Email Aktif</label>
+                        <label class="text-xs font-bold text-on-surface-variant uppercase tracking-widest ml-1" for="rombel">Rombel <span class="text-red-500">*</span></label>
                         <div class="relative">
-                            <input required name="email" class="w-full bg-surface-container-high border-none rounded-lg px-4 py-3 focus:ring-0 focus:bg-surface-container-lowest focus:border-b-2 focus:border-primary transition-all text-on-surface placeholder:text-outline/50" id="email" placeholder="email@contoh.com" type="email"/>
+                            <select required name="rombel" id="rombel" class="w-full bg-surface-container-high border-none rounded-lg px-4 py-3 focus:ring-0 focus:bg-surface-container-lowest focus:border-b-2 focus:border-primary transition-all text-on-surface cursor-pointer">
+                                <option value="" disabled selected>-- Pilih Rombel --</option>
+                                <?php
+                                    $rombelList = [
+                                        'X1','X2','X3','X4','X5','X6','X7','X8','X9',
+                                        'XI1','XI2','XI3','XI4','XI5','XI6','XI7','XI8','XI9',
+                                        'XII1','XII2','XII3','XII4','XII5','XII6','XII7','XII8','XII9'
+                                    ];
+                                    foreach ($rombelList as $r):
+                                ?>
+                                    <option value="<?= $r ?>"><?= $r ?></option>
+                                <?php endforeach; ?>
+                            </select>
+                        </div>
+                    </div>
+
+                    <!-- Angkatan Masuk (Dropdown) -->
+                    <div class="space-y-2">
+                        <label class="text-xs font-bold text-on-surface-variant uppercase tracking-widest ml-1" for="angkatan_masuk">Angkatan Masuk <span class="text-red-500">*</span></label>
+                        <div class="relative">
+                            <select required name="angkatan_masuk" id="angkatan_masuk" class="w-full bg-surface-container-high border-none rounded-lg px-4 py-3 focus:ring-0 focus:bg-surface-container-lowest focus:border-b-2 focus:border-primary transition-all text-on-surface cursor-pointer">
+                                <option value="" disabled selected>-- Pilih Angkatan --</option>
+                                <?php
+                                    $startYear = 2019;
+                                    $startAngkatan = 29;
+                                    for ($i = 0; $i <= 11; $i++):
+                                        $year = $startYear + $i;
+                                        $angk = $startAngkatan + $i;
+                                        $label = "{$year} (Angkatan {$angk})";
+                                ?>
+                                    <option value="<?= $label ?>"><?= $label ?></option>
+                                <?php endfor; ?>
+                            </select>
+                        </div>
+                    </div>
+
+                    <!-- Bulan Bergabung (Dropdown) -->
+                    <div class="space-y-2">
+                        <label class="text-xs font-bold text-on-surface-variant uppercase tracking-widest ml-1" for="bulan_bergabung">Bulan Bergabung <span class="text-red-500">*</span></label>
+                        <div class="relative">
+                            <select required name="bulan_bergabung" id="bulan_bergabung" class="w-full bg-surface-container-high border-none rounded-lg px-4 py-3 focus:ring-0 focus:bg-surface-container-lowest focus:border-b-2 focus:border-primary transition-all text-on-surface cursor-pointer">
+                                <option value="" disabled selected>-- Pilih Bulan --</option>
+                                <?php
+                                    $bulanList = ['Januari','Februari','Maret','April','Mei','Juni','Juli','Agustus','September','Oktober','November','Desember'];
+                                    foreach ($bulanList as $b):
+                                ?>
+                                    <option value="<?= $b ?>"><?= $b ?></option>
+                                <?php endforeach; ?>
+                            </select>
                         </div>
                     </div>
                     
-                    <!-- Nomor Telepon -->
+                    <!-- Nomor WhatsApp -->
                     <div class="space-y-2">
-                        <label class="text-xs font-bold text-on-surface-variant uppercase tracking-widest ml-1" for="phone">No. Telp / WhatsApp</label>
+                        <label class="text-xs font-bold text-on-surface-variant uppercase tracking-widest ml-1" for="phone">Nomor WhatsApp <span class="text-red-500">*</span></label>
                         <div class="relative">
-                            <input required name="phone" class="w-full bg-surface-container-high border-none rounded-lg px-4 py-3 focus:ring-0 focus:bg-surface-container-lowest focus:border-b-2 focus:border-primary transition-all text-on-surface placeholder:text-outline/50" id="phone" placeholder="081234567890" type="tel"/>
+                            <input required name="phone" class="w-full bg-surface-container-high border-none rounded-lg px-4 py-3 focus:ring-0 focus:bg-surface-container-lowest focus:border-b-2 focus:border-primary transition-all text-on-surface placeholder:text-outline/50" id="phone" placeholder="628..." type="text" inputmode="numeric"/>
+                        </div>
+                        <p class="text-[11px] text-on-surface-variant/70 ml-1">Wajib angka saja. Awalan <code>08</code> akan otomatis dikonversi menjadi <code>628</code>.</p>
+                    </div>
+
+                    <!-- Gmail / Email Aktif -->
+                    <div class="space-y-2 md:col-span-2">
+                        <label class="text-xs font-bold text-on-surface-variant uppercase tracking-widest ml-1" for="email">Gmail / Email Aktif <span class="text-red-500">*</span></label>
+                        <div class="relative">
+                            <input required name="email" class="w-full bg-surface-container-high border-none rounded-lg px-4 py-3 focus:ring-0 focus:bg-surface-container-lowest focus:border-b-2 focus:border-primary transition-all text-on-surface placeholder:text-outline/50" id="email" placeholder="contoh@gmail.com" type="email"/>
                         </div>
                     </div>
                     
                     <!-- Kata Sandi -->
-                    <div class="space-y-2 md:col-span-2">
-                        <label class="text-xs font-bold text-on-surface-variant uppercase tracking-widest ml-1" for="password">Kata Sandi</label>
+                    <div class="space-y-2">
+                        <label class="text-xs font-bold text-on-surface-variant uppercase tracking-widest ml-1" for="password">Kata Sandi <span class="text-red-500">*</span></label>
                         <div class="relative group">
                             <input required name="password" class="w-full bg-surface-container-high border-none rounded-lg pl-4 pr-12 py-3 focus:ring-0 focus:bg-surface-container-lowest focus:border-b-2 focus:border-primary transition-all text-on-surface placeholder:text-outline/50" id="password" placeholder="Minimal 8 karakter" type="password"/>
                             <button type="button" id="togglePassword" class="absolute right-3 top-3.5 text-on-surface-variant/40 hover:text-primary transition-colors flex items-center justify-center">
                                 <span class="material-symbols-outlined text-lg">visibility</span>
                             </button>
                         </div>
-                        <!-- Strength Indicators -->
-                        <div id="pw-strength-box" class="hidden p-4 bg-surface-container-low rounded-xl border border-outline-variant/15 text-xs space-y-2 mt-2">
-                            <p class="font-bold text-on-surface-variant mb-1.5">Kriteria Kata Sandi Kuat:</p>
+                    </div>
+
+                    <!-- Retype Kata Sandi -->
+                    <div class="space-y-2">
+                        <label class="text-xs font-bold text-on-surface-variant uppercase tracking-widest ml-1" for="password_confirm">Konfirmasi Kata Sandi <span class="text-red-500">*</span></label>
+                        <div class="relative group">
+                            <input required name="password_confirm" class="w-full bg-surface-container-high border-none rounded-lg pl-4 pr-12 py-3 focus:ring-0 focus:bg-surface-container-lowest focus:border-b-2 focus:border-primary transition-all text-on-surface placeholder:text-outline/50" id="password_confirm" placeholder="Ulangi kata sandi" type="password"/>
+                            <button type="button" id="togglePasswordConfirm" class="absolute right-3 top-3.5 text-on-surface-variant/40 hover:text-primary transition-colors flex items-center justify-center">
+                                <span class="material-symbols-outlined text-lg">visibility</span>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Password Strength Indicators -->
+                    <div class="md:col-span-2">
+                        <div id="pw-strength-box" class="hidden p-4 bg-surface-container-low rounded-xl border border-outline-variant/15 text-xs space-y-2 mt-1">
+                            <p class="font-bold text-on-surface-variant mb-1.5">Kriteria Kata Sandi Kuat & Konfirmasi:</p>
                             <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 font-medium">
                                 <div id="pw-len" class="flex items-center gap-1.5 text-red-500 transition-colors">
                                     <span class="material-symbols-outlined text-[16px] font-bold">cancel</span> Minimal 8 Karakter
@@ -130,79 +190,63 @@
                                 <div id="pw-num" class="flex items-center gap-1.5 text-red-500 transition-colors">
                                     <span class="material-symbols-outlined text-[16px] font-bold">cancel</span> Angka (0-9)
                                 </div>
-                                <div id="pw-spec" class="flex items-center gap-1.5 text-red-500 transition-colors">
-                                    <span class="material-symbols-outlined text-[16px] font-bold">cancel</span> Karakter Simbol (@$!%*?&...)
+                                <div id="pw-match" class="flex items-center gap-1.5 text-red-500 transition-colors sm:col-span-2">
+                                    <span class="material-symbols-outlined text-[16px] font-bold">cancel</span> Konfirmasi Kata Sandi Cocok
                                 </div>
                             </div>
-                        </div>
-                    </div>
-                    
-                    <!-- Tautan Profesional -->
-                    <div class="space-y-2 md:col-span-2">
-                        <label class="text-xs font-bold text-on-surface-variant uppercase tracking-widest ml-1" for="portfolio">Tautan Profesional (LinkedIn / Portofolio)</label>
-                        <div class="relative">
-                            <input required name="portfolio" class="w-full bg-surface-container-high border-none rounded-lg px-4 py-3 focus:ring-0 focus:bg-surface-container-lowest focus:border-b-2 focus:border-primary transition-all text-on-surface placeholder:text-outline/50" id="portfolio" placeholder="https://linkedin.com/in/..." type="url"/>
-                        </div>
-                    </div>
-                    
-                    <!-- Riwayat Pendidikan -->
-                    <div class="space-y-2 md:col-span-2">
-                        <label class="text-xs font-bold text-on-surface-variant uppercase tracking-widest ml-1" for="education">Riwayat Pendidikan Terakhir</label>
-                        <div class="relative">
-                            <input required name="education" class="w-full bg-surface-container-high border-none rounded-lg px-4 py-3 focus:ring-0 focus:bg-surface-container-lowest focus:border-b-2 focus:border-primary transition-all text-on-surface placeholder:text-outline/50" id="education" placeholder="Contoh: S1 Teknik Informatika, Universitas..." type="text"/>
-                        </div>
-                    </div>
-                    
-                    <!-- Ekspektasi Gaji -->
-                    <div class="space-y-2 md:col-span-2">
-                        <label class="text-xs font-bold text-on-surface-variant uppercase tracking-widest ml-1" for="salary">Ekspektasi Gaji (IDR)</label>
-                        <div class="relative">
-                            <input required name="salary" class="w-full bg-surface-container-high border-none rounded-lg px-4 py-3 focus:ring-0 focus:bg-surface-container-lowest focus:border-b-2 focus:border-primary transition-all text-on-surface placeholder:text-outline/50" id="salary" placeholder="Contoh: 8000000" type="number" min="0"/>
-                        </div>
-                    </div>
-
-                    <!-- Riwayat Pekerjaan (Opsional) -->
-                    <div class="space-y-2 md:col-span-2">
-                        <label class="text-xs font-bold text-on-surface-variant uppercase tracking-widest ml-1" for="experience">Riwayat Pekerjaan (Opsional)</label>
-                        <p class="text-xs text-on-surface-variant mb-2 ml-1">Mencakup nama perusahaan sebelumnya, posisi, durasi, dan deskripsi singkat tanggung jawab.</p>
-                        <div class="relative">
-                            <textarea name="experience" class="w-full bg-surface-container-high border-none rounded-lg px-4 py-3 focus:ring-0 focus:bg-surface-container-lowest focus:border-b-2 focus:border-primary transition-all text-on-surface placeholder:text-outline/50" id="experience" rows="4" placeholder="Kosongkan jika Anda belum memiliki pengalaman kerja."></textarea>
-                        </div>
-                    </div>
-                    
-                    <!-- File Resume / CV -->
-                    <div class="space-y-2 md:col-span-2">
-                        <label class="text-xs font-bold text-on-surface-variant uppercase tracking-widest ml-1" for="resume">File Resume / CV (PDF maks 10MB)</label>
-                        <div class="relative">
-                            <input required name="resume" class="w-full bg-surface-container-high border-none rounded-lg px-4 py-3 focus:ring-0 focus:bg-surface-container-lowest focus:border-b-2 focus:border-primary transition-all text-on-surface file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-primary/10 file:text-primary hover:file:bg-primary/20 cursor-pointer" id="resume" type="file" accept="application/pdf"/>
-                        </div>
-                    </div>
-                    
-                    <!-- File Surat Lamaran / Cover Letter -->
-                    <div class="space-y-2 md:col-span-2">
-                        <label class="text-xs font-bold text-on-surface-variant uppercase tracking-widest ml-1" for="cover_letter">Surat Lamaran / Cover Letter (PDF maks 10MB)</label>
-                        <div class="relative">
-                            <input required name="cover_letter" class="w-full bg-surface-container-high border-none rounded-lg px-4 py-3 focus:ring-0 focus:bg-surface-container-lowest focus:border-b-2 focus:border-primary transition-all text-on-surface file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-primary/10 file:text-primary hover:file:bg-primary/20 cursor-pointer" id="cover_letter" type="file" accept="application/pdf"/>
                         </div>
                     </div>
                 </div>
                 
                 <div class="pt-4 mt-6">
                     <button class="w-full signature-gradient text-on-primary font-headline font-bold py-4 rounded-lg shadow-lg hover:opacity-90 transition-all flex items-center justify-center gap-3 group" type="submit">
-                        Kirim Pendaftaran 
+                        Daftar Akun Kandidat 
                         <span class="material-symbols-outlined group-hover:translate-x-1 transition-transform">arrow_forward</span>
                     </button>
                 </div>
             </form>
 
             <script>
+                // Format WhatsApp Number (Strictly Digits Only & Auto Convert 08 -> 628)
+                const phoneInput = document.getElementById('phone');
+                if (phoneInput) {
+                    phoneInput.addEventListener('input', function() {
+                        // Remove all non-digits
+                        let val = this.value.replace(/\D/g, '');
+                        // If user types '08...', automatically change '08' to '628'
+                        if (val.startsWith('08')) {
+                            val = '628' + val.substring(2);
+                        }
+                        this.value = val;
+                    });
+
+                    phoneInput.addEventListener('blur', function() {
+                        let val = this.value.replace(/\D/g, '');
+                        if (val.startsWith('08')) {
+                            val = '628' + val.substring(2);
+                        }
+                        this.value = val;
+                    });
+                }
+
                 // Toggle Show/Hide Password
                 const passwordInput = document.getElementById('password');
+                const passwordConfirmInput = document.getElementById('password_confirm');
                 const togglePasswordBtn = document.getElementById('togglePassword');
+                const togglePasswordConfirmBtn = document.getElementById('togglePasswordConfirm');
+
                 if (passwordInput && togglePasswordBtn) {
                     togglePasswordBtn.addEventListener('click', function() {
                         const type = passwordInput.getAttribute('type') === 'password' ? 'text' : 'password';
                         passwordInput.setAttribute('type', type);
+                        this.querySelector('.material-symbols-outlined').textContent = type === 'password' ? 'visibility' : 'visibility_off';
+                    });
+                }
+
+                if (passwordConfirmInput && togglePasswordConfirmBtn) {
+                    togglePasswordConfirmBtn.addEventListener('click', function() {
+                        const type = passwordConfirmInput.getAttribute('type') === 'password' ? 'text' : 'password';
+                        passwordConfirmInput.setAttribute('type', type);
                         this.querySelector('.material-symbols-outlined').textContent = type === 'password' ? 'visibility' : 'visibility_off';
                     });
                 }
@@ -213,35 +257,39 @@
                 const pwUpper = document.getElementById('pw-upper');
                 const pwLower = document.getElementById('pw-lower');
                 const pwNum = document.getElementById('pw-num');
-                const pwSpec = document.getElementById('pw-spec');
+                const pwMatch = document.getElementById('pw-match');
 
                 let passwordValid = false;
 
-                if (passwordInput) {
-                    passwordInput.addEventListener('focus', () => {
-                        pwStrengthBox.classList.remove('hidden');
-                    });
+                function checkPasswordStrength() {
+                    const val = passwordInput.value;
+                    const confirmVal = passwordConfirmInput.value;
+                    
+                    const hasLen = val.length >= 8;
+                    const hasUpper = /[A-Z]/.test(val);
+                    const hasLower = /[a-z]/.test(val);
+                    const hasNum = /[0-9]/.test(val);
+                    const hasMatch = val !== '' && val === confirmVal;
 
-                    passwordInput.addEventListener('input', function() {
-                        const val = this.value;
-                        
-                        const hasLen = val.length >= 8;
-                        const hasUpper = /[A-Z]/.test(val);
-                        const hasLower = /[a-z]/.test(val);
-                        const hasNum = /[0-9]/.test(val);
-                        const hasSpec = /[^A-Za-z0-9]/.test(val);
+                    updateCrit(pwLen, hasLen);
+                    updateCrit(pwUpper, hasUpper);
+                    updateCrit(pwLower, hasLower);
+                    updateCrit(pwNum, hasNum);
+                    updateCrit(pwMatch, hasMatch);
 
-                        updateCrit(pwLen, hasLen);
-                        updateCrit(pwUpper, hasUpper);
-                        updateCrit(pwLower, hasLower);
-                        updateCrit(pwNum, hasNum);
-                        updateCrit(pwSpec, hasSpec);
+                    passwordValid = hasLen && hasUpper && hasLower && hasNum && hasMatch;
+                }
 
-                        passwordValid = hasLen && hasUpper && hasLower && hasNum && hasSpec;
-                    });
+                if (passwordInput && passwordConfirmInput) {
+                    passwordInput.addEventListener('focus', () => pwStrengthBox.classList.remove('hidden'));
+                    passwordConfirmInput.addEventListener('focus', () => pwStrengthBox.classList.remove('hidden'));
+
+                    passwordInput.addEventListener('input', checkPasswordStrength);
+                    passwordConfirmInput.addEventListener('input', checkPasswordStrength);
                 }
 
                 function updateCrit(elem, met) {
+                    if (!elem) return;
                     if (met) {
                         elem.classList.remove('text-red-500');
                         elem.classList.add('text-green-600');
@@ -256,10 +304,21 @@
                 document.getElementById('signupForm').addEventListener('submit', function(e) {
                     e.preventDefault();
 
+                    const phoneVal = phoneInput.value.trim();
+                    if (!phoneVal || !/^\d+$/.test(phoneVal)) {
+                        Swal.fire({
+                            title: 'Nomor WhatsApp Tidak Valid!',
+                            text: 'Nomor WhatsApp wajib diisi angka saja tanpa karakter lain.',
+                            icon: 'error',
+                            confirmButtonColor: '#000666'
+                        });
+                        return;
+                    }
+
                     if (!passwordValid) {
                         Swal.fire({
-                            title: 'Kata Sandi Kurang Kuat!',
-                            text: 'Harap penuhi semua kriteria kata sandi kuat sebelum melanjutkan pendaftaran.',
+                            title: 'Kata Sandi Kurang Sesuai!',
+                            text: 'Harap pastikan kata sandi memenuhi kriteria dan konfirmasi kata sandi cocok.',
                             icon: 'error',
                             confirmButtonColor: '#000666'
                         });
@@ -289,13 +348,13 @@
                         if(data.success) {
                             Swal.fire({
                                 title: 'Pendaftaran Berhasil!',
-                                text: data.message,
+                                text: data.message || 'Akun Anda berhasil dibuat. Mengalihkan ke Dashboard...',
                                 icon: 'success',
                                 timer: 2000,
                                 timerProgressBar: true,
                                 showConfirmButton: false
                             }).then(() => {
-                                window.location.href = data.redirect;
+                                window.location.href = data.redirect || '/candidate/dashboard';
                             });
                         } else {
                             Swal.fire('Gagal!', data.message, 'error');
@@ -310,9 +369,9 @@
                 <div class="flex gap-4">
                     <span class="material-symbols-outlined text-blue-600" data-icon="info" style="font-variation-settings: 'FILL' 1;">info</span>
                     <div>
-                        <p class="text-sm font-bold text-blue-900">Persetujuan & Akses</p>
+                        <p class="text-sm font-bold text-blue-900">Alur Setelah Pendaftaran</p>
                         <p class="text-xs text-blue-800 mt-1 leading-relaxed">
-                            Dengan mengklik Kirim Pendaftaran, Anda menyatakan bahwa data yang diberikan adalah benar dan mengizinkan tim kami untuk memproses data tersebut guna keperluan rekrutmen.
+                            Setelah pendaftaran akun berhasil, Anda akan langsung masuk ke <b>Dashboard Kandidat</b> untuk memilih divisi pilihan Anda (Post Production, Editorial, Broadcast, atau Visual Production).
                             <br><br>
                             Sudah memiliki akun? <a class="text-blue-700 font-bold hover:underline" href="/signin">Masuk di sini</a>
                         </p>

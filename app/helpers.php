@@ -210,3 +210,27 @@ if (!function_exists('validate_and_format_phone')) {
     }
 }
 
+if (!function_exists('format_duration_minutes')) {
+    /**
+     * Format minute duration according to rules:
+     * - <= 0 minutes -> "0 menit"
+     * - <= 60 minutes -> "X menit" (e.g. "60 menit", "45 menit")
+     * - > 60 minutes -> "X jam Y menit" (e.g. "1 jam 30 menit") or "X jam" if Y == 0
+     *
+     * @param int|float|string $minutes
+     * @return string
+     */
+    function format_duration_minutes($minutes): string {
+        $mins = max(0, (int)$minutes);
+        if ($mins <= 60) {
+            return "{$mins} menit";
+        }
+        $h = (int)floor($mins / 60);
+        $m = $mins % 60;
+        if ($m === 0) {
+            return "{$h} jam";
+        }
+        return "{$h} jam {$m} menit";
+    }
+}
+

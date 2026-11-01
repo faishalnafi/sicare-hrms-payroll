@@ -15,7 +15,14 @@ class RemoveUnusedColumnsAndAddIsDeleted extends Migration {
         }
 
         // 3. Migrasikan gambar profil
-        $stmt = $this->db->query("SELECT id, email, profile_picture, google_profile_picture, gravatar_profile_picture FROM users");
+        $hasGoogle = $this->columnExists('users', 'google_profile_picture');
+        $hasGravatar = $this->columnExists('users', 'gravatar_profile_picture');
+
+        $cols = "id, email, profile_picture";
+        if ($hasGoogle) $cols .= ", google_profile_picture";
+        if ($hasGravatar) $cols .= ", gravatar_profile_picture";
+
+        $stmt = $this->db->query("SELECT $cols FROM users");
         $users = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
         // Include helpers.php secara aman jika fungsi resolveProfilePicture belum ter-load
@@ -24,13 +31,13 @@ class RemoveUnusedColumnsAndAddIsDeleted extends Migration {
         }
 
         foreach ($users as $user) {
-            $profilePic = $user['profile_picture'];
+            $profilePic = $user['profile_picture'] ?? null;
             
             // Jika kosong, lakukan cascade check
             if (empty($profilePic)) {
-                if (!empty($user['google_profile_picture'])) {
+                if ($hasGoogle && !empty($user['google_profile_picture'])) {
                     $profilePic = $user['google_profile_picture'];
-                } elseif (!empty($user['gravatar_profile_picture'])) {
+                } elseif ($hasGravatar && !empty($user['gravatar_profile_picture'])) {
                     $profilePic = $user['gravatar_profile_picture'];
                 } else {
                     $profilePic = resolveProfilePicture($user['email']);

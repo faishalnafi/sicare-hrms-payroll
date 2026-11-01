@@ -261,18 +261,27 @@ class AuthController {
     public function register() {
         header("Content-Type: application/json");
         
-        $firstName = $_POST["first_name"] ?? "";
-        $lastName = $_POST["last_name"] ?? "";
-        $email = $_POST["email"] ?? "";
+        $firstName = trim($_POST["first_name"] ?? "");
+        $lastName = trim($_POST["last_name"] ?? "");
+        $email = trim($_POST["email"] ?? "");
         $password = $_POST["password"] ?? "";
-        $phone = $_POST["phone"] ?? "";
+        $passwordConfirm = $_POST["password_confirm"] ?? "";
+        $phone = trim($_POST["phone"] ?? "");
+        $rombel = trim($_POST["rombel"] ?? "");
+        $angkatanMasuk = trim($_POST["angkatan_masuk"] ?? "");
+        $bulanBergabung = trim($_POST["bulan_bergabung"] ?? "");
         
-        if (empty($firstName) || empty($email) || empty($password) || empty($phone)) {
-            echo json_encode(["success" => false, "message" => "Semua kolom wajib diisi."]);
+        if (empty($firstName) || empty($email) || empty($password) || empty($phone) || empty($rombel) || empty($angkatanMasuk) || empty($bulanBergabung)) {
+            echo json_encode(["success" => false, "message" => "Mohon lengkapi semua kolom pendaftaran wajib."]);
             return;
         }
 
-        // Validate and format phone number
+        if ($password !== $passwordConfirm) {
+            echo json_encode(["success" => false, "message" => "Konfirmasi kata sandi tidak cocok."]);
+            return;
+        }
+
+        // Validate and format phone number (auto convert 08 -> 628)
         $phoneMsg = "";
         $formattedPhone = validate_and_format_phone($phone, $phoneMsg);
         if ($formattedPhone === false) {
@@ -291,72 +300,75 @@ class AuthController {
         
         // Check if email exists
         if ($userModel->findByEmail($email)) {
-            echo json_encode(["success" => false, "message" => "Email sudah terdaftar."]);
+            echo json_encode(["success" => false, "message" => "Email ini sudah terdaftar. Silakan gunakan email lain atau login."]);
             return;
         }
 
         $id = $userModel->create($firstName, $lastName, $email, $password);
         
         if ($id) {
-            // Handle Resume and Cover Letter Uploads
-            $resumePath = null;
-            $coverLetterPath = null;
-            
-            $uploadDirResumes = __DIR__ . '/../../public/uploads/resumes/';
-            $uploadDirLetters = __DIR__ . '/../../public/uploads/cover_letters/';
-            
-            if (!file_exists($uploadDirResumes)) mkdir($uploadDirResumes, 0755, true);
-            if (!file_exists($uploadDirLetters)) mkdir($uploadDirLetters, 0755, true);
-            
-            if (isset($_FILES['resume']) && $_FILES['resume']['error'] === UPLOAD_ERR_OK) {
-                $file = $_FILES['resume'];
-                $ext = pathinfo($file['name'], PATHINFO_EXTENSION);
-                $filename = 'resume_' . time() . '_' . mt_rand(1000, 9999) . '.' . $ext;
-                if (move_uploaded_file($file['tmp_name'], $uploadDirResumes . $filename)) {
-                    $resumePath = '/uploads/resumes/' . $filename;
-                }
-            }
-            
-            if (isset($_FILES['cover_letter']) && $_FILES['cover_letter']['error'] === UPLOAD_ERR_OK) {
-                $file = $_FILES['cover_letter'];
-                $ext = pathinfo($file['name'], PATHINFO_EXTENSION);
-                $filename = 'cover_' . time() . '_' . mt_rand(1000, 9999) . '.' . $ext;
-                if (move_uploaded_file($file['tmp_name'], $uploadDirLetters . $filename)) {
-                    $coverLetterPath = '/uploads/cover_letters/' . $filename;
-                }
-            }
-            
             // Save candidate metadata to database
             try {
                 $db = \App\Config\Database::getInstance()->getConnection();
                 $stmtUpdate = $db->prepare("
                     UPDATE users 
                     SET no_telepon = :phone,
-                        tautan_profesional = :portfolio,
-                        pendidikan_terakhir = :education,
-                        ekspektasi_gaji = :salary,
-                        riwayat_pekerjaan = :experience,
-                        resume_file = :resume_file,
-                        cover_letter_file = :cover_letter_file
+                        rombel = :rombel,
+                        angkatan_masuk = :angkatan_masuk,
+                        bulan_bergabung = :bulan_bergabung,
+                        role = 'candidate'
                     WHERE id = :id
                 ");
                 $stmtUpdate->execute([
                     'phone' => $formattedPhone,
-                    'portfolio' => $_POST['portfolio'] ?? null,
-                    'education' => $_POST['education'] ?? null,
-                    'salary' => !empty($_POST['salary']) ? floatval($_POST['salary']) : null,
-                    'experience' => $_POST['experience'] ?? null,
-                    'resume_file' => $resumePath,
-                    'cover_letter_file' => $coverLetterPath,
+                    'rombel' => $rombel,
+                    'angkatan_masuk' => $angkatanMasuk,
+                    'bulan_bergabung' => $bulanBergabung,
                     'id' => $id
                 ]);
             } catch (\Exception $e) {
-                // Log or handle error if necessary
+                // Ignore or log error
             }
 
-            echo json_encode(["success" => true, "message" => "Pendaftaran berhasil! Silakan masuk.", "redirect" => "/signin"]);
+            // Auto login after registration
+            if (session_status() === PHP_SESSION_NONE) session_start();
+            $_SESSION["user_id"] = $id;
+            $_SESSION["role"] = "candidate";
+            $_SESSION["name"] = trim($firstName . " " . $lastName);
+            $_SESSION["email"] = $email;
+            $_SESSION["login_just_occurred"] = true;
+
+            // Generate JWT Token
+            $jwtPayload = [
+                "user_id" => $id,
+                "name" => trim($firstName . " " . $lastName),
+                "email" => $email,
+                "role" => "candidate"
+            ];
+            $jwtToken = \App\Config\JwtHelper::createToken($jwtPayload);
+            $_SESSION["jwt_token"] = $jwtToken;
+
+            $isSecure = (!empty($_SERVER["HTTPS"]) && $_SERVER["HTTPS"] !== "off") || (isset($_SERVER["HTTP_X_FORWARDED_PROTO"]) && $_SERVER["HTTP_X_FORWARDED_PROTO"] === "https");
+            if (PHP_VERSION_ID >= 70300) {
+                setcookie("jwt_token", $jwtToken, [
+                    "expires" => time() + 604800,
+                    "path" => "/",
+                    "domain" => "",
+                    "secure" => $isSecure,
+                    "httponly" => false,
+                    "samesite" => "Lax"
+                ]);
+            } else {
+                setcookie("jwt_token", $jwtToken, time() + 604800, "/", "", $isSecure, false);
+            }
+
+            echo json_encode([
+                "success" => true,
+                "message" => "Pendaftaran akun berhasil! Selamat datang di Ekstrakurikuler.",
+                "redirect" => "/candidate/dashboard"
+            ]);
         } else {
-            echo json_encode(["success" => false, "message" => "Terjadi kesalahan sistem."]);
+            echo json_encode(["success" => false, "message" => "Terjadi kesalahan sistem saat mendaftar."]);
         }
     }
 

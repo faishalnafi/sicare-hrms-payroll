@@ -15,12 +15,44 @@ try {
     $db->exec("
         CREATE TABLE IF NOT EXISTS users (
             id CHAR(36) PRIMARY KEY,
-            employee_id VARCHAR(20) NULL,
+            employee_id VARCHAR(50) NULL,
             first_name VARCHAR(100) NOT NULL,
             last_name VARCHAR(100) NULL,
             email VARCHAR(255) NOT NULL UNIQUE,
+            profile_picture VARCHAR(255) NULL,
+            no_telepon VARCHAR(20) NULL,
+            alamat_domisili TEXT NULL,
+            home_latitude DECIMAL(10,7) NULL,
+            home_longitude DECIMAL(10,7) NULL,
+            ktp_nik VARCHAR(20) NULL,
+            nama_sesuai_ktp VARCHAR(100) NULL,
+            alamat_ktp TEXT NULL,
+            tanggal_lahir VARCHAR(50) NULL,
+            jenis_kelamin VARCHAR(20) NULL,
+            rombel VARCHAR(20) NULL,
+            angkatan_masuk VARCHAR(50) NULL,
+            bulan_bergabung VARCHAR(30) NULL,
+            department_id CHAR(36) NULL,
+            job_title VARCHAR(100) NULL,
+            profile_reset_token VARCHAR(100) NULL,
+            login_just_occurred TINYINT DEFAULT 0,
+            is_suspended TINYINT DEFAULT 0,
+            is_deleted TINYINT DEFAULT 0,
+            remember_token VARCHAR(255) NULL DEFAULT NULL,
             password_hash VARCHAR(255) NOT NULL,
             role VARCHAR(50) DEFAULT 'candidate',
+            role_id CHAR(36) NULL,
+            onboarding_status VARCHAR(50) DEFAULT 'Pending',
+            ktp_file VARCHAR(255) NULL,
+            kk_file VARCHAR(255) NULL,
+            foto_file VARCHAR(255) NULL,
+            emergency_name VARCHAR(100) NULL,
+            emergency_relation VARCHAR(50) NULL,
+            emergency_phone VARCHAR(20) NULL,
+            uniform_size VARCHAR(10) NULL,
+            akses TINYINT(1) DEFAULT 0,
+            id_kartu VARCHAR(255) NULL,
+            id_qrcode VARCHAR(255) NULL,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
@@ -33,11 +65,6 @@ try {
             name VARCHAR(255) NOT NULL,
             parent_id CHAR(36) NULL,
             level INT DEFAULT 1,
-            reimbursement_limit DECIMAL(15,2) DEFAULT NULL,
-            limit_medis DECIMAL(15,2) DEFAULT NULL,
-            limit_transport DECIMAL(15,2) DEFAULT NULL,
-            limit_operasional DECIMAL(15,2) DEFAULT NULL,
-            limit_makan DECIMAL(15,2) DEFAULT NULL,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
             KEY idx_parent_id (parent_id)
@@ -62,13 +89,9 @@ try {
             id CHAR(36) PRIMARY KEY,
             requester_id CHAR(36) NOT NULL,
             target_user_id CHAR(36) NOT NULL,
-            approver_id CHAR(36) NULL,
-            action_type VARCHAR(50) NOT NULL,
-            new_data LONGTEXT NULL,
-            status VARCHAR(20) DEFAULT 'PENDING',
-            rejection_reason TEXT NULL,
-            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+            type VARCHAR(50) NOT NULL,
+            status VARCHAR(50) DEFAULT 'pending',
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
     ");
     echo "Table approval_requests created or verified.\n";
@@ -88,75 +111,137 @@ try {
     ");
     echo "Table employment_history created or verified.\n";
 
-    // Seed default departments if empty
-    $countDepts = $db->query("SELECT COUNT(*) FROM departments")->fetchColumn();
-    if ($countDepts == 0) {
+    // Seed departments if empty
+    $stmt = $db->query("SELECT COUNT(*) FROM departments");
+    if ($stmt->fetchColumn() == 0) {
         $depts = [
-            ['dept-it', 'Information Technology', null, 1],
-            ['dept-hr', 'Human Resources', null, 1],
-            ['dept-finance', 'Finance & Accounting', null, 1],
-            ['dept-marketing', 'Marketing & Sales', null, 1],
-            ['dept-ops', 'Operations', null, 1],
-            ['dept-it-eng', 'Software Engineering', 'dept-it', 2],
-            ['dept-it-ops', 'IT Operations', 'dept-it', 2],
-            ['dept-hr-ops', 'HR Operations', 'dept-hr', 2],
-            ['dept-hr-ta', 'Talent Acquisition', 'dept-hr', 2],
+            ['35133ec6-b31c-4b53-9092-95f2a1b1b001', 'Badan Pengurus Harian (BPH)'],
+            ['35133ec6-b31c-4b53-9092-95f2a1b1b002', 'Post Production Staff'],
+            ['35133ec6-b31c-4b53-9092-95f2a1b1b003', 'Editorial Staff'],
+            ['35133ec6-b31c-4b53-9092-95f2a1b1b004', 'Broadcast Staff'],
+            ['35133ec6-b31c-4b53-9092-95f2a1b1b005', 'Visual Production Staff']
         ];
-        $stmtDept = $db->prepare("INSERT INTO departments (id, name, parent_id, level) VALUES (?, ?, ?, ?)");
+        $insertDept = $db->prepare("INSERT INTO departments (id, name) VALUES (?, ?)");
         foreach ($depts as $d) {
-            $stmtDept->execute($d);
+            $insertDept->execute($d);
             echo "Seeded department: {$d[1]}\n";
         }
     }
 
     // 1. Add extra columns to users table
     $alterQueries = [
-        "ALTER TABLE users ADD COLUMN IF NOT EXISTS no_telepon VARCHAR(20) NULL AFTER profile_picture",
-        "ALTER TABLE users ADD COLUMN IF NOT EXISTS alamat_domisili TEXT NULL AFTER no_telepon",
-        "ALTER TABLE users ADD COLUMN IF NOT EXISTS ktp_nik VARCHAR(20) NULL AFTER alamat_domisili",
-        "ALTER TABLE users ADD COLUMN IF NOT EXISTS nama_sesuai_ktp VARCHAR(100) NULL AFTER ktp_nik",
-        "ALTER TABLE users ADD COLUMN IF NOT EXISTS alamat_ktp TEXT NULL AFTER nama_sesuai_ktp",
-        "ALTER TABLE users ADD COLUMN IF NOT EXISTS bank_name VARCHAR(100) NULL AFTER alamat_ktp",
-        "ALTER TABLE users ADD COLUMN IF NOT EXISTS bank_account_number VARCHAR(50) NULL AFTER bank_name",
-        "ALTER TABLE users ADD COLUMN IF NOT EXISTS npwp_number VARCHAR(30) NULL AFTER bank_account_number",
-        "ALTER TABLE users ADD COLUMN IF NOT EXISTS bpjs_tk VARCHAR(30) NULL AFTER npwp_number",
-        "ALTER TABLE users ADD COLUMN IF NOT EXISTS bpjs_kes VARCHAR(30) NULL AFTER bpjs_tk",
-        "ALTER TABLE users ADD COLUMN IF NOT EXISTS tanggal_lahir VARCHAR(50) NULL AFTER bpjs_kes",
-        "ALTER TABLE users ADD COLUMN IF NOT EXISTS status_pernikahan VARCHAR(50) NULL AFTER tanggal_lahir",
-        "ALTER TABLE users ADD COLUMN IF NOT EXISTS jenis_kelamin VARCHAR(20) NULL AFTER status_pernikahan",
-        "ALTER TABLE users ADD COLUMN IF NOT EXISTS annual_leave_quota INT DEFAULT 12 AFTER jenis_kelamin",
-        "ALTER TABLE users ADD COLUMN IF NOT EXISTS department_id CHAR(36) NULL AFTER annual_leave_quota",
-        "ALTER TABLE users ADD COLUMN IF NOT EXISTS job_title VARCHAR(100) NULL AFTER department_id",
-        "ALTER TABLE users ADD COLUMN IF NOT EXISTS base_salary DECIMAL(15,2) DEFAULT 0.00 AFTER job_title",
-        "ALTER TABLE users ADD COLUMN IF NOT EXISTS profile_reset_token VARCHAR(100) NULL AFTER base_salary",
-        "ALTER TABLE users ADD COLUMN IF NOT EXISTS login_just_occurred TINYINT DEFAULT 0 AFTER profile_reset_token",
-        "ALTER TABLE users ADD COLUMN IF NOT EXISTS is_suspended TINYINT DEFAULT 0 AFTER login_just_occurred",
-        "ALTER TABLE users ADD COLUMN IF NOT EXISTS is_deleted TINYINT DEFAULT 0 AFTER is_suspended",
-        "ALTER TABLE users ADD COLUMN IF NOT EXISTS remember_token VARCHAR(255) NULL DEFAULT NULL AFTER is_deleted",
-        "ALTER TABLE users ADD COLUMN IF NOT EXISTS tautan_profesional VARCHAR(255) NULL",
-        "ALTER TABLE users ADD COLUMN IF NOT EXISTS pendidikan_terakhir VARCHAR(255) NULL",
-        "ALTER TABLE users ADD COLUMN IF NOT EXISTS ekspektasi_gaji DECIMAL(15,2) NULL",
-        "ALTER TABLE users ADD COLUMN IF NOT EXISTS riwayat_pekerjaan TEXT NULL",
-        "ALTER TABLE users ADD COLUMN IF NOT EXISTS resume_file VARCHAR(255) NULL",
-        "ALTER TABLE users ADD COLUMN IF NOT EXISTS cover_letter_file VARCHAR(255) NULL",
+        "ALTER TABLE users ADD COLUMN IF NOT EXISTS profile_picture VARCHAR(255) NULL AFTER email",
+        "ALTER TABLE users ADD COLUMN IF NOT EXISTS rombel VARCHAR(20) NULL",
+        "ALTER TABLE users ADD COLUMN IF NOT EXISTS angkatan_masuk VARCHAR(50) NULL",
+        "ALTER TABLE users ADD COLUMN IF NOT EXISTS bulan_bergabung VARCHAR(30) NULL",
+        "ALTER TABLE users ADD COLUMN IF NOT EXISTS no_telepon VARCHAR(20) NULL",
+        "ALTER TABLE users ADD COLUMN IF NOT EXISTS alamat_domisili TEXT NULL",
+        "ALTER TABLE users ADD COLUMN IF NOT EXISTS home_latitude DECIMAL(10,7) NULL",
+        "ALTER TABLE users ADD COLUMN IF NOT EXISTS home_longitude DECIMAL(10,7) NULL",
+        "ALTER TABLE users ADD COLUMN IF NOT EXISTS ktp_nik VARCHAR(20) NULL",
+        "ALTER TABLE users ADD COLUMN IF NOT EXISTS nama_sesuai_ktp VARCHAR(100) NULL",
+        "ALTER TABLE users ADD COLUMN IF NOT EXISTS alamat_ktp TEXT NULL",
+        "ALTER TABLE users ADD COLUMN IF NOT EXISTS tanggal_lahir VARCHAR(50) NULL",
+        "ALTER TABLE users ADD COLUMN IF NOT EXISTS jenis_kelamin VARCHAR(20) NULL",
+        "ALTER TABLE users ADD COLUMN IF NOT EXISTS department_id CHAR(36) NULL",
+        "ALTER TABLE users ADD COLUMN IF NOT EXISTS job_title VARCHAR(100) NULL",
+        "ALTER TABLE users ADD COLUMN IF NOT EXISTS profile_reset_token VARCHAR(100) NULL",
+        "ALTER TABLE users ADD COLUMN IF NOT EXISTS login_just_occurred TINYINT DEFAULT 0",
+        "ALTER TABLE users ADD COLUMN IF NOT EXISTS is_suspended TINYINT DEFAULT 0",
+        "ALTER TABLE users ADD COLUMN IF NOT EXISTS is_deleted TINYINT DEFAULT 0",
+        "ALTER TABLE users ADD COLUMN IF NOT EXISTS remember_token VARCHAR(255) NULL DEFAULT NULL",
+        "ALTER TABLE users ADD COLUMN IF NOT EXISTS role_id CHAR(36) NULL",
+        "ALTER TABLE users ADD COLUMN IF NOT EXISTS onboarding_status VARCHAR(50) DEFAULT 'Pending'",
         "ALTER TABLE users ADD COLUMN IF NOT EXISTS ktp_file VARCHAR(255) NULL",
         "ALTER TABLE users ADD COLUMN IF NOT EXISTS kk_file VARCHAR(255) NULL",
-        "ALTER TABLE users ADD COLUMN IF NOT EXISTS npwp_file VARCHAR(255) NULL",
-        "ALTER TABLE users ADD COLUMN IF NOT EXISTS bank_book_file VARCHAR(255) NULL",
-        "ALTER TABLE users ADD COLUMN IF NOT EXISTS emergency_contact_name VARCHAR(100) NULL",
-        "ALTER TABLE users ADD COLUMN IF NOT EXISTS emergency_contact_phone VARCHAR(20) NULL",
-        "ALTER TABLE users ADD COLUMN IF NOT EXISTS emergency_contact_relation VARCHAR(50) NULL",
-        "ALTER TABLE users ADD COLUMN IF NOT EXISTS onboarding_status VARCHAR(30) DEFAULT 'not_started'",
-        "ALTER TABLE users ADD COLUMN IF NOT EXISTS employee_id VARCHAR(50) NULL"
+        "ALTER TABLE users ADD COLUMN IF NOT EXISTS foto_file VARCHAR(255) NULL",
+        "ALTER TABLE users ADD COLUMN IF NOT EXISTS emergency_name VARCHAR(100) NULL",
+        "ALTER TABLE users ADD COLUMN IF NOT EXISTS emergency_relation VARCHAR(50) NULL",
+        "ALTER TABLE users ADD COLUMN IF NOT EXISTS emergency_phone VARCHAR(20) NULL",
+        "ALTER TABLE users ADD COLUMN IF NOT EXISTS uniform_size VARCHAR(10) NULL",
+        "ALTER TABLE users ADD COLUMN IF NOT EXISTS akses TINYINT(1) DEFAULT 0",
+        "ALTER TABLE users ADD COLUMN IF NOT EXISTS id_kartu VARCHAR(255) NULL",
+        "ALTER TABLE users ADD COLUMN IF NOT EXISTS id_qrcode VARCHAR(255) NULL",
+        "ALTER TABLE users ADD COLUMN IF NOT EXISTS employee_id VARCHAR(50) NULL",
+        "ALTER TABLE users ADD COLUMN IF NOT EXISTS metode_presensi VARCHAR(50) DEFAULT 'default'"
     ];
 
+    // Explicit check for metode_presensi on older MySQL/MariaDB engines
+    try {
+        $db->exec("ALTER TABLE `users` ADD COLUMN `metode_presensi` VARCHAR(50) DEFAULT 'default'");
+    } catch (\Exception $e) {}
+
     foreach ($alterQueries as $q) {
-        $db->exec($q);
-        echo "Executed: " . substr($q, 0, 45) . "...\n";
+        try {
+            $db->exec($q);
+            echo "Executed: " . substr($q, 0, 45) . "...\n";
+        } catch (\PDOException $e) {
+            // If ALTER with AFTER fails, retry without AFTER clause
+            if (preg_match('/AFTER\s+\S+/i', $q)) {
+                $fallbackQ = preg_replace('/AFTER\s+\S+/i', '', $q);
+                try {
+                    $db->exec($fallbackQ);
+                    echo "Executed Fallback: " . substr($fallbackQ, 0, 45) . "...\n";
+                } catch (\PDOException $e2) {
+                    echo "Warning: " . $e2->getMessage() . "\n";
+                }
+            } else {
+                echo "Warning: " . $e->getMessage() . "\n";
+            }
+        }
+    }
+
+    // Drop unused corporate HR & recruitment columns if they exist
+    $dropColumns = [
+        'bank_name', 'bank_account_number', 'npwp_number', 'bpjs_tk', 'bpjs_kes',
+        'status_pernikahan', 'reimburse_plafon_medis', 'reimburse_plafon_transport',
+        'reimburse_plafon_operasional', 'reimburse_plafon_makan', 'npwp_file',
+        'tabungan_file', 'bank_book_file', 'ekspektasi_gaji', 'riwayat_pekerjaan',
+        'resume_file', 'cover_letter_file', 'base_salary', 'annual_leave_quota',
+        'pendidikan_terakhir', 'tautan_profesional', 'emergency_contact_name',
+        'emergency_contact_phone', 'emergency_contact_relation'
+    ];
+    foreach ($dropColumns as $col) {
+        try {
+            $db->exec("ALTER TABLE users DROP COLUMN {$col}");
+            echo "Dropped unused column: {$col}\n";
+        } catch (\PDOException $e) {
+            // Column may not exist, ignore
+        }
+    }
+
+    // Drop corporate HR tables if they exist
+    $dropTables = ['employee_payroll', 'employee_reimbursement_claims'];
+    foreach ($dropTables as $tbl) {
+        try {
+            $db->exec("DROP TABLE IF EXISTS {$tbl}");
+            echo "Dropped unused corporate table: {$tbl}\n";
+        } catch (\PDOException $e) {
+            // Ignore if table does not exist
+        }
     }
 
     // 2. Create employee_data_correction_requests table
     $stmt = $db->query("SHOW CREATE TABLE users");
+    try {
+        $db->exec("DELETE FROM sys_menus WHERE url_route IN ('employee/finance', 'employee/reimbursements', 'hrops/payroll')");
+        
+        $stmtChk = $db->query("SELECT id FROM sys_menus WHERE url_route = 'admin/mass-attendance' LIMIT 1");
+        if (!$stmtChk->fetch()) {
+            $menuId = 'd945f8a0-5621-4a2b-9876-massattndnc01';
+            $db->exec("INSERT INTO sys_menus (id, title, url_route, icon, sort_order, created_at, updated_at) 
+                       VALUES ('{$menuId}', 'Presensi Massal', 'admin/mass-attendance', 'contactless', 2, NOW(), NOW())");
+            
+            $db->exec("INSERT IGNORE INTO menu_permissions (id, menu_id, role_id, created_at, updated_at) VALUES
+                       (UUID(), '{$menuId}', '1b9c8d7e-6f5a-4b3c-8d2e-1a0f9e8d7c6b', NOW(), NOW()),
+                       (UUID(), '{$menuId}', '8f5d7b6c-9c3f-4e08-8e67-d86b976f92c1', NOW(), NOW())");
+            $db->exec("ALTER TABLE employee_attendance MODIFY COLUMN location_method VARCHAR(100) DEFAULT NULL");
+            echo "Added Presensi Massal menu, permissions, and expanded location_method column.\n";
+        }
+    } catch (\PDOException $e) {
+        // Table or routes may not exist
+    }
+
     $createUsersTable = $stmt->fetch();
     echo "CREATE TABLE USERS: " . $createUsersTable['Create Table'] . "\n";
 
@@ -210,11 +295,15 @@ try {
         }
     }
 
-    // 3. Seed/Update default users
-    $passwordHash = password_hash('password', PASSWORD_BCRYPT);
+    // 3. Seed/Update default users (Password: @Password2025)
+    $passwordHash = password_hash('@Password2025', PASSWORD_BCRYPT);
 
     // Helper to insert/update user
     function upsertUser($db, $email, $role, $firstName, $lastName, $passwordHash, $extraData = []) {
+        $stmtR = $db->prepare("SELECT id FROM roles WHERE name = :role LIMIT 1");
+        $stmtR->execute(['role' => $role]);
+        $roleId = $stmtR->fetchColumn() ?: null;
+
         $stmt = $db->prepare("SELECT id FROM users WHERE email = :email");
         $stmt->execute(['email' => $email]);
         $user = $stmt->fetch();
@@ -222,8 +311,8 @@ try {
         if ($user) {
             $id = $user['id'];
             // Update
-            $sql = "UPDATE users SET role = :role, first_name = :first_name, last_name = :last_name";
-            $params = ['role' => $role, 'first_name' => $firstName, 'last_name' => $lastName, 'id' => $id];
+            $sql = "UPDATE users SET role = :role, role_id = :role_id, first_name = :first_name, last_name = :last_name, password_hash = :password_hash";
+            $params = ['role' => $role, 'role_id' => $roleId, 'first_name' => $firstName, 'last_name' => $lastName, 'password_hash' => $passwordHash, 'id' => $id];
             foreach ($extraData as $col => $val) {
                 $sql .= ", $col = :$col";
                 $params[$col] = $val;
@@ -239,13 +328,14 @@ try {
                 mt_rand(0, 0x0fff) | 0x4000, mt_rand(0, 0x3fff) | 0x8000,
                 mt_rand(0, 0xffff), mt_rand(0, 0xffff), mt_rand(0, 0xffff)
             );
-            $sql = "INSERT INTO users (id, email, password_hash, role, first_name, last_name";
-            $valSql = "VALUES (:id, :email, :password_hash, :role, :first_name, :last_name";
+            $sql = "INSERT INTO users (id, email, password_hash, role, role_id, first_name, last_name";
+            $valSql = "VALUES (:id, :email, :password_hash, :role, :role_id, :first_name, :last_name";
             $params = [
                 'id' => $id,
                 'email' => $email,
                 'password_hash' => $passwordHash,
                 'role' => $role,
+                'role_id' => $roleId,
                 'first_name' => $firstName,
                 'last_name' => $lastName
             ];
@@ -261,59 +351,73 @@ try {
         }
     }
 
-    // Helper to get department ID by name
-    if (!function_exists('getDeptIdByName')) {
-        function getDeptIdByName($db, $name) {
-            $stmt = $db->prepare("SELECT id FROM departments WHERE name = ?");
-            $stmt->execute([$name]);
-            return $stmt->fetchColumn() ?: null;
-        }
-    }
-
-    $deptIt = getDeptIdByName($db, 'Information Technology');
-    $deptHr = getDeptIdByName($db, 'Human Resources');
-    $deptFrontend = getDeptIdByName($db, 'Frontend Development');
-    $deptBackend = getDeptIdByName($db, 'Backend Development');
-    $deptDevOps = getDeptIdByName($db, 'Cloud & DevOps');
-    $deptTa = getDeptIdByName($db, 'Talent Acquisition') ?: getDeptIdByName($db, 'Recruitment') ?: $deptHr;
-    $deptHrOps = getDeptIdByName($db, 'Employee Relations & Ops') ?: $deptHr;
-
-    // Seed Super Admin
+    // 1 User per Role
     upsertUser($db, 'superadmin@mail.com', 'superadmin', 'Super', 'Admin', $passwordHash, [
-        'job_title' => 'System Administrator',
-        'base_salary' => 0.00
+        'job_title' => 'Super Admin'
     ]);
 
-    // Seed Recruiter
-    upsertUser($db, 'recruiter@mail.com', 'recruiter', 'Senior', 'Recruiter', $passwordHash, [
-        'department_id' => $deptTa,
-        'job_title' => 'Talent Acquisition Specialist',
-        'base_salary' => 9000000.00
+    upsertUser($db, 'admin@mail.com', 'admin', 'Admin', 'Operasional', $passwordHash, [
+        'job_title' => 'Admin Sistem'
     ]);
 
-    // Seed Executive
-    upsertUser($db, 'executive@mail.com', 'executive', 'Chief', 'Executive', $passwordHash, [
-        'job_title' => 'Chief Executive Officer',
-        'base_salary' => 0.00
+    upsertUser($db, 'hrops@mail.com', 'hr_ops', 'Pengurus', 'BPH', $passwordHash, [
+        'department_id' => 'dept-bph',
+        'job_title' => 'Pengurus BPH'
     ]);
 
-    // Seed Hiring Manager
-    $managerId = upsertUser($db, 'hiring@mail.com', 'hiring_manager', 'Hiring', 'Manager', $passwordHash, [
-        'department_id' => $deptIt,
-        'job_title' => 'VP of Information Technology',
-        'base_salary' => 20000000.00
+    upsertUser($db, 'recruiter@mail.com', 'recruiter', 'Tim', 'Rekruter', $passwordHash, [
+        'department_id' => 'dept-bph',
+        'job_title' => 'Panitia Rekrutmen'
     ]);
 
-    // Seed HR Ops Admin
-    upsertUser($db, 'hrops@mail.com', 'hr_ops', 'HR Ops', 'Admin', $passwordHash, [
-        'department_id' => $deptHr,
-        'job_title' => 'HR Operations Manager',
-        'base_salary' => 12000000.00
+    upsertUser($db, 'executive@mail.com', 'executive', 'Pengurus', 'Eksekutif', $passwordHash, [
+        'department_id' => 'dept-bph',
+        'job_title' => 'Pengurus Eksekutif'
     ]);
+
+    upsertUser($db, 'employee@mail.com', 'employee', 'Anggota', 'Staff', $passwordHash, [
+        'department_id' => 'dept-postprod',
+        'job_title' => 'Anggota Ekstrakurikuler'
+    ]);
+
+    upsertUser($db, 'candidate@mail.com', 'candidate', 'Pendaftar', 'Kandidat', $passwordHash, [
+        'rombel' => 'X1',
+        'angkatan_masuk' => '2024 (Angkatan 34)',
+        'bulan_bergabung' => 'Agustus',
+        'no_telepon' => '6281234567890'
+    ]);
+
+    // 1 Koordinator (Hiring Manager) per 4 Divisi Operasional
+    upsertUser($db, 'kadiv.postprod@mail.com', 'hiring_manager', 'Koordinator', 'Post Production', $passwordHash, [
+        'department_id' => 'dept-postprod',
+        'job_title' => 'Kepala Divisi Post Production'
+    ]);
+
+    upsertUser($db, 'kadiv.editorial@mail.com', 'hiring_manager', 'Koordinator', 'Editorial', $passwordHash, [
+        'department_id' => 'dept-editorial',
+        'job_title' => 'Kepala Divisi Editorial'
+    ]);
+
+    upsertUser($db, 'kadiv.broadcast@mail.com', 'hiring_manager', 'Koordinator', 'Broadcast', $passwordHash, [
+        'department_id' => 'dept-broadcast',
+        'job_title' => 'Kepala Divisi Broadcast'
+    ]);
+
+    upsertUser($db, 'kadiv.visprod@mail.com', 'hiring_manager', 'Koordinator', 'Visual Production', $passwordHash, [
+        'department_id' => 'dept-visprod',
+        'job_title' => 'Kepala Divisi Visual Production'
+    ]);
+
+    // Cleanup legacy hiring@mail.com if exists
+    $stmtGet = $db->prepare("SELECT id FROM users WHERE email = ?");
+    $stmtGet->execute(['hiring@mail.com']);
+    $legacyHiringId = $stmtGet->fetchColumn();
+    if ($legacyHiringId) {
+        $db->prepare("DELETE FROM users WHERE id = ?")->execute([$legacyHiringId]);
+    }
 
     // Purge any existing dummy users and their transactional records if they exist in the DB
     $dummyEmails = [
-        'employee@mail.com',
         'budi.santoso@example.com',
         'amanda.putri@example.com',
         'rian.hidayat@example.com',
@@ -335,49 +439,7 @@ try {
 
     // Dummy users and dummy data seeding removed as requested.
 
-    // 5. Create employee_reimbursement_claims table
-    $createClaimsTableQuery = "
-        CREATE TABLE IF NOT EXISTS employee_reimbursement_claims (
-            id CHAR(36) PRIMARY KEY,
-            user_id CHAR(36) NOT NULL,
-            category VARCHAR(50) NOT NULL,
-            amount DECIMAL(15,2) NOT NULL,
-            description TEXT NOT NULL,
-            receipt_path VARCHAR(255) NOT NULL,
-            status VARCHAR(20) DEFAULT 'pending',
-            rejection_reason TEXT NULL,
-            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-            FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
-        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
-    ";
-
-    try {
-        $db->exec($createClaimsTableQuery);
-        echo "Table employee_reimbursement_claims created successfully.\n";
-    } catch (Exception $ex) {
-        echo "Table creation with FK failed, fallback to table without constraint...\n";
-        $createClaimsTableNoFK = "
-            CREATE TABLE IF NOT EXISTS employee_reimbursement_claims (
-                id CHAR(36) PRIMARY KEY,
-                user_id CHAR(36) NOT NULL,
-                category VARCHAR(50) NOT NULL,
-                amount DECIMAL(15,2) NOT NULL,
-                description TEXT NOT NULL,
-                receipt_path VARCHAR(255) NOT NULL,
-                status VARCHAR(20) DEFAULT 'pending',
-                rejection_reason TEXT NULL,
-                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
-            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
-        ";
-        $db->exec($createClaimsTableNoFK);
-        echo "Table employee_reimbursement_claims created without FK constraint successfully.\n";
-    }
-
-    // Dummy reimbursement claims seeding removed.
-
-    // Dummy receipt files generation removed.
+    // 5. Employee reimbursement claims table removed for high school extracurricular setup.
 
     // 8. Create employee_leave_requests table
     $createLeaveTableQuery = "
@@ -483,12 +545,15 @@ try {
 
     // Dummy attendance records seeding removed.
 
-    // 13. Add work_mode column to employee_attendance (if not exists)
+    // 13. Add work_mode, metode_presensi, clock_in_photo, clock_out_photo columns to employee_attendance (if not exists)
     try {
         $db->exec("ALTER TABLE employee_attendance ADD COLUMN IF NOT EXISTS work_mode VARCHAR(10) DEFAULT 'WFO' AFTER location_method");
-        echo "Column work_mode added/verified in employee_attendance.\n";
+        $db->exec("ALTER TABLE employee_attendance ADD COLUMN IF NOT EXISTS metode_presensi VARCHAR(20) DEFAULT 'default' AFTER work_mode");
+        $db->exec("ALTER TABLE employee_attendance ADD COLUMN IF NOT EXISTS clock_in_photo VARCHAR(255) NULL AFTER metode_presensi");
+        $db->exec("ALTER TABLE employee_attendance ADD COLUMN IF NOT EXISTS clock_out_photo VARCHAR(255) NULL AFTER clock_in_photo");
+        echo "Columns work_mode, metode_presensi, clock_in_photo, clock_out_photo added/verified in employee_attendance.\n";
     } catch (Exception $ex) {
-        echo "work_mode column may already exist or not supported: " . $ex->getMessage() . "\n";
+        echo "Attendance columns may already exist or not supported: " . $ex->getMessage() . "\n";
     }
 
     // 13.1 Add reimbursement_limit and specific category limits columns to departments (if not exists)
@@ -609,79 +674,7 @@ try {
     }
     echo "Table login_logs created or verified.\n";
 
-    // 17. Create employee_payroll table
-    $createPayrollTableQuery = "
-        CREATE TABLE IF NOT EXISTS employee_payroll (
-            id CHAR(36) PRIMARY KEY,
-            user_id CHAR(36) NOT NULL,
-            month_year VARCHAR(15) NOT NULL,
-            base_salary DECIMAL(15,2) DEFAULT 0.00,
-            tunj_jabatan DECIMAL(15,2) DEFAULT 0.00,
-            tunj_transport_makan DECIMAL(15,2) DEFAULT 0.00,
-            tunj_komunikasi DECIMAL(15,2) DEFAULT 0.00,
-            bonus DECIMAL(15,2) DEFAULT 0.00,
-            reimbursement DECIMAL(15,2) DEFAULT 0.00,
-            overtime DECIMAL(15,2) DEFAULT 0.00,
-            bpjs_tk DECIMAL(15,2) DEFAULT 0.00,
-            bpjs_kes DECIMAL(15,2) DEFAULT 0.00,
-            pph21 DECIMAL(15,2) DEFAULT 0.00,
-            other_deduction DECIMAL(15,2) DEFAULT 0.00,
-            net_salary DECIMAL(15,2) DEFAULT 0.00,
-            status VARCHAR(20) DEFAULT 'Draft',
-            payment_date TIMESTAMP NULL DEFAULT NULL,
-            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-            UNIQUE KEY uq_user_month (user_id, month_year),
-            FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
-        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
-    ";
-
-    try {
-        $db->exec($createPayrollTableQuery);
-        echo "Table employee_payroll created successfully.\n";
-    } catch (Exception $ex) {
-        echo "Table creation with FK failed, fallback to table without constraint...\n";
-        $createPayrollTableNoFK = "
-            CREATE TABLE IF NOT EXISTS employee_payroll (
-                id CHAR(36) PRIMARY KEY,
-                user_id CHAR(36) NOT NULL,
-                month_year VARCHAR(15) NOT NULL,
-                base_salary DECIMAL(15,2) DEFAULT 0.00,
-                tunj_jabatan DECIMAL(15,2) DEFAULT 0.00,
-                tunj_transport_makan DECIMAL(15,2) DEFAULT 0.00,
-                tunj_komunikasi DECIMAL(15,2) DEFAULT 0.00,
-                bonus DECIMAL(15,2) DEFAULT 0.00,
-                reimbursement DECIMAL(15,2) DEFAULT 0.00,
-                overtime DECIMAL(15,2) DEFAULT 0.00,
-                bpjs_tk DECIMAL(15,2) DEFAULT 0.00,
-                bpjs_kes DECIMAL(15,2) DEFAULT 0.00,
-                pph21 DECIMAL(15,2) DEFAULT 0.00,
-                other_deduction DECIMAL(15,2) DEFAULT 0.00,
-                net_salary DECIMAL(15,2) DEFAULT 0.00,
-                status VARCHAR(20) DEFAULT 'Draft',
-                payment_date TIMESTAMP NULL DEFAULT NULL,
-                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-                UNIQUE KEY uq_user_month (user_id, month_year)
-            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
-        ";
-        $db->exec($createPayrollTableNoFK);
-        echo "Table employee_payroll created without FK constraint successfully.\n";
-    }
-
-    // Add overtime and other_deduction columns to employee_payroll if they don't exist
-    try {
-        $db->exec("ALTER TABLE employee_payroll ADD COLUMN overtime DECIMAL(15,2) DEFAULT 0.00 AFTER reimbursement");
-        echo "Column 'overtime' added to employee_payroll table.\n";
-    } catch (Exception $e) {
-        // Column may already exist
-    }
-    try {
-        $db->exec("ALTER TABLE employee_payroll ADD COLUMN other_deduction DECIMAL(15,2) DEFAULT 0.00 AFTER pph21");
-        echo "Column 'other_deduction' added to employee_payroll table.\n";
-    } catch (Exception $e) {
-        // Column may already exist
-    }
+    // 17. Employee payroll table removed for high school extracurricular setup.
 
     // 18. Create self_reflections table
     $createReflectionTableQuery = "
@@ -886,6 +879,9 @@ try {
             requirements TEXT NULL,
             reason TEXT NULL,
             status VARCHAR(50) NOT NULL DEFAULT 'pending_dept_clevel',
+            icon VARCHAR(50) DEFAULT 'work',
+            card_color VARCHAR(50) DEFAULT '#0c145e',
+            logo_url VARCHAR(255) DEFAULT NULL,
             dept_clevel_approved_at TIMESTAMP NULL,
             dept_clevel_approved_by CHAR(36) NULL,
             cfo_approved_at TIMESTAMP NULL,
@@ -904,6 +900,12 @@ try {
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
     ";
     $db->exec($createJobReqsQuery);
+
+    try {
+        $db->exec("ALTER TABLE job_requisitions ADD COLUMN IF NOT EXISTS icon VARCHAR(50) DEFAULT 'work'");
+        $db->exec("ALTER TABLE job_requisitions ADD COLUMN IF NOT EXISTS card_color VARCHAR(50) DEFAULT '#0c145e'");
+        $db->exec("ALTER TABLE job_requisitions ADD COLUMN IF NOT EXISTS logo_url VARCHAR(255) DEFAULT NULL");
+    } catch (\Exception $e) {}
 
     $createJobReqApprovalsQuery = "
         CREATE TABLE IF NOT EXISTS job_requisition_approvals (
@@ -987,11 +989,24 @@ try {
 
     echo "Tables job_requisitions, job_requisition_approvals, job_applications, job_interviews, and job_offers created or verified.\n";
 
-    // Run new idempotent migrations (Roadmap Bab 1)
     echo "Running Migrator...\n";
     $migrator = new \App\Config\Migrator($db, __DIR__ . '/migrations');
     $migrator->run();
     
+    // Auto-sync role_id and role for all users
+    $db->exec("
+        UPDATE users u 
+        JOIN roles r ON r.name = u.role 
+        SET u.role_id = r.id 
+        WHERE u.role_id IS NULL OR u.role_id = '' OR u.role_id = '3'
+    ");
+    $db->exec("
+        UPDATE users u 
+        JOIN roles r ON r.id = u.role_id 
+        SET u.role = r.name 
+        WHERE u.role IS NULL OR u.role = ''
+    ");
+    echo "Role IDs automatically synchronized for all users.\n";
     echo "Table changelogs created successfully.\n";
 
 } catch (Exception $e) {

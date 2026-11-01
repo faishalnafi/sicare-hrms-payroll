@@ -19,7 +19,10 @@ class EmployeeMasterController {
             exit;
         }
         $role = $_SESSION['role'] ?? '';
-        $allowed = in_array($role, ['hr_ops', 'superadmin', 'admin', 'hiring_manager']);
+        $originalRole = $_SESSION['original_role'] ?? '';
+        $effectiveRole = (!empty($originalRole) && $originalRole === 'superadmin') ? 'superadmin' : $role;
+
+        $allowed = in_array($effectiveRole, ['hr_ops', 'superadmin', 'admin', 'hiring_manager']);
         if (!$allowed) {
             header('Content-Type: application/json');
             http_response_code(403);
@@ -191,9 +194,9 @@ class EmployeeMasterController {
         $uniform_size                = !empty($_POST['uniform_size']) ? $_POST['uniform_size'] : null;
         $emergency_name              = !empty($_POST['emergency_name']) ? $_POST['emergency_name'] : null;
         $emergency_relation          = !empty($_POST['emergency_relation']) ? $_POST['emergency_relation'] : null;
-        $emergency_phone             = !empty($_POST['emergency_phone']) ? $_POST['emergency_phone'] : null;
-        $id_kartu                    = !empty($_POST['id_kartu']) ? $_POST['id_kartu'] : null;
-        $id_qrcode                   = !empty($_POST['id_qrcode']) ? $_POST['id_qrcode'] : null;
+        $id_kartu                    = !empty($_POST['id_kartu']) ? strtoupper(preg_replace('/[^a-zA-Z0-9]/', '', trim($_POST['id_kartu']))) : null;
+        $id_qrcode                   = !empty($_POST['id_qrcode']) ? trim($_POST['id_qrcode']) : null;
+        $metode_presensi             = in_array($_POST['metode_presensi'] ?? '', ['default', 'foto', 'scan_qr', 'nfc']) ? $_POST['metode_presensi'] : 'default';
 
         if (!empty($no_telepon)) {
             $phoneMsg = "";
@@ -258,23 +261,27 @@ class EmployeeMasterController {
 
                 $resolvedPic = resolveProfilePicture($email);
 
+                $stmtRole = $db->prepare("SELECT id FROM roles WHERE name = ? LIMIT 1");
+                $stmtRole->execute([$role]);
+                $role_id = $stmtRole->fetchColumn() ?: null;
+
                 $stmt = $db->prepare("INSERT INTO users (
-                    id, employee_id, first_name, last_name, email, role, job_title, base_salary, annual_leave_quota, password_hash, department_id,
-                    no_telepon, alamat_domisili, ktp_nik, nama_sesuai_ktp, alamat_ktp, bank_name, bank_account_number, npwp_number, bpjs_tk, bpjs_kes,
-                    tanggal_lahir, status_pernikahan, jenis_kelamin, reimburse_plafon_medis, reimburse_plafon_transport, reimburse_plafon_operasional, reimburse_plafon_makan,
-                    uniform_size, emergency_name, emergency_relation, emergency_phone, id_kartu, id_qrcode, profile_picture
+                    id, employee_id, first_name, last_name, email, role, role_id, job_title, password_hash, department_id,
+                    no_telepon, alamat_domisili, ktp_nik, nama_sesuai_ktp, alamat_ktp,
+                    tanggal_lahir, jenis_kelamin, rombel, angkatan_masuk, bulan_bergabung,
+                    uniform_size, emergency_name, emergency_relation, emergency_phone, id_kartu, id_qrcode, metode_presensi, profile_picture
                 ) VALUES (
-                    ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,
                     ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,
-                    ?, ?, ?, ?, ?, ?, ?,
-                    ?, ?, ?, ?, ?, ?, ?
+                    ?, ?, ?, ?, ?,
+                    ?, ?, ?, ?, ?,
+                    ?, ?, ?, ?, ?, ?, ?, ?
                 )");
                 
                 $stmt->execute([
-                    $uuid, $employee_id, $first_name, $last_name, $email, $role, $job_title, $base_salary, $annual_leave_quota, $password_hash, $department_id,
-                    $no_telepon, $alamat_domisili, $ktp_nik, $nama_sesuai_ktp, $alamat_ktp, $bank_name, $bank_account_number, $npwp_number, $bpjs_tk, $bpjs_kes,
-                    $tanggal_lahir, $status_pernikahan, $jenis_kelamin, $reimburse_plafon_medis, $reimburse_plafon_transport, $reimburse_plafon_operasional, $reimburse_plafon_makan,
-                    $uniform_size, $emergency_name, $emergency_relation, $emergency_phone, $id_kartu, $id_qrcode, $resolvedPic
+                    $uuid, $employee_id, $first_name, $last_name, $email, $role, $role_id, $job_title, $password_hash, $department_id,
+                    $no_telepon, $alamat_domisili, $ktp_nik, $nama_sesuai_ktp, $alamat_ktp,
+                    $tanggal_lahir, $jenis_kelamin, $rombel, $angkatan_masuk, $bulan_bergabung,
+                    $uniform_size, $emergency_name, $emergency_relation, $emergency_phone, $id_kartu, $id_qrcode, $metode_presensi, $resolvedPic
                 ]);
                 $this->writeAuditLog($db, "Menambah pengguna baru: '" . trim($first_name . ' ' . $last_name) . "' ($email) dengan role '$role'");
             } else {
@@ -296,37 +303,41 @@ class EmployeeMasterController {
                     }
                 } catch (\Exception $e) {}
 
-                $currentUserRole = $_SESSION['role'] ?? 'hr_ops';
+                $currentUserRole = (!empty($_SESSION['original_role']) && $_SESSION['original_role'] === 'superadmin') ? 'superadmin' : ($_SESSION['role'] ?? 'hr_ops');
+                
+                $stmtRole = $db->prepare("SELECT id FROM roles WHERE name = ? LIMIT 1");
+                $stmtRole->execute([$role]);
+                $role_id = $stmtRole->fetchColumn() ?: null;
                 
                 if ($currentUserRole === 'superadmin') {
                     // superadmin updates directly
                     $query  = "UPDATE users SET 
-                        employee_id = ?, first_name = ?, last_name = ?, email = ?, role = ?, job_title = ?, base_salary = ?, annual_leave_quota = ?, department_id = ?,
-                        no_telepon = ?, alamat_domisili = ?, ktp_nik = ?, nama_sesuai_ktp = ?, alamat_ktp = ?, bank_name = ?, bank_account_number = ?, npwp_number = ?, bpjs_tk = ?, bpjs_kes = ?, 
-                        tanggal_lahir = ?, status_pernikahan = ?, jenis_kelamin = ?, reimburse_plafon_medis = ?, reimburse_plafon_transport = ?, reimburse_plafon_operasional = ?, reimburse_plafon_makan = ?,
-                        uniform_size = ?, emergency_name = ?, emergency_relation = ?, emergency_phone = ?, id_kartu = ?, id_qrcode = ?
+                        employee_id = ?, first_name = ?, last_name = ?, email = ?, role = ?, role_id = ?, job_title = ?, department_id = ?,
+                        no_telepon = ?, alamat_domisili = ?, ktp_nik = ?, nama_sesuai_ktp = ?, alamat_ktp = ?,
+                        tanggal_lahir = ?, jenis_kelamin = ?, rombel = ?, angkatan_masuk = ?, bulan_bergabung = ?,
+                        uniform_size = ?, emergency_name = ?, emergency_relation = ?, emergency_phone = ?, id_kartu = ?, id_qrcode = ?, metode_presensi = ?
                         WHERE id = ?";
                     $params = [
-                        $employee_id, $first_name, $last_name, $email, $role, $job_title, $base_salary, $annual_leave_quota, $department_id,
-                        $no_telepon, $alamat_domisili, $ktp_nik, $nama_sesuai_ktp, $alamat_ktp, $bank_name, $bank_account_number, $npwp_number, $bpjs_tk, $bpjs_kes,
-                        $tanggal_lahir, $status_pernikahan, $jenis_kelamin, $reimburse_plafon_medis, $reimburse_plafon_transport, $reimburse_plafon_operasional, $reimburse_plafon_makan,
-                        $uniform_size, $emergency_name, $emergency_relation, $emergency_phone, $id_kartu, $id_qrcode,
+                        $employee_id, $first_name, $last_name, $email, $role, $role_id, $job_title, $department_id,
+                        $no_telepon, $alamat_domisili, $ktp_nik, $nama_sesuai_ktp, $alamat_ktp,
+                        $tanggal_lahir, $jenis_kelamin, $rombel, $angkatan_masuk, $bulan_bergabung,
+                        $uniform_size, $emergency_name, $emergency_relation, $emergency_phone, $id_kartu, $id_qrcode, $metode_presensi,
                         $id
                     ];
 
                     if (!empty($password)) {
                         $password_hash = password_hash($password, PASSWORD_DEFAULT);
                         $query  = "UPDATE users SET 
-                            employee_id = ?, first_name = ?, last_name = ?, email = ?, role = ?, job_title = ?, base_salary = ?, annual_leave_quota = ?, department_id = ?, password_hash = ?,
-                            no_telepon = ?, alamat_domisili = ?, ktp_nik = ?, nama_sesuai_ktp = ?, alamat_ktp = ?, bank_name = ?, bank_account_number = ?, npwp_number = ?, bpjs_tk = ?, bpjs_kes = ?, 
-                            tanggal_lahir = ?, status_pernikahan = ?, jenis_kelamin = ?, reimburse_plafon_medis = ?, reimburse_plafon_transport = ?, reimburse_plafon_operasional = ?, reimburse_plafon_makan = ?,
-                            uniform_size = ?, emergency_name = ?, emergency_relation = ?, emergency_phone = ?, id_kartu = ?, id_qrcode = ?
+                            employee_id = ?, first_name = ?, last_name = ?, email = ?, role = ?, role_id = ?, job_title = ?, department_id = ?, password_hash = ?,
+                            no_telepon = ?, alamat_domisili = ?, ktp_nik = ?, nama_sesuai_ktp = ?, alamat_ktp = ?,
+                            tanggal_lahir = ?, jenis_kelamin = ?, rombel = ?, angkatan_masuk = ?, bulan_bergabung = ?,
+                            uniform_size = ?, emergency_name = ?, emergency_relation = ?, emergency_phone = ?, id_kartu = ?, id_qrcode = ?, metode_presensi = ?
                             WHERE id = ?";
                         $params = [
-                            $employee_id, $first_name, $last_name, $email, $role, $job_title, $base_salary, $annual_leave_quota, $department_id, $password_hash,
-                            $no_telepon, $alamat_domisili, $ktp_nik, $nama_sesuai_ktp, $alamat_ktp, $bank_name, $bank_account_number, $npwp_number, $bpjs_tk, $bpjs_kes,
-                            $tanggal_lahir, $status_pernikahan, $jenis_kelamin, $reimburse_plafon_medis, $reimburse_plafon_transport, $reimburse_plafon_operasional, $reimburse_plafon_makan,
-                            $uniform_size, $emergency_name, $emergency_relation, $emergency_phone, $id_kartu, $id_qrcode,
+                            $employee_id, $first_name, $last_name, $email, $role, $role_id, $job_title, $department_id, $password_hash,
+                            $no_telepon, $alamat_domisili, $ktp_nik, $nama_sesuai_ktp, $alamat_ktp,
+                            $tanggal_lahir, $jenis_kelamin, $rombel, $angkatan_masuk, $bulan_bergabung,
+                            $uniform_size, $emergency_name, $emergency_relation, $emergency_phone, $id_kartu, $id_qrcode, $metode_presensi,
                             $id
                         ];
                     }
@@ -402,32 +413,32 @@ class EmployeeMasterController {
 
                         // Save other fields directly
                         $query  = "UPDATE users SET 
-                            employee_id = ?, first_name = ?, last_name = ?, email = ?, base_salary = ?, annual_leave_quota = ?,
-                            no_telepon = ?, alamat_domisili = ?, ktp_nik = ?, nama_sesuai_ktp = ?, alamat_ktp = ?, bank_name = ?, bank_account_number = ?, npwp_number = ?, bpjs_tk = ?, bpjs_kes = ?, 
-                            tanggal_lahir = ?, status_pernikahan = ?, jenis_kelamin = ?, reimburse_plafon_medis = ?, reimburse_plafon_transport = ?, reimburse_plafon_operasional = ?, reimburse_plafon_makan = ?,
-                            uniform_size = ?, emergency_name = ?, emergency_relation = ?, emergency_phone = ?, id_kartu = ?, id_qrcode = ?
+                            employee_id = ?, first_name = ?, last_name = ?, email = ?,
+                            no_telepon = ?, alamat_domisili = ?, ktp_nik = ?, nama_sesuai_ktp = ?, alamat_ktp = ?,
+                            tanggal_lahir = ?, jenis_kelamin = ?,
+                            uniform_size = ?, emergency_name = ?, emergency_relation = ?, emergency_phone = ?, id_kartu = ?, id_qrcode = ?, metode_presensi = ?
                             WHERE id = ?";
                         $params = [
-                            $employee_id, $first_name, $last_name, $email, $base_salary, $annual_leave_quota,
-                            $no_telepon, $alamat_domisili, $ktp_nik, $nama_sesuai_ktp, $alamat_ktp, $bank_name, $bank_account_number, $npwp_number, $bpjs_tk, $bpjs_kes,
-                            $tanggal_lahir, $status_pernikahan, $jenis_kelamin, $reimburse_plafon_medis, $reimburse_plafon_transport, $reimburse_plafon_operasional, $reimburse_plafon_makan,
-                            $uniform_size, $emergency_name, $emergency_relation, $emergency_phone, $id_kartu, $id_qrcode,
+                            $employee_id, $first_name, $last_name, $email,
+                            $no_telepon, $alamat_domisili, $ktp_nik, $nama_sesuai_ktp, $alamat_ktp,
+                            $tanggal_lahir, $jenis_kelamin,
+                            $uniform_size, $emergency_name, $emergency_relation, $emergency_phone, $id_kartu, $id_qrcode, $metode_presensi,
                             $id
                         ];
 
                         if (!empty($password)) {
                             $password_hash = password_hash($password, PASSWORD_DEFAULT);
                             $query  = "UPDATE users SET 
-                                employee_id = ?, first_name = ?, last_name = ?, email = ?, base_salary = ?, annual_leave_quota = ?, password_hash = ?,
-                                no_telepon = ?, alamat_domisili = ?, ktp_nik = ?, nama_sesuai_ktp = ?, alamat_ktp = ?, bank_name = ?, bank_account_number = ?, npwp_number = ?, bpjs_tk = ?, bpjs_kes = ?, 
-                                tanggal_lahir = ?, status_pernikahan = ?, jenis_kelamin = ?, reimburse_plafon_medis = ?, reimburse_plafon_transport = ?, reimburse_plafon_operasional = ?, reimburse_plafon_makan = ?,
-                                uniform_size = ?, emergency_name = ?, emergency_relation = ?, emergency_phone = ?, id_kartu = ?, id_qrcode = ?
+                                employee_id = ?, first_name = ?, last_name = ?, email = ?, password_hash = ?,
+                                no_telepon = ?, alamat_domisili = ?, ktp_nik = ?, nama_sesuai_ktp = ?, alamat_ktp = ?,
+                                tanggal_lahir = ?, jenis_kelamin = ?,
+                                uniform_size = ?, emergency_name = ?, emergency_relation = ?, emergency_phone = ?, id_kartu = ?, id_qrcode = ?, metode_presensi = ?
                                 WHERE id = ?";
                             $params = [
-                                $employee_id, $first_name, $last_name, $email, $base_salary, $annual_leave_quota, $password_hash,
-                                $no_telepon, $alamat_domisili, $ktp_nik, $nama_sesuai_ktp, $alamat_ktp, $bank_name, $bank_account_number, $npwp_number, $bpjs_tk, $bpjs_kes,
-                                $tanggal_lahir, $status_pernikahan, $jenis_kelamin, $reimburse_plafon_medis, $reimburse_plafon_transport, $reimburse_plafon_operasional, $reimburse_plafon_makan,
-                                $uniform_size, $emergency_name, $emergency_relation, $emergency_phone, $id_kartu, $id_qrcode,
+                                $employee_id, $first_name, $last_name, $email, $password_hash,
+                                $no_telepon, $alamat_domisili, $ktp_nik, $nama_sesuai_ktp, $alamat_ktp,
+                                $tanggal_lahir, $jenis_kelamin,
+                                $uniform_size, $emergency_name, $emergency_relation, $emergency_phone, $id_kartu, $id_qrcode, $metode_presensi,
                                 $id
                             ];
                         }
@@ -439,32 +450,32 @@ class EmployeeMasterController {
                     } else {
                         // No changes to position, save normally
                         $query  = "UPDATE users SET 
-                            employee_id = ?, first_name = ?, last_name = ?, email = ?, base_salary = ?, annual_leave_quota = ?,
-                            no_telepon = ?, alamat_domisili = ?, ktp_nik = ?, nama_sesuai_ktp = ?, alamat_ktp = ?, bank_name = ?, bank_account_number = ?, npwp_number = ?, bpjs_tk = ?, bpjs_kes = ?, 
-                            tanggal_lahir = ?, status_pernikahan = ?, jenis_kelamin = ?, reimburse_plafon_medis = ?, reimburse_plafon_transport = ?, reimburse_plafon_operasional = ?, reimburse_plafon_makan = ?,
-                            uniform_size = ?, emergency_name = ?, emergency_relation = ?, emergency_phone = ?, id_kartu = ?, id_qrcode = ?
+                            employee_id = ?, first_name = ?, last_name = ?, email = ?,
+                            no_telepon = ?, alamat_domisili = ?, ktp_nik = ?, nama_sesuai_ktp = ?, alamat_ktp = ?,
+                            tanggal_lahir = ?, jenis_kelamin = ?,
+                            uniform_size = ?, emergency_name = ?, emergency_relation = ?, emergency_phone = ?, id_kartu = ?, id_qrcode = ?, metode_presensi = ?
                             WHERE id = ?";
                         $params = [
-                            $employee_id, $first_name, $last_name, $email, $base_salary, $annual_leave_quota,
-                            $no_telepon, $alamat_domisili, $ktp_nik, $nama_sesuai_ktp, $alamat_ktp, $bank_name, $bank_account_number, $npwp_number, $bpjs_tk, $bpjs_kes,
-                            $tanggal_lahir, $status_pernikahan, $jenis_kelamin, $reimburse_plafon_medis, $reimburse_plafon_transport, $reimburse_plafon_operasional, $reimburse_plafon_makan,
-                            $uniform_size, $emergency_name, $emergency_relation, $emergency_phone, $id_kartu, $id_qrcode,
+                            $employee_id, $first_name, $last_name, $email,
+                            $no_telepon, $alamat_domisili, $ktp_nik, $nama_sesuai_ktp, $alamat_ktp,
+                            $tanggal_lahir, $jenis_kelamin,
+                            $uniform_size, $emergency_name, $emergency_relation, $emergency_phone, $id_kartu, $id_qrcode, $metode_presensi,
                             $id
                         ];
 
                         if (!empty($password)) {
                             $password_hash = password_hash($password, PASSWORD_DEFAULT);
                             $query  = "UPDATE users SET 
-                                employee_id = ?, first_name = ?, last_name = ?, email = ?, base_salary = ?, annual_leave_quota = ?, password_hash = ?,
-                                no_telepon = ?, alamat_domisili = ?, ktp_nik = ?, nama_sesuai_ktp = ?, alamat_ktp = ?, bank_name = ?, bank_account_number = ?, npwp_number = ?, bpjs_tk = ?, bpjs_kes = ?, 
-                                tanggal_lahir = ?, status_pernikahan = ?, jenis_kelamin = ?, reimburse_plafon_medis = ?, reimburse_plafon_transport = ?, reimburse_plafon_operasional = ?, reimburse_plafon_makan = ?,
-                                uniform_size = ?, emergency_name = ?, emergency_relation = ?, emergency_phone = ?, id_kartu = ?, id_qrcode = ?
+                                employee_id = ?, first_name = ?, last_name = ?, email = ?, password_hash = ?,
+                                no_telepon = ?, alamat_domisili = ?, ktp_nik = ?, nama_sesuai_ktp = ?, alamat_ktp = ?,
+                                tanggal_lahir = ?, jenis_kelamin = ?,
+                                uniform_size = ?, emergency_name = ?, emergency_relation = ?, emergency_phone = ?, id_kartu = ?, id_qrcode = ?, metode_presensi = ?
                                 WHERE id = ?";
                             $params = [
-                                $employee_id, $first_name, $last_name, $email, $base_salary, $annual_leave_quota, $password_hash,
-                                $no_telepon, $alamat_domisili, $ktp_nik, $nama_sesuai_ktp, $alamat_ktp, $bank_name, $bank_account_number, $npwp_number, $bpjs_tk, $bpjs_kes,
-                                $tanggal_lahir, $status_pernikahan, $jenis_kelamin, $reimburse_plafon_medis, $reimburse_plafon_transport, $reimburse_plafon_operasional, $reimburse_plafon_makan,
-                                $uniform_size, $emergency_name, $emergency_relation, $emergency_phone, $id_kartu, $id_qrcode,
+                                $employee_id, $first_name, $last_name, $email, $password_hash,
+                                $no_telepon, $alamat_domisili, $ktp_nik, $nama_sesuai_ktp, $alamat_ktp,
+                                $tanggal_lahir, $jenis_kelamin,
+                                $uniform_size, $emergency_name, $emergency_relation, $emergency_phone, $id_kartu, $id_qrcode, $metode_presensi,
                                 $id
                             ];
                         }
@@ -535,6 +546,35 @@ class EmployeeMasterController {
         } catch (\Exception $e) {
             $db->rollBack();
             echo json_encode(['success' => false, 'message' => 'Gagal menghapus data: ' . $e->getMessage()]);
+        }
+    }
+
+    public function updateMetodePresensi() {
+        $this->checkAccess();
+        header('Content-Type: application/json');
+        
+        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+            echo json_encode(['success' => false, 'message' => 'Invalid request method']);
+            return;
+        }
+
+        $id = $_POST['id'] ?? '';
+        $metode = in_array($_POST['metode_presensi'] ?? '', ['default', 'foto', 'scan_qr', 'nfc']) ? $_POST['metode_presensi'] : 'default';
+
+        if (empty($id)) {
+            echo json_encode(['success' => false, 'message' => 'ID pengguna tidak valid.']);
+            return;
+        }
+
+        try {
+            $db = Database::getInstance()->getConnection();
+            $stmt = $db->prepare("UPDATE users SET metode_presensi = ? WHERE id = ?");
+            $stmt->execute([$metode, $id]);
+            $this->writeAuditLog($db, "Memperbarui metode presensi Layer 2 menjadi '$metode' untuk user ID: $id");
+
+            echo json_encode(['success' => true, 'message' => 'Metode presensi berhasil diperbarui.']);
+        } catch (\Exception $e) {
+            echo json_encode(['success' => false, 'message' => 'Gagal memperbarui metode presensi: ' . $e->getMessage()]);
         }
     }
 

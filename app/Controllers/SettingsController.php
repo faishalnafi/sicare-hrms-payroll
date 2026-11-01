@@ -13,8 +13,8 @@ class SettingsController {
 
     private $db;
 
-    public function __construct(PDO $db) {
-        $this->db = $db;
+    public function __construct(?\PDO $db = null) {
+        $this->db = $db ?? Database::getInstance()->getConnection();
     }
 
     /**

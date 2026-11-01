@@ -8,11 +8,11 @@ use PDO;
 class AuditLogController {
     private $db;
 
-    public function __construct(PDO $db) {
+    public function __construct(?PDO $db = null) {
         if (session_status() === PHP_SESSION_NONE) {
             session_start();
         }
-        $this->db = $db;
+        $this->db = $db ?? Database::getInstance()->getConnection();
     }
 
     /**

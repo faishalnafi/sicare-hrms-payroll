@@ -789,6 +789,35 @@ class RequisitionController {
                 'id' => $appId
             ]);
 
+            // If status is 'hired', automatically assign department_id to the user record
+            if ($status === 'hired') {
+                $stmtGetApp = $db->prepare("
+                    SELECT ja.candidate_id, ja.candidate_email, jr.department_id 
+                    FROM job_applications ja
+                    LEFT JOIN job_requisitions jr ON ja.requisition_id = jr.id
+                    WHERE ja.id = :id
+                ");
+                $stmtGetApp->execute(['id' => $appId]);
+                $appData = $stmtGetApp->fetch(PDO::FETCH_ASSOC);
+
+                if ($appData && !empty($appData['department_id'])) {
+                    $candId = $appData['candidate_id'];
+                    $candEmail = $appData['candidate_email'];
+
+                    $stmtUserDept = $db->prepare("
+                        UPDATE users 
+                        SET department_id = :dept_id,
+                            onboarding_status = 'Verified'
+                        WHERE id = :cid OR email = :cemail
+                    ");
+                    $stmtUserDept->execute([
+                        'dept_id' => $appData['department_id'],
+                        'cid' => $candId ?: '',
+                        'cemail' => $candEmail ?: ''
+                    ]);
+                }
+            }
+
             echo json_encode([
                 'success' => true,
                 'message' => 'Status pelamar berhasil diperbarui menjadi ' . ucfirst($status) . '.'

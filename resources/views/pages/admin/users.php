@@ -84,18 +84,19 @@
                         <th id="admColEmail" onclick="window.toggleAdminUserSort('email')" class="py-4 px-6 text-[11px] font-extrabold uppercase tracking-wider">Email</th>
                         <th id="admColStruktur" onclick="window.toggleAdminUserSort('struktur')" class="py-4 px-6 text-[11px] font-extrabold uppercase tracking-wider">Struktur Organisasi (Posisi & Divisi)</th>
                         <th id="admColAkses" onclick="window.toggleAdminUserSort('akses')" class="py-4 px-6 text-[11px] font-extrabold uppercase tracking-wider">Akses Sistem</th>
+                        <th id="admColMetode" onclick="window.toggleAdminUserSort('metode')" class="py-4 px-6 text-[11px] font-extrabold uppercase tracking-wider">Metode Presensi</th>
                         <th id="admColAksi" onclick="window.toggleAdminUserSort('aksi')" class="py-4 px-6 text-[11px] font-extrabold uppercase tracking-wider text-right">Aksi</th>
                     </tr>
                 </thead>
                 <tbody id="adminUsersTableBody" class="divide-y divide-outline-variant/10 font-body">
                     <tr class="empty-row hidden">
-                        <td colspan="6" class="px-6 py-12 text-center text-on-surface-variant">
+                        <td colspan="7" class="px-6 py-12 text-center text-on-surface-variant">
                             <span class="material-symbols-outlined text-4xl mb-2 opacity-50 block">manage_accounts</span>
                             <p class="font-bold">Data pengguna tidak ditemukan</p>
                         </td>
                     </tr>
                     <tr class="loading-row">
-                        <td colspan="6" class="px-6 py-12 text-center text-on-surface-variant">
+                        <td colspan="7" class="px-6 py-12 text-center text-on-surface-variant">
                             <span class="material-symbols-outlined text-3xl mb-2 opacity-50 block animate-spin">autorenew</span>
                             <p class="text-sm font-semibold">Memuat data...</p>
                         </td>
@@ -172,8 +173,7 @@
             <div class="flex border-b border-outline-variant/15 font-headline font-semibold text-xs gap-1 overflow-x-auto pb-1 custom-scrollbar">
                 <button type="button" onclick="window.switchMutTab('kepegawaian')" id="tab-mut-kepegawaian" class="px-3 py-2 text-primary border-b-2 border-primary transition-all whitespace-nowrap">Kepegawaian</button>
                 <button type="button" onclick="window.switchMutTab('profil')" id="tab-mut-profil" class="px-3 py-2 text-on-surface-variant hover:text-on-surface border-b-2 border-transparent transition-all whitespace-nowrap">Profil & Kependudukan</button>
-                <button type="button" onclick="window.switchMutTab('finansial')" id="tab-mut-finansial" class="px-3 py-2 text-on-surface-variant hover:text-on-surface border-b-2 border-transparent transition-all whitespace-nowrap">Finansial</button>
-                <button type="button" onclick="window.switchMutTab('lainnya')" id="tab-mut-lainnya" class="px-3 py-2 text-on-surface-variant hover:text-on-surface border-b-2 border-transparent transition-all whitespace-nowrap">Plafon & Fisik</button>
+                <button type="button" onclick="window.switchMutTab('lainnya')" id="tab-mut-lainnya" class="px-3 py-2 text-on-surface-variant hover:text-on-surface border-b-2 border-transparent transition-all whitespace-nowrap">Fisik & Akses</button>
             </div>
 
             <!-- Tab 1: Kepegawaian & Akses -->
@@ -216,16 +216,7 @@
                             
                         </div>
                     </div>
-                    <!-- Kuota Cuti Tahunan -->
-                    <div>
-                        <label class="block text-xs font-bold text-on-surface-variant mb-2 font-headline">Kuota Cuti Tahunan</label>
-                        <input type="number" id="mutLeaveQuota" name="annual_leave_quota" placeholder="Cth: 12" class="w-full bg-surface-container-low border border-outline-variant/30 text-on-surface text-sm rounded-xl px-4 py-2.5 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all">
-                    </div>
-                    <!-- Gaji Pokok -->
-                    <div>
-                        <label class="block text-xs font-bold text-on-surface-variant mb-2 font-headline">Gaji Pokok</label>
-                        <input type="text" id="mutBaseSalary" name="base_salary" placeholder="Cth: Rp 10.000.000" class="w-full bg-surface-container-low border border-outline-variant/30 text-on-surface text-sm rounded-xl px-4 py-2.5 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all">
-                    </div>
+
                     <!-- Reset Password (optional for admin safety) -->
                     <div class="md:col-span-2">
                         <label class="block text-xs font-bold text-on-surface-variant mb-2 font-headline">Reset Sandi Pengguna <span class="text-[10px] font-normal lowercase text-on-surface-variant/75">(kosongkan jika tidak ingin mengubah sandi)</span></label>
@@ -300,21 +291,7 @@
                             
                         </div>
                     </div>
-                    <!-- Status Pernikahan -->
-                    <div>
-                        <label class="block text-xs font-bold text-on-surface-variant mb-2 font-headline">Status Pernikahan</label>
-                        <div class="relative">
-                            <select id="mutMaritalStatus" name="status_pernikahan" class="w-full bg-surface-container-low border border-outline-variant/30 text-on-surface text-sm rounded-xl pl-4 pr-10 py-2.5 appearance-none focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all font-body">
-                                <option value="">Pilih Status</option>
-                                <option value="Belum Kawin">Belum Kawin</option>
-                                <option value="Kawin">Kawin</option>
-                                <option value="Cerai Hidup">Cerai Hidup</option>
-                                <option value="Cerai Mati">Cerai Mati</option>
-                            </select>
-                            
-                        </div>
-                    </div>
-                    <div></div>
+
                     <!-- Alamat KTP -->
                     <div class="md:col-span-2">
                         <label class="block text-xs font-bold text-on-surface-variant mb-2 font-headline">Alamat Sesuai KTP</label>
@@ -328,60 +305,9 @@
                 </div>
             </div>
 
-            <!-- Tab 3: Finansial & BPJS -->
-            <div id="content-mut-finansial" class="space-y-6 hidden">
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <!-- Bank Name -->
-                    <div>
-                        <label class="block text-xs font-bold text-on-surface-variant mb-2 font-headline">Nama Bank</label>
-                        <input type="text" id="mutBankName" name="bank_name" placeholder="Cth: BCA, Mandiri, BNI" class="w-full bg-surface-container-low border border-outline-variant/30 text-on-surface text-sm rounded-xl px-4 py-2.5 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all">
-                    </div>
-                    <!-- Bank Account Number -->
-                    <div>
-                        <label class="block text-xs font-bold text-on-surface-variant mb-2 font-headline">Nomor Rekening Bank</label>
-                        <input type="text" id="mutBankAccountNumber" name="bank_account_number" placeholder="Cth: 5220391823" class="w-full bg-surface-container-low border border-outline-variant/30 text-on-surface text-sm rounded-xl px-4 py-2.5 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all">
-                    </div>
-                    <!-- NPWP Number -->
-                    <div>
-                        <label class="block text-xs font-bold text-on-surface-variant mb-2 font-headline">Nomor NPWP</label>
-                        <input type="text" id="mutNpwpNumber" name="npwp_number" placeholder="Cth: 09.254.223.1-015.000" class="w-full bg-surface-container-low border border-outline-variant/30 text-on-surface text-sm rounded-xl px-4 py-2.5 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all font-body">
-                    </div>
-                    <!-- BPJS TK -->
-                    <div>
-                        <label class="block text-xs font-bold text-on-surface-variant mb-2 font-headline">Nomor BPJS Ketenagakerjaan</label>
-                        <input type="text" id="mutBpjsTk" name="bpjs_tk" placeholder="Cth: 19028391823" class="w-full bg-surface-container-low border border-outline-variant/30 text-on-surface text-sm rounded-xl px-4 py-2.5 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all font-body">
-                    </div>
-                    <!-- BPJS Kes -->
-                    <div>
-                        <label class="block text-xs font-bold text-on-surface-variant mb-2 font-headline">Nomor BPJS Kesehatan</label>
-                        <input type="text" id="mutBpjsKes" name="bpjs_kes" placeholder="Cth: 00012938123" class="w-full bg-surface-container-low border border-outline-variant/30 text-on-surface text-sm rounded-xl px-4 py-2.5 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all font-body">
-                    </div>
-                </div>
-            </div>
-
-            <!-- Tab 4: Plafon & Fisik -->
+            <!-- Tab 3: Fisik & Akses -->
             <div id="content-mut-lainnya" class="space-y-6 hidden">
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <!-- Plafon Medis -->
-                    <div>
-                        <label class="block text-xs font-bold text-on-surface-variant mb-2 font-headline">Plafon Medis (Bulanan)</label>
-                        <input type="text" id="mutPlafonMedis" name="reimburse_plafon_medis" placeholder="Cth: Rp 500.000" class="w-full bg-surface-container-low border border-outline-variant/30 text-on-surface text-sm rounded-xl px-4 py-2.5 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all">
-                    </div>
-                    <!-- Plafon Transport -->
-                    <div>
-                        <label class="block text-xs font-bold text-on-surface-variant mb-2 font-headline">Plafon Transport (Bulanan)</label>
-                        <input type="text" id="mutPlafonTransport" name="reimburse_plafon_transport" placeholder="Cth: Rp 1.000.000" class="w-full bg-surface-container-low border border-outline-variant/30 text-on-surface text-sm rounded-xl px-4 py-2.5 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all font-body">
-                    </div>
-                    <!-- Plafon Operasional -->
-                    <div>
-                        <label class="block text-xs font-bold text-on-surface-variant mb-2 font-headline">Plafon Operasional (Bulanan)</label>
-                        <input type="text" id="mutPlafonOperasional" name="reimburse_plafon_operasional" placeholder="Cth: Rp 2.000.000" class="w-full bg-surface-container-low border border-outline-variant/30 text-on-surface text-sm rounded-xl px-4 py-2.5 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all">
-                    </div>
-                    <!-- Plafon Makan -->
-                    <div>
-                        <label class="block text-xs font-bold text-on-surface-variant mb-2 font-headline">Plafon Makan (Bulanan)</label>
-                        <input type="text" id="mutPlafonMakan" name="reimburse_plafon_makan" placeholder="Cth: Rp 300.000" class="w-full bg-surface-container-low border border-outline-variant/30 text-on-surface text-sm rounded-xl px-4 py-2.5 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all font-body">
-                    </div>
                     <!-- Uniform Size -->
                     <div>
                         <label class="block text-xs font-bold text-on-surface-variant mb-2 font-headline">Ukuran Seragam</label>
@@ -389,15 +315,34 @@
                     </div>
                     <!-- Access Card ID -->
                     <div>
-                        <label class="block text-xs font-bold text-on-surface-variant mb-2 font-headline">ID Kartu Akses</label>
-                        <input type="text" id="mutCardId" name="id_kartu" placeholder="Cth: AC-829381" class="w-full bg-surface-container-low border border-outline-variant/30 text-on-surface text-sm rounded-xl px-4 py-2.5 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all">
+                        <label class="block text-xs font-bold text-on-surface-variant mb-2 font-headline">ID Kartu Akses (NFC / Tap Kartu)</label>
+                        <div class="relative">
+                            <span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant/60 text-lg pointer-events-none">contactless</span>
+                            <input type="text" id="mutCardId" name="id_kartu" oninput="this.value = this.value.replace(/[^a-zA-Z0-9]/g, '').toUpperCase()" placeholder="Cth: F3AD38E2" class="w-full bg-surface-container-low border border-outline-variant/30 text-on-surface text-sm rounded-xl pl-10 pr-4 py-2.5 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all font-mono">
+                        </div>
                     </div>
                     <!-- QR Code ID -->
                     <div>
-                        <label class="block text-xs font-bold text-on-surface-variant mb-2 font-headline">ID QR Code</label>
-                        <input type="text" id="mutQrId" name="id_qrcode" placeholder="Cth: QR-839283" class="w-full bg-surface-container-low border border-outline-variant/30 text-on-surface text-sm rounded-xl px-4 py-2.5 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all">
+                        <label class="block text-xs font-bold text-on-surface-variant mb-2 font-headline">ID QR Code Presensi</label>
+                        <div class="relative">
+                            <span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant/60 text-lg pointer-events-none">qr_code_2</span>
+                            <input type="text" id="mutQrId" name="id_qrcode" placeholder="Cth: QR-839283" class="w-full bg-surface-container-low border border-outline-variant/30 text-on-surface text-sm rounded-xl pl-10 pr-4 py-2.5 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all font-mono">
+                        </div>
                     </div>
-                    <div></div>
+                    <!-- Metode Presensi (Keamanan Layer 2) -->
+                    <div class="md:col-span-2">
+                        <label class="block text-xs font-bold text-primary mb-2 font-headline uppercase tracking-wider">Metode Presensi (Keamanan Layer 2)</label>
+                        <div class="relative">
+                            <span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant/60 text-lg pointer-events-none">shield</span>
+                            <select id="mutMetodePresensi" name="metode_presensi" class="w-full bg-surface-container-low border border-outline-variant/30 text-on-surface text-sm rounded-xl pl-10 pr-10 py-2.5 appearance-none focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all font-body font-semibold">
+                                <option value="default">Default (GPS Geofencing Langsung)</option>
+                                <option value="foto">Foto Swafoto (Verifikasi Kamera)</option>
+                                <option value="scan_qr">Scan QR Code (Pemindai Kode Bar)</option>
+                                <option value="nfc">NFC / Tap Kartu (Pemindai Kartu)</option>
+                            </select>
+                            <span class="material-symbols-outlined absolute right-3 top-1/2 -translate-y-1/2 text-on-surface-variant/50 pointer-events-none text-lg">expand_more</span>
+                        </div>
+                    </div>
                     <!-- Emergency Contact Header -->
                     <div class="md:col-span-2 border-t border-outline-variant/15 pt-4">
                         <h5 class="text-xs font-bold text-primary font-headline uppercase tracking-wider mb-2">Kontak Darurat</h5>
@@ -811,6 +756,41 @@
                     }
                 }
 
+                var metode = user.metode_presensi || 'default';
+                var mMeta = {
+                    'default': { text: 'Default (GPS)', icon: 'my_location', btnStyle: 'bg-blue-500/10 hover:bg-blue-500 text-blue-700 hover:text-white border-blue-500/20' },
+                    'foto':    { text: 'Foto Swafoto', icon: 'photo_camera', btnStyle: 'bg-emerald-500/10 hover:bg-emerald-500 text-emerald-700 hover:text-white border-emerald-500/20' },
+                    'scan_qr': { text: 'Scan QR Code', icon: 'qr_code_scanner', btnStyle: 'bg-purple-500/10 hover:bg-purple-500 text-purple-700 hover:text-white border-purple-500/20' },
+                    'nfc':     { text: 'Tap NFC / Kartu', icon: 'contactless', btnStyle: 'bg-amber-500/10 hover:bg-amber-500 text-amber-700 hover:text-white border-amber-500/20' }
+                }[metode] || { text: 'Default (GPS)', icon: 'my_location', btnStyle: 'bg-blue-500/10 hover:bg-blue-500 text-blue-700 hover:text-white border-blue-500/20' };
+
+                var metodeCellHtml = 
+                    '<div class="relative inline-block text-left" id="admMetodeDropdownContainer_' + escHtml(user.id) + '">' +
+                        '<button type="button" onclick="window.toggleAdminMetodeMenu(\'' + escHtml(user.id) + '\', event)" class="px-3 py-1.5 rounded-full text-xs font-bold border shadow-sm transition-all flex items-center gap-1.5 ' + mMeta.btnStyle + '" title="Ubah metode presensi">' +
+                            '<span class="material-symbols-outlined text-[14px]">' + mMeta.icon + '</span>' +
+                            '<span>' + mMeta.text + '</span>' +
+                            '<span class="material-symbols-outlined text-[14px] opacity-70 ml-0.5">expand_more</span>' +
+                        '</button>' +
+                        '<div id="admMetodeMenu_' + escHtml(user.id) + '" class="hidden absolute left-0 mt-1.5 w-48 rounded-2xl bg-surface-container-lowest border border-outline-variant/20 shadow-xl z-50 py-1.5 backdrop-blur-md">' +
+                            '<button type="button" onclick="window.selectAdminMetodePresensi(\'' + escHtml(user.id) + '\', \'default\')" class="w-full text-left px-3.5 py-2 text-xs font-bold hover:bg-blue-500/10 hover:text-blue-700 text-on-surface flex items-center gap-2 transition-colors ' + (metode === 'default' ? 'bg-blue-500/10 text-blue-700 font-black' : '') + '">' +
+                                '<span class="material-symbols-outlined text-sm text-blue-600">my_location</span>' +
+                                '<span>Default (GPS)</span>' +
+                            '</button>' +
+                            '<button type="button" onclick="window.selectAdminMetodePresensi(\'' + escHtml(user.id) + '\', \'foto\')" class="w-full text-left px-3.5 py-2 text-xs font-bold hover:bg-emerald-500/10 hover:text-emerald-700 text-on-surface flex items-center gap-2 transition-colors ' + (metode === 'foto' ? 'bg-emerald-500/10 text-emerald-700 font-black' : '') + '">' +
+                                '<span class="material-symbols-outlined text-sm text-emerald-600">photo_camera</span>' +
+                                '<span>Foto Swafoto</span>' +
+                            '</button>' +
+                            '<button type="button" onclick="window.selectAdminMetodePresensi(\'' + escHtml(user.id) + '\', \'scan_qr\')" class="w-full text-left px-3.5 py-2 text-xs font-bold hover:bg-purple-500/10 hover:text-purple-700 text-on-surface flex items-center gap-2 transition-colors ' + (metode === 'scan_qr' ? 'bg-purple-500/10 text-purple-700 font-black' : '') + '">' +
+                                '<span class="material-symbols-outlined text-sm text-purple-600">qr_code_scanner</span>' +
+                                '<span>Scan QR Code</span>' +
+                            '</button>' +
+                            '<button type="button" onclick="window.selectAdminMetodePresensi(\'' + escHtml(user.id) + '\', \'nfc\')" class="w-full text-left px-3.5 py-2 text-xs font-bold hover:bg-amber-500/10 hover:text-amber-700 text-on-surface flex items-center gap-2 transition-colors ' + (metode === 'nfc' ? 'bg-amber-500/10 text-amber-700 font-black' : '') + '">' +
+                                '<span class="material-symbols-outlined text-sm text-amber-600">contactless</span>' +
+                                '<span>Tap NFC / Kartu</span>' +
+                            '</button>' +
+                        '</div>' +
+                    '</div>';
+
                 var rowNum = i + 1;
                 tr.innerHTML =
                     '<td class="no-col-cell px-6 py-4 text-center font-bold text-xs text-on-surface-variant">' + rowNum + '</td>' +
@@ -837,6 +817,9 @@
                     '<td class="px-6 py-4">' +
                         '<span class="text-[10px] font-bold uppercase inline-block px-2.5 py-1 rounded ' + badgeClass + '">' + escHtml(user.role) + '</span>' +
                     '</td>' +
+                    '<td class="px-6 py-4">' +
+                        metodeCellHtml +
+                    '</td>' +
                     '<td class="px-6 py-4 text-right">' +
                         '<div class="flex items-center justify-end gap-1.5 flex-nowrap">' +
                             resetLockoutButton +
@@ -849,6 +832,74 @@
                 tbody.appendChild(tr);
             }
         }
+
+        window.toggleAdminMetodeMenu = function(userId, event) {
+            if (event) event.stopPropagation();
+            var menu = document.getElementById('admMetodeMenu_' + userId);
+            if (!menu) return;
+            var isHidden = menu.classList.contains('hidden');
+            document.querySelectorAll('[id^="admMetodeMenu_"]').forEach(function(el) { el.classList.add('hidden'); });
+            if (isHidden) {
+                menu.classList.remove('hidden');
+            }
+        };
+
+        if (!window.admMetodeListenerAttached) {
+            window.admMetodeListenerAttached = true;
+            document.addEventListener('click', function(e) {
+                if (!e.target.closest('[id^="admMetodeDropdownContainer_"]')) {
+                    document.querySelectorAll('[id^="admMetodeMenu_"]').forEach(function(el) { el.classList.add('hidden'); });
+                }
+            });
+        }
+
+        window.selectAdminMetodePresensi = function(userId, newMetode) {
+            var menu = document.getElementById('admMetodeMenu_' + userId);
+            if (menu) menu.classList.add('hidden');
+            window.updateUserMetodePresensi(userId, newMetode);
+        };
+
+        window.updateUserMetodePresensi = function(userId, newMetode) {
+            var fd = new FormData();
+            fd.append("id", userId);
+            fd.append("metode_presensi", newMetode);
+
+            fetch("/hrops/employees/update-metode", {
+                method: "POST",
+                headers: { "X-Requested-With": "XMLHttpRequest" },
+                body: fd
+            })
+            .then(function(r) { return r.json(); })
+            .then(function(data) {
+                if (data.success) {
+                    if (typeof Swal !== "undefined") {
+                        var Toast = Swal.mixin({
+                            toast: true,
+                            position: "top-end",
+                            showConfirmButton: false,
+                            timer: 2000,
+                            timerProgressBar: true
+                        });
+                        Toast.fire({
+                            icon: "success",
+                            title: "Metode presensi berhasil diperbarui!"
+                        });
+                    }
+                    var u = adminUsersData.find(function(item) { return item.id === userId; });
+                    if (u) u.metode_presensi = newMetode;
+                    window.renderAdminUsersTable();
+                } else {
+                    if (typeof Swal !== "undefined") {
+                        Swal.fire("Gagal", data.message || "Gagal memperbarui metode presensi.", "error");
+                    }
+                }
+            })
+            .catch(function(err) {
+                if (typeof Swal !== "undefined") {
+                    Swal.fire("Error", "Terjadi kesalahan koneksi ke server.", "error");
+                }
+            });
+        };
 
         // Save totalPages globally
         totalAdminUserPages = totalPages;
@@ -1245,8 +1296,6 @@
             if (el('mutFirstName'))   el('mutFirstName').value   = user.first_name        || '';
             if (el('mutLastName'))    el('mutLastName').value    = user.last_name         || '';
             if (el('mutEmailHidden')) el('mutEmailHidden').value = user.email             || '';
-            if (el('mutLeaveQuota'))  el('mutLeaveQuota').value  = user.annual_leave_quota || 12;
-            if (el('mutBaseSalary'))  el('mutBaseSalary').value  = formatRupiah(user.base_salary);
 
             // Populate new personal profile inputs
             if (el("mutPhone"))            el("mutPhone").value            = user.no_telepon || "";
@@ -1254,23 +1303,13 @@
             if (el("mutKtpNik"))           el("mutKtpNik").value           = user.ktp_nik || "";
             if (el("mutBirthDate"))        el("mutBirthDate").value        = user.tanggal_lahir || "";
             if (el("mutGender"))           el("mutGender").value           = user.jenis_kelamin || "";
-            if (el("mutMaritalStatus"))    el("mutMaritalStatus").value    = user.status_pernikahan || "";
             if (el("mutKtpAddress"))       el("mutKtpAddress").value       = user.alamat_ktp || "";
             if (el("mutDomisiliAddress"))  el("mutDomisiliAddress").value  = user.alamat_domisili || "";
-            if (el("mutBankName"))         el("mutBankName").value         = user.bank_name || "";
-            if (el("mutBankAccountNumber"))el("mutBankAccountNumber").value = user.bank_account_number || "";
-            if (el("mutNpwpNumber"))       el("mutNpwpNumber").value       = user.npwp_number || "";
-            if (el("mutBpjsTk"))           el("mutBpjsTk").value           = user.bpjs_tk || "";
-            if (el("mutBpjsKes"))          el("mutBpjsKes").value           = user.bpjs_kes || "";
-            
-            if (el("mutPlafonMedis"))      el("mutPlafonMedis").value      = formatRupiah(user.reimburse_plafon_medis);
-            if (el("mutPlafonTransport"))  el("mutPlafonTransport").value  = formatRupiah(user.reimburse_plafon_transport);
-            if (el("mutPlafonOperasional"))el("mutPlafonOperasional").value= formatRupiah(user.reimburse_plafon_operasional);
-            if (el("mutPlafonMakan"))      el("mutPlafonMakan").value      = formatRupiah(user.reimburse_plafon_makan);
 
             if (el("mutUniformSize"))      el("mutUniformSize").value      = user.uniform_size || "";
             if (el("mutCardId"))           el("mutCardId").value           = user.id_kartu || "";
             if (el("mutQrId"))             el("mutQrId").value             = user.id_qrcode || "";
+            if (el("mutMetodePresensi"))   el("mutMetodePresensi").value   = user.metode_presensi || "default";
             if (el("mutEmergencyName"))    el("mutEmergencyName").value    = user.emergency_name || "";
             if (el("mutEmergencyRelation"))el("mutEmergencyRelation").value= user.emergency_relation || "";
             if (el("mutEmergencyPhone"))   el("mutEmergencyPhone").value   = user.emergency_phone || "";
@@ -1292,18 +1331,16 @@
                 "mutId", "mutStaffId", "mutJobTitle", "mutDepartment",
                 "mutPassword", "mutFirstName", "mutLastName", "mutEmailHidden",
                 "mutPhone", "mutKtpName", "mutKtpNik", "mutBirthDate",
-                "mutGender", "mutMaritalStatus", "mutKtpAddress", "mutDomisiliAddress",
-                "mutBankName", "mutBankAccountNumber", "mutNpwpNumber", "mutBpjsTk",
-                "mutBpjsKes", "mutPlafonMedis", "mutPlafonTransport", "mutPlafonOperasional",
-                "mutPlafonMakan", "mutUniformSize", "mutCardId", "mutQrId",
+                "mutGender", "mutKtpAddress", "mutDomisiliAddress",
+                "mutUniformSize", "mutCardId", "mutQrId", "mutMetodePresensi",
                 "mutEmergencyName", "mutEmergencyRelation", "mutEmergencyPhone"
             ];
             fieldsToClear.forEach(function(fid) {
                 if (el(fid)) el(fid).value = "";
             });
 
-            if (el("mutRole"))        el("mutRole").value        = "employee";
-            if (el("mutLeaveQuota"))  el("mutLeaveQuota").value  = 12;
+            if (el("mutRole"))           el("mutRole").value           = "employee";
+            if (el("mutMetodePresensi")) el("mutMetodePresensi").value = "default";
         }
 
         // Reset default active tab
@@ -1349,8 +1386,12 @@
         }
 
         fetch('/hrops/employees/save', { method: 'POST', headers: { "X-CSRF-TOKEN": token }, body: formData })
-            .then(function(res) { return res.json(); })
-            .then(function(data) {
+            .then(function(res) { return res.text(); })
+            .then(function(text) {
+                var cleanText = text.trim();
+                var jsonMatch = cleanText.match(/\{[\s\S]*\}/);
+                if (jsonMatch) cleanText = jsonMatch[0];
+                var data = JSON.parse(cleanText);
                 if (data.success) {
                     window.closeMutationModal();
                     if (typeof Swal !== 'undefined') {
@@ -1358,11 +1399,12 @@
                     }
                     window.loadAdminUsers();
                 } else {
-                    if (typeof Swal !== 'undefined') Swal.fire('Error', data.message, 'error');
+                    if (typeof Swal !== 'undefined') Swal.fire('Error', data.message || 'Gagal menyimpan data', 'error');
                 }
             })
             .catch(function(err) {
-                if (typeof Swal !== 'undefined') Swal.fire('Error', 'Terjadi kesalahan sistem.', 'error');
+                console.error("Mutation save error:", err);
+                if (typeof Swal !== 'undefined') Swal.fire('Error', 'Terjadi kesalahan sistem: ' + (err.message || err), 'error');
             });
     };
 
@@ -1529,7 +1571,7 @@ document.getElementById('import-form')?.addEventListener('submit', function(e) {
                 </div>
                 <p class="text-[11px] leading-relaxed">
                     Sediakan file CSV dengan header kolom berikut:<br>
-                    <code class="bg-white px-1.5 py-0.5 rounded border border-blue-200 font-mono text-[10px]">employee_id, email, first_name, last_name, ktp_nik, department_id, job_title, base_salary</code>
+                    <code class="bg-white px-1.5 py-0.5 rounded border border-blue-200 font-mono text-[10px]">employee_id, email, first_name, last_name, ktp_nik, department_id, job_title</code>
                 </p>
             </div>
 

@@ -1,4 +1,4 @@
-const CACHE_NAME = 'sicare-cache-v1';
+const CACHE_NAME = 'sicare-cache-v2.4.0';
 const ASSETS_TO_CACHE = [
     '/manifest.php',
     '/images/icons/icon-72x72.png',
@@ -27,6 +27,7 @@ self.addEventListener('activate', event => {
         caches.keys().then(cacheNames => {
             return Promise.all(
                 cacheNames.map(cache => {
+                    // Wipe ALL old caches automatically across all browsers
                     if (cache !== CACHE_NAME) {
                         return caches.delete(cache);
                     }
@@ -40,16 +41,18 @@ self.addEventListener('fetch', event => {
     // We only intercept GET requests
     if (event.request.method !== 'GET') return;
 
+    // NEVER cache dynamic HTML pages or application routes in ServiceWorker
+    const url = new URL(event.request.url);
+    if (event.request.mode === 'navigate' || url.pathname.startsWith('/employee') || url.pathname.startsWith('/admin') || url.pathname.startsWith('/superadmin') || url.pathname.startsWith('/auth')) {
+        return; // Direct network fetch, no Service Worker cache
+    }
+
     event.respondWith(
         fetch(event.request)
             .then(response => {
-                // If it's a valid response, we can dynamically cache static assets
-                const url = new URL(event.request.url);
+                // Only dynamically cache pure static images/icons/ringtones (NOT HTML/JS)
                 const contentType = response.headers.get('content-type') || '';
-                if (response.ok && (
-                    contentType.includes('text/html') ||
-                    url.pathname.endsWith('.css') || 
-                    url.pathname.endsWith('.js') || 
+                if (response.ok && !contentType.includes('text/html') && (
                     url.pathname.endsWith('.png') || 
                     url.pathname.endsWith('.jpg') || 
                     url.pathname.endsWith('.jpeg') || 

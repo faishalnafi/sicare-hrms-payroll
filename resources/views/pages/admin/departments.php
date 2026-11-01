@@ -81,54 +81,6 @@
                     <input type="text" id="deptName" name="name" required placeholder="Cth: Frontend Development" class="w-full bg-surface-container-low border border-outline-variant/30 text-on-surface text-sm rounded-xl px-4 py-2.5 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all">
                 </div>
 
-                <!-- Plafon Reimbursement -->
-                <div>
-                    <label class="block text-xs font-bold text-on-surface-variant mb-2">Plafon Reimbursement Bulanan (Total)</label>
-                    <div class="relative flex items-center gap-2">
-                        <span class="text-xs font-semibold text-on-surface-variant whitespace-nowrap">Rp</span>
-                        <input type="text" id="deptReimbursementLimit" name="reimbursement_limit" placeholder="Cth: 15.000.000" class="w-full bg-surface-container-low border border-outline-variant/30 text-on-surface text-sm rounded-xl px-4 py-2.5 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all font-mono" oninput="this.value = this.value.replace(/[^0-9]/g, '').replace(/\B(?=(\d{3})+(?!\d))/g, '.');">
-                    </div>
-                    <p class="text-[10px] text-on-surface-variant/70 mt-1.5 font-medium">Batas kumulatif bulanan untuk seluruh karyawan di departemen ini. Biarkan kosong untuk menggunakan nilai default global. Set 0 untuk menonaktifkan.</p>
-                </div>
-
-                <!-- Plafon Detail Kategori -->
-                <div class="space-y-4 pt-4 border-t border-outline-variant/10">
-                    <label class="block text-xs font-bold text-primary mb-1 uppercase tracking-wider">Detail Plafon Kategori (Bulanan)</label>
-                    
-                    <div>
-                        <label class="block text-[11px] font-bold text-on-surface-variant mb-1.5">Plafon Medis</label>
-                        <div class="relative flex items-center gap-2">
-                            <span class="text-xs font-semibold text-on-surface-variant whitespace-nowrap">Rp</span>
-                            <input type="text" id="deptLimitMedis" name="limit_medis" placeholder="Cth: 5.000.000" class="w-full bg-surface-container-low border border-outline-variant/30 text-on-surface text-sm rounded-xl px-4 py-2 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all font-mono" oninput="this.value = this.value.replace(/[^0-9]/g, '').replace(/\B(?=(\d{3})+(?!\d))/g, '.');">
-                        </div>
-                    </div>
-
-                    <div>
-                        <label class="block text-[11px] font-bold text-on-surface-variant mb-1.5">Plafon Transportasi</label>
-                        <div class="relative flex items-center gap-2">
-                            <span class="text-xs font-semibold text-on-surface-variant whitespace-nowrap">Rp</span>
-                            <input type="text" id="deptLimitTransport" name="limit_transport" placeholder="Cth: 3.000.000" class="w-full bg-surface-container-low border border-outline-variant/30 text-on-surface text-sm rounded-xl px-4 py-2 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all font-mono" oninput="this.value = this.value.replace(/[^0-9]/g, '').replace(/\B(?=(\d{3})+(?!\d))/g, '.');">
-                        </div>
-                    </div>
-
-                    <div>
-                        <label class="block text-[11px] font-bold text-on-surface-variant mb-1.5">Plafon Operasional</label>
-                        <div class="relative flex items-center gap-2">
-                            <span class="text-xs font-semibold text-on-surface-variant whitespace-nowrap">Rp</span>
-                            <input type="text" id="deptLimitOperasional" name="limit_operasional" placeholder="Cth: 4.000.000" class="w-full bg-surface-container-low border border-outline-variant/30 text-on-surface text-sm rounded-xl px-4 py-2 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all font-mono" oninput="this.value = this.value.replace(/[^0-9]/g, '').replace(/\B(?=(\d{3})+(?!\d))/g, '.');">
-                        </div>
-                    </div>
-
-                    <div>
-                        <label class="block text-[11px] font-bold text-on-surface-variant mb-1.5">Plafon Makan & Bisnis</label>
-                        <div class="relative flex items-center gap-2">
-                            <span class="text-xs font-semibold text-on-surface-variant whitespace-nowrap">Rp</span>
-                            <input type="text" id="deptLimitMakan" name="limit_makan" placeholder="Cth: 2.500.000" class="w-full bg-surface-container-low border border-outline-variant/30 text-on-surface text-sm rounded-xl px-4 py-2 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all font-mono" oninput="this.value = this.value.replace(/[^0-9]/g, '').replace(/\B(?=(\d{3})+(?!\d))/g, '.');">
-                        </div>
-                    </div>
-                    
-                    <p class="text-[10px] text-on-surface-variant/70 font-medium mt-1">Biarkan kosong untuk menggunakan nilai default global kategori masing-masing. Set 0 untuk menonaktifkan.</p>
-                </div>
 
                 <!-- Form Controls -->
                 <div class="pt-4 border-t border-outline-variant/10 flex justify-end gap-3">
@@ -276,10 +228,6 @@
                 if (node.level >= 10) depthColor = 'bg-rose-50 text-rose-700 border-rose-100';
 
                 var limitLabel = '';
-                if (node.reimbursement_limit !== null && node.reimbursement_limit !== undefined && node.reimbursement_limit !== '') {
-                    var limitVal = parseFloat(node.reimbursement_limit);
-                    limitLabel = '<span class="text-[9px] font-extrabold uppercase border px-2 py-0.5 rounded-full bg-indigo-50 text-indigo-750 border-indigo-100/50">Plafon: Rp ' + String(limitVal).replace(/\B(?=(\d{3})+(?!\d))/g, ".") + '</span>';
-                }
 
                 html += 
                     '<div class="' + borderClass + ' py-1">' +
@@ -359,23 +307,7 @@
         document.getElementById('deptName').value = node.name;
         document.getElementById('deptParentSelector').value = node.parent_id || '';
         
-        function setLimitVal(inputId, val) {
-            var input = document.getElementById(inputId);
-            if (input) {
-                if (val !== '' && val !== null && val !== undefined) {
-                    var parsed = parseFloat(val);
-                    input.value = String(parsed).replace(/\B(?=(\d{3})+(?!\d))/g, ".");
-                } else {
-                    input.value = '';
-                }
-            }
-        }
-        
-        setLimitVal('deptReimbursementLimit', node.reimbursement_limit);
-        setLimitVal('deptLimitMedis', node.limit_medis);
-        setLimitVal('deptLimitTransport', node.limit_transport);
-        setLimitVal('deptLimitOperasional', node.limit_operasional);
-        setLimitVal('deptLimitMakan', node.limit_makan);
+
 
         // Hide parent info block for direct edit mode to allow full selector dropdown
         var infoBox = document.getElementById('parentInfoBox');
@@ -387,18 +319,7 @@
         document.getElementById('deptId').value = '';
         document.getElementById('deptParentSelector').value = '';
         
-        var inputs = [
-            'deptReimbursementLimit',
-            'deptLimitMedis',
-            'deptLimitTransport',
-            'deptLimitOperasional',
-            'deptLimitMakan'
-        ];
-        inputs.forEach(function(id) {
-            var el = document.getElementById(id);
-            if (el) el.value = '';
-        });
-        
+
         var infoBox = document.getElementById('parentInfoBox');
         if (infoBox) infoBox.classList.add('hidden');
         

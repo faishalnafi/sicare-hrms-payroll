@@ -18,20 +18,20 @@ if (empty($profilePic)) {
 }
 
 $employeeId = !empty($dbUser['employee_id']) ? $dbUser['employee_id'] : '-';
+$rombel = !empty($dbUser['rombel']) ? $dbUser['rombel'] : '-';
+$angkatanMasuk = !empty($dbUser['angkatan_masuk']) ? $dbUser['angkatan_masuk'] : '-';
+$bulanBergabung = !empty($dbUser['bulan_bergabung']) ? $dbUser['bulan_bergabung'] : '-';
 $ktpNik = !empty($dbUser['ktp_nik']) ? $dbUser['ktp_nik'] : '-';
 $namaSesuaiKtp = !empty($dbUser['nama_sesuai_ktp']) ? $dbUser['nama_sesuai_ktp'] : '-';
 $displayName = !empty($dbUser['nama_sesuai_ktp']) ? $dbUser['nama_sesuai_ktp'] : $sessName;
 $alamatKtp = !empty($dbUser['alamat_ktp']) ? $dbUser['alamat_ktp'] : '-';
-$bankName = !empty($dbUser['bank_name']) ? $dbUser['bank_name'] : '-';
-$bankAccountNumber = !empty($dbUser['bank_account_number']) ? $dbUser['bank_account_number'] : '-';
-$npwpNumber = !empty($dbUser['npwp_number']) ? $dbUser['npwp_number'] : '-';
-$bpjsTk = !empty($dbUser['bpjs_tk']) ? $dbUser['bpjs_tk'] : '-';
-$bpjsKes = !empty($dbUser['bpjs_kes']) ? $dbUser['bpjs_kes'] : '-';
 $tanggalLahir = !empty($dbUser['tanggal_lahir']) ? $dbUser['tanggal_lahir'] : '-';
-$statusPernikahan = !empty($dbUser['status_pernikahan']) ? $dbUser['status_pernikahan'] : '-';
 $jenisKelamin = !empty($dbUser['jenis_kelamin']) ? $dbUser['jenis_kelamin'] : '-';
 $noTelepon = !empty($dbUser['no_telepon']) ? $dbUser['no_telepon'] : '';
 $alamatDomisili = !empty($dbUser['alamat_domisili']) ? $dbUser['alamat_domisili'] : '';
+$emergencyName = !empty($dbUser['emergency_contact_name']) ? $dbUser['emergency_contact_name'] : (!empty($dbUser['emergency_name']) ? $dbUser['emergency_name'] : '-');
+$emergencyPhone = !empty($dbUser['emergency_contact_phone']) ? $dbUser['emergency_contact_phone'] : (!empty($dbUser['emergency_phone']) ? $dbUser['emergency_phone'] : '-');
+$emergencyRelation = !empty($dbUser['emergency_contact_relation']) ? $dbUser['emergency_contact_relation'] : (!empty($dbUser['emergency_relation']) ? $dbUser['emergency_relation'] : '-');
 $homeLat = $dbUser['home_latitude'] ?? '';
 $homeLng = $dbUser['home_longitude'] ?? '';
 
@@ -43,8 +43,8 @@ $pendingRequests = ViewHelper::getEmployeeCorrectionRequests($_SESSION['user_id'
     <!-- Header Page -->
     <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div class="space-y-1">
-            <h1 class="font-headline text-3xl font-extrabold text-primary tracking-tight">Profil Pribadi</h1>
-            <p class="text-on-surface-variant font-medium text-sm">Kelola data personal terverifikasi dan ajukan perbaikan data administratif ESS Anda.</p>
+            <h1 class="font-headline text-3xl font-extrabold text-primary tracking-tight">Profil Anggota</h1>
+            <p class="text-on-surface-variant font-medium text-sm">Kelola data keanggotaan dan ajukan perbaikan data siswa ekstrakurikuler Anda.</p>
         </div>
         <div>
             <button onclick="openCorrectionModal()" class="bg-primary hover:bg-primary/95 text-white font-bold text-xs py-3 px-5 rounded-lg flex items-center gap-2 transition-all shadow-md shadow-primary/20 hover:scale-[1.02] active:scale-95 duration-200">
@@ -68,28 +68,42 @@ $pendingRequests = ViewHelper::getEmployeeCorrectionRequests($_SESSION['user_id'
                     </div>
                     
                     <h2 class="text-2xl font-black text-on-surface font-headline mb-1"><?php echo htmlspecialchars($displayName); ?></h2>
-                    <p class="text-xs font-bold text-primary uppercase tracking-wider bg-primary/5 px-3 py-1 rounded-full mb-4">Karyawan Aktif</p>
+                    <p class="text-xs font-bold text-primary uppercase tracking-wider bg-primary/5 px-3 py-1 rounded-full mb-4">Anggota Aktif</p>
                     
-                    <!-- Meta info list without 1px dividers -->
-                    <div class="w-full space-y-3 pt-4 border-t border-outline-variant/10 text-left">
+                    <!-- Meta info list -->
+                    <div class="w-full space-y-2.5 pt-4 border-t border-outline-variant/10 text-left">
                         <div class="bg-surface-container-low/60 rounded-xl p-3 flex justify-between items-center">
                             <div class="flex items-center gap-2.5">
                                 <span class="material-symbols-outlined text-primary text-lg">badge</span>
-                                <span class="text-xs font-semibold text-on-surface-variant">ID Karyawan</span>
+                                <span class="text-xs font-semibold text-on-surface-variant">NIS / ID Anggota</span>
                             </div>
                             <span class="text-xs font-mono font-bold text-on-surface bg-surface-container-high px-2 py-0.5 rounded"><?php echo htmlspecialchars($employeeId); ?></span>
                         </div>
                         <div class="bg-surface-container-low/60 rounded-xl p-3 flex justify-between items-center">
                             <div class="flex items-center gap-2.5">
+                                <span class="material-symbols-outlined text-primary text-lg">school</span>
+                                <span class="text-xs font-semibold text-on-surface-variant">Kelas / Rombel</span>
+                            </div>
+                            <span class="text-xs font-bold text-on-surface"><?php echo htmlspecialchars($rombel); ?></span>
+                        </div>
+                        <div class="bg-surface-container-low/60 rounded-xl p-3 flex justify-between items-center">
+                            <div class="flex items-center gap-2.5">
+                                <span class="material-symbols-outlined text-primary text-lg">calendar_month</span>
+                                <span class="text-xs font-semibold text-on-surface-variant">Angkatan</span>
+                            </div>
+                            <span class="text-xs font-bold text-on-surface"><?php echo htmlspecialchars($angkatanMasuk); ?></span>
+                        </div>
+                        <div class="bg-surface-container-low/60 rounded-xl p-3 flex justify-between items-center">
+                            <div class="flex items-center gap-2.5">
                                 <span class="material-symbols-outlined text-primary text-lg">schema</span>
-                                <span class="text-xs font-semibold text-on-surface-variant">Divisi / Dept</span>
+                                <span class="text-xs font-semibold text-on-surface-variant">Divisi Operasional</span>
                             </div>
                             <span class="text-xs font-bold text-on-surface"><?php echo htmlspecialchars($deptName); ?></span>
                         </div>
                         <div class="bg-surface-container-low/60 rounded-xl p-3 flex justify-between items-center">
                             <div class="flex items-center gap-2.5">
                                 <span class="material-symbols-outlined text-primary text-lg">work</span>
-                                <span class="text-xs font-semibold text-on-surface-variant">Jabatan</span>
+                                <span class="text-xs font-semibold text-on-surface-variant">Peran / Jabatan</span>
                             </div>
                             <span class="text-xs font-bold text-on-surface"><?php echo htmlspecialchars($jobTitle); ?></span>
                         </div>
@@ -104,8 +118,8 @@ $pendingRequests = ViewHelper::getEmployeeCorrectionRequests($_SESSION['user_id'
                         <span class="material-symbols-outlined text-white text-2xl font-bold">verified</span>
                     </div>
                     <div>
-                        <h3 class="text-lg font-bold font-headline">Status Administratif</h3>
-                        <p class="text-xs text-white/80 mt-1 leading-relaxed">Seluruh data administratif Anda telah terverifikasi secara hukum oleh Divisi HR Ops. Setiap perubahan wajib melalui pengajuan dengan bukti dokumen legal.</p>
+                        <h3 class="text-lg font-bold font-headline">Status Keanggotaan Terverifikasi</h3>
+                        <p class="text-xs text-white/80 mt-1 leading-relaxed">Seluruh data siswa & keanggotaan ekstrakurikuler Anda telah divalidasi oleh Pengurus BPH. Setiap perubahan data memerlukan persetujuan admin.</p>
                     </div>
                 </div>
                 <div class="absolute -bottom-6 -right-6 opacity-[0.08] group-hover:scale-110 transition-transform duration-500">
@@ -187,19 +201,48 @@ $pendingRequests = ViewHelper::getEmployeeCorrectionRequests($_SESSION['user_id'
             <section class="space-y-4">
                 <div class="flex justify-between items-end">
                     <div class="space-y-0.5">
-                        <h2 class="text-2xl font-black text-on-surface tracking-tight font-headline">Data Administratif Terkunci</h2>
-                        <p class="text-on-surface-variant text-xs">Informasi sensitif perpajakan, keuangan, dan kependudukan dilindungi secara ketat.</p>
+                        <h2 class="text-2xl font-black text-on-surface tracking-tight font-headline">Data Keanggotaan & Identitas Siswa</h2>
+                        <p class="text-on-surface-variant text-xs">Informasi akademik sekolah, keanggotaan divisi, dan kontak darurat orang tua/wali.</p>
                     </div>
                 </div>
 
-                <!-- 4 Grid Categories -->
+                <!-- 4 Grid Categories tailored for SMA Extracurricular -->
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <!-- Category 1: Kependudukan -->
+                    <!-- Category 1: Keanggotaan & Sekolah -->
                     <div class="bg-surface-container-lowest rounded-2xl p-5 border border-outline-variant/15 shadow-[0_12px_24px_rgba(0,6,102,0.01)] space-y-4">
                         <div class="flex items-center justify-between pb-3 border-b border-outline-variant/10">
                             <div class="flex items-center gap-2">
-                                <span class="material-symbols-outlined text-primary text-xl">demography</span>
-                                <h3 class="text-sm font-extrabold text-on-surface">Kependudukan</h3>
+                                <span class="material-symbols-outlined text-primary text-xl">school</span>
+                                <h3 class="text-sm font-extrabold text-on-surface">Data Akademik & Sekolah</h3>
+                            </div>
+                            <span class="material-symbols-outlined text-primary text-base font-bold" title="Locked Data">lock</span>
+                        </div>
+                        <div class="space-y-3">
+                            <div class="bg-surface-container-low/40 p-3.5 rounded-xl border border-outline-variant/10 relative">
+                                <label class="text-[9px] uppercase font-bold tracking-wider text-on-surface-variant/80 block mb-1">NIS / ID Anggota</label>
+                                <p class="text-xs font-bold text-on-surface font-mono select-all"><?php echo htmlspecialchars($employeeId); ?></p>
+                            </div>
+                            <div class="bg-surface-container-low/40 p-3.5 rounded-xl border border-outline-variant/10 relative">
+                                <label class="text-[9px] uppercase font-bold tracking-wider text-on-surface-variant/80 block mb-1">Kelas / Rombel</label>
+                                <p class="text-xs font-bold text-on-surface select-all"><?php echo htmlspecialchars($rombel); ?></p>
+                            </div>
+                            <div class="bg-surface-container-low/40 p-3.5 rounded-xl border border-outline-variant/10 relative">
+                                <label class="text-[9px] uppercase font-bold tracking-wider text-on-surface-variant/80 block mb-1">Angkatan Masuk</label>
+                                <p class="text-xs font-bold text-on-surface select-all"><?php echo htmlspecialchars($angkatanMasuk); ?></p>
+                            </div>
+                            <div class="bg-surface-container-low/40 p-3.5 rounded-xl border border-outline-variant/10 relative">
+                                <label class="text-[9px] uppercase font-bold tracking-wider text-on-surface-variant/80 block mb-1">Bulan Bergabung</label>
+                                <p class="text-xs font-bold text-on-surface select-all"><?php echo htmlspecialchars($bulanBergabung); ?></p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Category 2: Identitas Diri -->
+                    <div class="bg-surface-container-lowest rounded-2xl p-5 border border-outline-variant/15 shadow-[0_12px_24px_rgba(0,6,102,0.01)] space-y-4">
+                        <div class="flex items-center justify-between pb-3 border-b border-outline-variant/10">
+                            <div class="flex items-center gap-2">
+                                <span class="material-symbols-outlined text-primary text-xl">badge</span>
+                                <h3 class="text-sm font-extrabold text-on-surface">Identitas Kependudukan</h3>
                             </div>
                             <span class="material-symbols-outlined text-primary text-base font-bold" title="Locked Data">lock</span>
                         </div>
@@ -209,67 +252,17 @@ $pendingRequests = ViewHelper::getEmployeeCorrectionRequests($_SESSION['user_id'
                                 <p class="text-xs font-bold text-on-surface select-all"><?php echo htmlspecialchars($ktpNik); ?></p>
                             </div>
                             <div class="bg-surface-container-low/40 p-3.5 rounded-xl border border-outline-variant/10 relative">
-                                <label class="text-[9px] uppercase font-bold tracking-wider text-on-surface-variant/80 block mb-1">Nama Lengkap Sesuai KTP</label>
+                                <label class="text-[9px] uppercase font-bold tracking-wider text-on-surface-variant/80 block mb-1">Nama Lengkap Sesuai KTP/Kartu Pelajar</label>
                                 <p class="text-xs font-bold text-on-surface select-all"><?php echo htmlspecialchars($namaSesuaiKtp); ?></p>
                             </div>
                             <div class="bg-surface-container-low/40 p-3.5 rounded-xl border border-outline-variant/10 relative">
-                                <label class="text-[9px] uppercase font-bold tracking-wider text-on-surface-variant/80 block mb-1">Alamat KTP</label>
+                                <label class="text-[9px] uppercase font-bold tracking-wider text-on-surface-variant/80 block mb-1">Alamat Sesuai Identitas</label>
                                 <p class="text-xs font-bold text-on-surface leading-relaxed select-all"><?php echo htmlspecialchars($alamatKtp); ?></p>
                             </div>
                         </div>
                     </div>
 
-                    <!-- Category 2: Finansial -->
-                    <div class="bg-surface-container-lowest rounded-2xl p-5 border border-outline-variant/15 shadow-[0_12px_24px_rgba(0,6,102,0.01)] space-y-4">
-                        <div class="flex items-center justify-between pb-3 border-b border-outline-variant/10">
-                            <div class="flex items-center gap-2">
-                                <span class="material-symbols-outlined text-primary text-xl">payments</span>
-                                <h3 class="text-sm font-extrabold text-on-surface">Finansial & Payroll</h3>
-                            </div>
-                            <span class="material-symbols-outlined text-primary text-base font-bold" title="Locked Data">lock</span>
-                        </div>
-                        <div class="space-y-3">
-                            <div class="bg-surface-container-low/40 p-3.5 rounded-xl border border-outline-variant/10 relative">
-                                <label class="text-[9px] uppercase font-bold tracking-wider text-on-surface-variant/80 block mb-1">Nama Bank Penerima</label>
-                                <p class="text-xs font-bold text-on-surface select-all"><?php echo htmlspecialchars($bankName); ?></p>
-                            </div>
-                            <div class="bg-surface-container-low/40 p-3.5 rounded-xl border border-outline-variant/10 relative">
-                                <label class="text-[9px] uppercase font-bold tracking-wider text-on-surface-variant/80 block mb-1">Nomor Rekening</label>
-                                <p class="text-xs font-bold text-on-surface font-mono select-all"><?php echo htmlspecialchars($bankAccountNumber); ?></p>
-                            </div>
-                            <div class="bg-surface-container-low/40 p-3.5 rounded-xl border border-outline-variant/10 relative">
-                                <label class="text-[9px] uppercase font-bold tracking-wider text-on-surface-variant/80 block mb-1">Atas Nama Rekening</label>
-                                <p class="text-xs font-bold text-on-surface select-all"><?php echo htmlspecialchars($namaSesuaiKtp); ?></p>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Category 3: Pajak & Asuransi -->
-                    <div class="bg-surface-container-lowest rounded-2xl p-5 border border-outline-variant/15 shadow-[0_12px_24px_rgba(0,6,102,0.01)] space-y-4">
-                        <div class="flex items-center justify-between pb-3 border-b border-outline-variant/10">
-                            <div class="flex items-center gap-2">
-                                <span class="material-symbols-outlined text-primary text-xl">receipt_long</span>
-                                <h3 class="text-sm font-extrabold text-on-surface">Pajak & Jaminan Sosial</h3>
-                            </div>
-                            <span class="material-symbols-outlined text-primary text-base font-bold" title="Locked Data">lock</span>
-                        </div>
-                        <div class="space-y-3">
-                            <div class="bg-surface-container-low/40 p-3.5 rounded-xl border border-outline-variant/10 relative">
-                                <label class="text-[9px] uppercase font-bold tracking-wider text-on-surface-variant/80 block mb-1">NPWP (Nomor Pokok Wajib Pajak)</label>
-                                <p class="text-xs font-bold text-on-surface select-all"><?php echo htmlspecialchars($npwpNumber); ?></p>
-                            </div>
-                            <div class="bg-surface-container-low/40 p-3.5 rounded-xl border border-outline-variant/10 relative">
-                                <label class="text-[9px] uppercase font-bold tracking-wider text-on-surface-variant/80 block mb-1">BPJS Ketenagakerjaan</label>
-                                <p class="text-xs font-bold text-on-surface select-all font-mono"><?php echo htmlspecialchars($bpjsTk); ?></p>
-                            </div>
-                            <div class="bg-surface-container-low/40 p-3.5 rounded-xl border border-outline-variant/10 relative">
-                                <label class="text-[9px] uppercase font-bold tracking-wider text-on-surface-variant/80 block mb-1">BPJS Kesehatan</label>
-                                <p class="text-xs font-bold text-on-surface select-all font-mono"><?php echo htmlspecialchars($bpjsKes); ?></p>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Category 4: Data Pribadi -->
+                    <!-- Category 3: Data Diri -->
                     <div class="bg-surface-container-lowest rounded-2xl p-5 border border-outline-variant/15 shadow-[0_12px_24px_rgba(0,6,102,0.01)] space-y-4">
                         <div class="flex items-center justify-between pb-3 border-b border-outline-variant/10">
                             <div class="flex items-center gap-2">
@@ -284,12 +277,33 @@ $pendingRequests = ViewHelper::getEmployeeCorrectionRequests($_SESSION['user_id'
                                 <p class="text-xs font-bold text-on-surface select-all"><?php echo htmlspecialchars($tanggalLahir); ?></p>
                             </div>
                             <div class="bg-surface-container-low/40 p-3.5 rounded-xl border border-outline-variant/10 relative">
-                                <label class="text-[9px] uppercase font-bold tracking-wider text-on-surface-variant/80 block mb-1">Status Pernikahan</label>
-                                <p class="text-xs font-bold text-on-surface select-all"><?php echo htmlspecialchars($statusPernikahan); ?></p>
-                            </div>
-                            <div class="bg-surface-container-low/40 p-3.5 rounded-xl border border-outline-variant/10 relative">
                                 <label class="text-[9px] uppercase font-bold tracking-wider text-on-surface-variant/80 block mb-1">Jenis Kelamin</label>
                                 <p class="text-xs font-bold text-on-surface select-all"><?php echo htmlspecialchars($jenisKelamin); ?></p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Category 4: Orang Tua / Wali (Kontak Darurat) -->
+                    <div class="bg-surface-container-lowest rounded-2xl p-5 border border-outline-variant/15 shadow-[0_12px_24px_rgba(0,6,102,0.01)] space-y-4">
+                        <div class="flex items-center justify-between pb-3 border-b border-outline-variant/10">
+                            <div class="flex items-center gap-2">
+                                <span class="material-symbols-outlined text-primary text-xl">contact_emergency</span>
+                                <h3 class="text-sm font-extrabold text-on-surface">Kontak Orang Tua / Wali</h3>
+                            </div>
+                            <span class="material-symbols-outlined text-primary text-base font-bold" title="Locked Data">lock</span>
+                        </div>
+                        <div class="space-y-3">
+                            <div class="bg-surface-container-low/40 p-3.5 rounded-xl border border-outline-variant/10 relative">
+                                <label class="text-[9px] uppercase font-bold tracking-wider text-on-surface-variant/80 block mb-1">Nama Orang Tua / Wali</label>
+                                <p class="text-xs font-bold text-on-surface select-all"><?php echo htmlspecialchars($emergencyName); ?></p>
+                            </div>
+                            <div class="bg-surface-container-low/40 p-3.5 rounded-xl border border-outline-variant/10 relative">
+                                <label class="text-[9px] uppercase font-bold tracking-wider text-on-surface-variant/80 block mb-1">No. HP Orang Tua / Wali</label>
+                                <p class="text-xs font-bold text-on-surface font-mono select-all"><?php echo htmlspecialchars($emergencyPhone); ?></p>
+                            </div>
+                            <div class="bg-surface-container-low/40 p-3.5 rounded-xl border border-outline-variant/10 relative">
+                                <label class="text-[9px] uppercase font-bold tracking-wider text-on-surface-variant/80 block mb-1">Hubungan Keluarga</label>
+                                <p class="text-xs font-bold text-on-surface select-all"><?php echo htmlspecialchars($emergencyRelation); ?></p>
                             </div>
                         </div>
                     </div>

@@ -149,8 +149,8 @@ class ImportExportController {
                     $dummyPass = password_hash('siCare@2026', PASSWORD_BCRYPT);
 
                     $stmtIn = $db->prepare("
-                        INSERT INTO users (id, employee_id, email, password, first_name, last_name, ktp_nik, role, role_id, department_id, job_title, base_salary, onboarding_status, created_at)
-                        VALUES (:id, NULLIF(:emp_id, ''), :email, :pass, :fname, :lname, NULLIF(:nik, ''), 'employee', '3', NULLIF(:dept_id, ''), NULLIF(:job_title, ''), :salary, 'completed', NOW())
+                        INSERT INTO users (id, employee_id, email, password_hash, first_name, last_name, ktp_nik, role, role_id, department_id, job_title, onboarding_status, created_at)
+                        VALUES (:id, NULLIF(:emp_id, ''), :email, :pass, :fname, :lname, NULLIF(:nik, ''), 'employee', '2d3e4f5a-6b7c-8d9e-0f1a-2b3c4d5e6f7a', NULLIF(:dept_id, ''), NULLIF(:job_title, ''), 'completed', NOW())
                     ");
                     $stmtIn->execute([
                         'id' => $newId,
@@ -161,8 +161,7 @@ class ImportExportController {
                         'lname' => $lastName,
                         'nik' => $ktpNik,
                         'dept_id' => $deptId,
-                        'job_title' => $jobTitle,
-                        'salary' => $salary
+                        'job_title' => $jobTitle
                     ]);
                     $insertedCount++;
                 }

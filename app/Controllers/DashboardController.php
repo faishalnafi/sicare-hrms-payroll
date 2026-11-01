@@ -85,22 +85,8 @@ class DashboardController {
             exit;
         }
 
-        // 1. If employee (and not superadmin impersonating), check quarterly reflection compliance
-        $origRole = $_SESSION["original_role"] ?? "";
-        if ($role === "employee" && $origRole !== "superadmin") {
-            $db = \App\Config\Database::getInstance()->getConnection();
-            $userId = $_SESSION["user_id"];
-            $currentPeriod = date("Y") . "-Q" . ceil(date("n") / 3);
-
-            $stmt = $db->prepare("SELECT COUNT(*) FROM self_reflections WHERE user_id = :user_id AND period = :period AND status IN ('submitted', 'completed')");
-            $stmt->execute(["user_id" => $userId, "period" => $currentPeriod]);
-            $hasQuarterly = $stmt->fetchColumn() > 0;
-
-            if (!$hasQuarterly) {
-                header("Location: /employee/reflection?warning=1");
-                exit;
-            }
-        }
+        // 1. Quarterly reflection is optional and no longer blocks employee access
+        // (Employees can access dashboard and all features directly)
 
         // 2. Check 2-weekly mood pulse compliance for dashboard warning
         $showMoodWarning = false;
@@ -185,22 +171,7 @@ class DashboardController {
 
         $role = $_SESSION["role"] ?? "employee";
 
-        // 1. If employee (and not superadmin impersonating), enforce quarterly reflection check (except for the reflection page itself)
-        $origRole = $_SESSION["original_role"] ?? "";
-        if ($role === "employee" && $origRole !== "superadmin" && $path !== "employee/reflection") {
-            $db = \App\Config\Database::getInstance()->getConnection();
-            $userId = $_SESSION["user_id"];
-            $currentPeriod = date("Y") . "-Q" . ceil(date("n") / 3);
-
-            $stmt = $db->prepare("SELECT COUNT(*) FROM self_reflections WHERE user_id = :user_id AND period = :period AND status IN ('submitted', 'completed')");
-            $stmt->execute(["user_id" => $userId, "period" => $currentPeriod]);
-            $hasQuarterly = $stmt->fetchColumn() > 0;
-
-            if (!$hasQuarterly) {
-                header("Location: /employee/reflection?warning=1");
-                exit;
-            }
-        }
+        // 1. Quarterly reflection is optional and no longer blocks any page access
 
         // Authorize path prefix
         $allowed = false;
@@ -253,6 +224,9 @@ class DashboardController {
         $viewPath = "pages/" . $path;
         if ($path === "superadmin/departments") {
             $viewPath = "pages/admin/departments";
+        }
+        if ($path === "superadmin/mass-attendance") {
+            $viewPath = "pages/admin/mass_attendance";
         }
         if ($path === "superadmin/approvals/manager") {
             $viewPath = "pages/manager/approvals";

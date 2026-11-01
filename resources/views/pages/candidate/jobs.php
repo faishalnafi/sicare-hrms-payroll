@@ -16,14 +16,14 @@ $user = ViewHelper::getUserProfile();
     <!-- Header Banner -->
     <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 bg-surface-container-lowest p-6 rounded-2xl border border-outline-variant/15 shadow-sm">
         <div class="space-y-1">
-            <h1 class="font-headline text-2xl md:text-3xl font-extrabold text-primary tracking-tight">Katalog Lowongan Pekerjaan</h1>
+            <h1 class="font-headline text-2xl md:text-3xl font-extrabold text-primary tracking-tight">Katalog Divisi Operasional</h1>
             <p class="text-on-surface-variant font-medium text-sm">
-                Temukan peluang karir terbaik yang sesuai dengan kompetensi dan pengalaman profesional Anda.
+                Temukan divisi operasional yang sesuai dengan minat dan bakat Anda untuk bergabung sebagai anggota baru.
             </p>
         </div>
         <div class="flex items-center gap-2 bg-blue-50 text-blue-800 text-xs font-bold px-4 py-2.5 rounded-xl border border-blue-200">
-            <span class="material-symbols-outlined text-base">work_history</span>
-            <span>Tersedia: <?= count($jobs) ?> Posisi Lowongan</span>
+            <span class="material-symbols-outlined text-base">groups</span>
+            <span>Tersedia: <?= count($jobs) ?> Divisi Operasional</span>
         </div>
     </div>
 
@@ -31,12 +31,12 @@ $user = ViewHelper::getUserProfile();
     <form method="GET" action="/candidate/jobs" class="bg-surface-container-lowest p-4 rounded-2xl border border-outline-variant/15 shadow-sm flex flex-col md:flex-row gap-3 items-center">
         <div class="relative flex-1 w-full">
             <span class="material-symbols-outlined absolute left-3.5 top-1/2 -translate-y-1/2 text-on-surface-variant text-base">search</span>
-            <input type="text" name="q" value="<?= htmlspecialchars($search) ?>" placeholder="Cari posisi pekerjaan, kata kunci, atau keahlian..." class="w-full pl-10 pr-4 py-2.5 bg-surface border border-outline-variant/30 rounded-xl text-xs focus:outline-none focus:border-primary">
+            <input type="text" name="q" value="<?= htmlspecialchars($search) ?>" placeholder="Cari divisi operasional, kata kunci, atau minat..." class="w-full pl-10 pr-4 py-2.5 bg-surface border border-outline-variant/30 rounded-xl text-xs focus:outline-none focus:border-primary">
         </div>
 
         <div class="w-full md:w-64">
             <select name="dept" class="w-full px-3.5 py-2.5 bg-surface border border-outline-variant/30 rounded-xl text-xs focus:outline-none focus:border-primary">
-                <option value="">-- Semua Departemen --</option>
+                <option value="">-- Semua Divisi --</option>
                 <?php foreach ($departments as $d): ?>
                     <option value="<?= htmlspecialchars($d['id']) ?>" <?= $deptId === $d['id'] ? 'selected' : '' ?>><?= htmlspecialchars($d['name']) ?></option>
                 <?php endforeach; ?>
@@ -57,7 +57,7 @@ $user = ViewHelper::getUserProfile();
     <?php if (empty($jobs)): ?>
         <div class="bg-surface-container-lowest rounded-2xl p-12 text-center border border-outline-variant/15 shadow-sm space-y-3">
             <span class="material-symbols-outlined text-5xl text-outline-variant">search_off</span>
-            <h3 class="text-lg font-bold text-on-surface font-headline">Tidak Ada Lowongan Ditemukan</h3>
+            <h3 class="text-lg font-bold text-on-surface font-headline">Tidak Ada Divisi Ditemukan</h3>
             <p class="text-xs text-on-surface-variant max-w-md mx-auto">
                 Coba sesuaikan kata kunci pencarian atau pilih kategori departemen yang lain.
             </p>
@@ -65,14 +65,20 @@ $user = ViewHelper::getUserProfile();
     <?php else: ?>
         <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
             <?php foreach ($jobs as $j): ?>
+                <?php
+                    $jobTitle = $j['title'] ?? $j['job_title'] ?? 'Divisi Operasional';
+                    $deptName = $j['department_name'] ?? $j['dept_name'] ?? 'Divisi Operasional';
+                    $jobDesc = $j['job_description'] ?? $j['description'] ?? $j['requirements'] ?? 'Deskripsi divisi operasional.';
+                    $headcountNeeded = (int)($j['headcount'] ?? $j['headcount_needed'] ?? 1);
+                ?>
                 <div class="bg-surface-container-lowest p-6 rounded-2xl border border-outline-variant/15 shadow-sm hover:shadow-md hover:border-primary/30 transition-all flex flex-col justify-between space-y-4">
                     <div class="space-y-3">
                         <div class="flex items-start justify-between gap-3">
                             <div>
                                 <span class="px-2.5 py-1 bg-blue-50 text-blue-700 text-[10px] font-bold rounded-md border border-blue-200 inline-block mb-1.5">
-                                    <?= htmlspecialchars($j['department_name'] ?? 'Umum') ?>
+                                    <?= htmlspecialchars($deptName) ?>
                                 </span>
-                                <h3 class="font-headline text-lg font-extrabold text-primary tracking-tight"><?= htmlspecialchars($j['job_title']) ?></h3>
+                                <h3 class="font-headline text-lg font-extrabold text-primary tracking-tight"><?= htmlspecialchars($jobTitle) ?></h3>
                             </div>
                             <span class="px-2 py-1 bg-surface text-on-surface-variant text-[10px] font-bold rounded border border-outline-variant/20 uppercase">
                                 <?= htmlspecialchars($j['employment_type'] ?? 'Full-time') ?>
@@ -80,32 +86,22 @@ $user = ViewHelper::getUserProfile();
                         </div>
 
                         <p class="text-xs text-on-surface-variant line-clamp-3 leading-relaxed">
-                            <?= htmlspecialchars($j['description'] ?? $j['requirements'] ?? 'Kualifikasi pekerjaan sesuai deskripsi posisi.') ?>
+                            <?= htmlspecialchars($jobDesc) ?>
                         </p>
 
                         <div class="flex flex-wrap items-center gap-4 text-[11px] text-on-surface-variant font-medium pt-1">
                             <span class="flex items-center gap-1">
-                                <span class="material-symbols-outlined text-sm text-primary">location_on</span> Jakarta / Hybrid
+                                <span class="material-symbols-outlined text-sm text-primary">group</span> Kebutuhan: <?= $headcountNeeded ?> Orang
                             </span>
                             <span class="flex items-center gap-1">
-                                <span class="material-symbols-outlined text-sm text-primary">group</span> Kebutuhan: <?= (int)($j['headcount_needed'] ?? 1) ?> Orang
-                            </span>
-                            <span class="flex items-center gap-1">
-                                <span class="material-symbols-outlined text-sm text-primary">person_add</span> <?= (int)($j['total_applicants'] ?? 0) ?> Pelamar
+                                <span class="material-symbols-outlined text-sm text-primary">person_add</span> <?= (int)($j['total_applicants'] ?? 0) ?> Pendaftar
                             </span>
                         </div>
                     </div>
 
                     <div class="pt-4 border-t border-outline-variant/15 flex items-center justify-between">
-                        <div class="text-xs">
-                            <span class="text-on-surface-variant text-[10px]">Perkiraan Gaji:</span>
-                            <div class="font-bold text-emerald-700 font-mono">
-                                <?= !empty($j['salary_range_min']) ? 'Rp ' . number_format($j['salary_range_min']/1000000, 1) . 'M - ' . number_format(($j['salary_range_max'] ?? $j['salary_range_min'])/1000000, 1) . 'M' : 'Kompetitif' ?>
-                            </div>
-                        </div>
-
-                        <button type="button" onclick='openApplyModal(<?= json_encode($j, JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_HEX_AMP) ?>)' class="px-5 py-2.5 bg-primary hover:bg-primary/90 text-white font-bold rounded-xl text-xs shadow-sm transition-all flex items-center gap-1.5 cursor-pointer">
-                            <span class="material-symbols-outlined text-sm">send</span> Lamar Posisi Ini
+                        <button type="button" onclick='openApplyModal(<?= json_encode($j, JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_HEX_AMP) ?>)' class="w-full px-5 py-2.5 bg-primary hover:bg-primary/90 text-white font-bold rounded-xl text-xs shadow-sm transition-all flex items-center justify-center gap-1.5 cursor-pointer">
+                            <span class="material-symbols-outlined text-sm">send</span> Pilih Divisi Ini
                         </button>
                     </div>
                 </div>

@@ -11,7 +11,7 @@ $appLogoImage = ViewHelper::getSetting('app_logo_image', '');
 // Determine dynamic guest page title
 $page = $page ?? '';
 $guestPageMapping = [
-    'landing' => 'HRIS & ATS System',
+    'landing' => 'Rekrutmen & Manajemen Ekstrakurikuler',
     'signin' => 'Sign In',
     'signup' => 'Sign Up',
     'privacy' => 'Privacy Policy',
@@ -27,9 +27,14 @@ if (!empty($resolvedGuestPage)) {
 ?>
 <!DOCTYPE html>
 <html lang="id">
-<head>
     <meta charset="utf-8"/>
     <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+    
+    <!-- Anti-Cache Meta Tags for iOS Safari, Samsung Internet, Mi Browser & WebViews -->
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate"/>
+    <meta http-equiv="Pragma" content="no-cache"/>
+    <meta http-equiv="Expires" content="0"/>
+
     <title><?= htmlspecialchars($pageTitle) ?></title>
     <!-- Favicon from Uploaded Logo -->
     <link rel="icon" type="image/x-icon" href="<?= htmlspecialchars($appLogoImage ?: '/favicon.ico') ?>"/>
@@ -213,12 +218,24 @@ if (!empty($resolvedGuestPage)) {
 
     <?php require __DIR__ . '/../parts/guest_footer.php'; ?>
 
-    <!-- PWA Service Worker Registration & Offline Handler -->
+    <!-- PWA Service Worker Registration & Stale Cache Auto-Cleaner -->
     <script>
+        // Proactively clean stale browser/PWA caches on every launch across all mobile browsers
+        if ('caches' in window) {
+            caches.keys().then(function(names) {
+                for (let name of names) {
+                    if (name !== 'sicare-cache-v2.4.0') {
+                        caches.delete(name);
+                    }
+                }
+            });
+        }
+
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', function() {
                 navigator.serviceWorker.register('/sw.js').then(function(reg) {
-                    console.log('ServiceWorker registration successful with scope: ', reg.scope);
+                    reg.update();
+                    console.log('ServiceWorker active and updated: ', reg.scope);
                 }, function(err) {
                     console.error('ServiceWorker registration failed: ', err);
                 });

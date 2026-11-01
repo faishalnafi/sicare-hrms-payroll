@@ -34,8 +34,8 @@ class AttendanceController {
         'wfa_days'           => '',
     ];
 
-    public function __construct(\PDO $db) {
-        $this->db  = $db;
+    public function __construct(?\PDO $db = null) {
+        $this->db  = $db ?? \App\Config\Database::getInstance()->getConnection();
         $this->autoMigrate();
         $this->cfg = $this->loadSettings();
     }
@@ -179,12 +179,54 @@ class AttendanceController {
         return $d !== '' ? explode(',', $d) : [];
     }
 
+    // ── Helper: Handle Photo Upload (max 1MB, compressed) ───────────────────
+    private function handlePhotoUpload(string $prefix = 'clock_in'): ?string {
+        $uploadDir = __DIR__ . '/../../public/uploads/attendance/';
+        if (!is_dir($uploadDir)) {
+            @mkdir($uploadDir, 0777, true);
+        }
+
+        if (isset($_FILES['photo']) && $_FILES['photo']['error'] === UPLOAD_ERR_OK) {
+            $tmpName = $_FILES['photo']['tmp_name'];
+            $ext = strtolower(pathinfo($_FILES['photo']['name'], PATHINFO_EXTENSION));
+            if (!in_array($ext, ['jpg', 'jpeg', 'png', 'webp'])) {
+                $ext = 'jpg';
+            }
+            $filename = $prefix . '_' . uniqid() . '_' . time() . '.' . $ext;
+            if (move_uploaded_file($tmpName, $uploadDir . $filename)) {
+                return 'uploads/attendance/' . $filename;
+            }
+        }
+
+        if (!empty($_POST['photo_base64'])) {
+            $base64Str = $_POST['photo_base64'];
+            if (preg_match('/^data:image\/(\w+);base64,/', $base64Str, $type)) {
+                $data = substr($base64Str, strpos($base64Str, ',') + 1);
+                $type = strtolower($type[1]);
+                if (!in_array($type, ['jpg', 'jpeg', 'png', 'webp'])) {
+                    $type = 'jpg';
+                }
+                $data = base64_decode($data);
+                if ($data !== false) {
+                    $filename = $prefix . '_' . uniqid() . '_' . time() . '.' . $type;
+                    if (file_put_contents($uploadDir . $filename, $data) !== false) {
+                        return 'uploads/attendance/' . $filename;
+                    }
+                }
+            }
+        }
+
+        return null;
+    }
+
     // =========================================================================
     // EMPLOYEE: Clock-In  POST /employee/attendance/clockin
     // =========================================================================
     public function clockIn() {
         header('Content-Type: application/json');
-        session_start();
+        if (session_status() === PHP_SESSION_NONE) {
+            session_start();
+        }
 
         if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'employee') {
             echo json_encode(['success' => false, 'message' => 'Akses ditolak.']);
@@ -202,12 +244,55 @@ class AttendanceController {
         $today   = date('Y-m-d');
         $nowTime = date('H:i:s');
 
-        // Fetch user home coordinates
-        $userStmt = $this->db->prepare("SELECT home_latitude, home_longitude FROM users WHERE id = :uid LIMIT 1");
+        // Fetch user home coordinates, metode presensi, and physical access IDs
+        $userStmt = $this->db->prepare("SELECT home_latitude, home_longitude, metode_presensi, id_qrcode, id_kartu FROM users WHERE id = :uid LIMIT 1");
         $userStmt->execute(['uid' => $userId]);
         $user = $userStmt->fetch();
         $homeLat = $user && $user['home_latitude'] !== null ? (float)$user['home_latitude'] : null;
         $homeLng = $user && $user['home_longitude'] !== null ? (float)$user['home_longitude'] : null;
+        $userMetode = $user['metode_presensi'] ?? 'default';
+
+        // ── QR / NFC Identity Cross-Check ────────────────────────────────────
+        if ($userMetode === 'scan_qr') {
+            $submittedQr = trim($_POST['qr_code'] ?? '');
+            $registeredQr = trim($user['id_qrcode'] ?? '');
+            if (empty($submittedQr)) {
+                echo json_encode(['success' => false, 'message' => 'Presensi QR Code ditolak: kode QR tidak terbaca atau tidak dikirim.']);
+                return;
+            }
+            if (empty($registeredQr)) {
+                echo json_encode(['success' => false, 'message' => 'Presensi QR Code ditolak: akun Anda belum memiliki ID QR Code terdaftar. Hubungi administrator.']);
+                return;
+            }
+            if (!hash_equals($registeredQr, $submittedQr)) {
+                echo json_encode(['success' => false, 'message' => 'Presensi QR Code ditolak: kode QR yang dipindai tidak sesuai dengan identitas akun Anda yang terdaftar di sistem.']);
+                return;
+            }
+        }
+
+        if ($userMetode === 'nfc') {
+            $submittedNfc = trim($_POST['nfc_card_id'] ?? '');
+            $registeredNfc = trim($user['id_kartu'] ?? '');
+            if (empty($submittedNfc)) {
+                echo json_encode(['success' => false, 'message' => 'Presensi NFC ditolak: ID kartu tidak terbaca atau tidak dikirim.']);
+                return;
+            }
+            if (empty($registeredNfc)) {
+                echo json_encode(['success' => false, 'message' => 'Presensi NFC ditolak: akun Anda belum memiliki ID Kartu Akses terdaftar. Hubungi administrator.']);
+                return;
+            }
+            if (!hash_equals($registeredNfc, $submittedNfc)) {
+                echo json_encode(['success' => false, 'message' => 'Presensi NFC ditolak: kartu yang digunakan tidak sesuai dengan identitas akun Anda yang terdaftar di sistem.']);
+                return;
+            }
+        }
+
+        // Check photo if metode_presensi === 'foto'
+        $inPhotoPath = $this->handlePhotoUpload('clock_in');
+        if ($userMetode === 'foto' && empty($inPhotoPath)) {
+            echo json_encode(['success' => false, 'message' => 'Foto swafoto (kamera) wajib diambil untuk metode presensi ini.']);
+            return;
+        }
 
         // Already clocked in today?
         $stmt = $this->db->prepare("SELECT id, clock_in, clock_out, status FROM employee_attendance WHERE user_id = :uid AND attendance_date = :date LIMIT 1");
@@ -295,12 +380,12 @@ class AttendanceController {
         }
 
         // ── Determine attendance status with grace period ─────────────────
+        $nowMin = (int)date('H') * 60 + (int)date('i');
         $minStartEnabled = ($this->cfg['work_min_start_time_enabled'] ?? 'true') === 'true';
         if ($minStartEnabled) {
             $minStartStr = $this->cfg['work_min_start_time'] ?? '06:00';
             [$minH, $minM] = array_map('intval', explode(':', $minStartStr));
             $minMin = $minH * 60 + $minM;
-            $nowMin = (int)date('H') * 60 + (int)date('i');
             
             if ($nowMin < $minMin) {
                 echo json_encode([
@@ -327,25 +412,26 @@ class AttendanceController {
                     UPDATE employee_attendance
                     SET clock_in = :ci, status = :status, work_mode = :wm,
                         clock_in_latitude = :lat, clock_in_longitude = :lng,
-                        location_method = :method, ip_address = :ip, updated_at = NOW()
+                        location_method = :method, ip_address = :ip,
+                        metode_presensi = :mp, clock_in_photo = :cip, updated_at = NOW()
                     WHERE id = :id
                 ");
-                $stmt->execute(['ci' => $nowTime, 'status' => $status, 'wm' => $workMode, 'lat' => $lat, 'lng' => $lng, 'method' => $method, 'ip' => $ipAddr, 'id' => $existing['id']]);
+                $stmt->execute(['ci' => $nowTime, 'status' => $status, 'wm' => $workMode, 'lat' => $lat, 'lng' => $lng, 'method' => $method, 'ip' => $ipAddr, 'mp' => $userMetode, 'cip' => $inPhotoPath, 'id' => $existing['id']]);
             } else {
                 $id = $this->generateUuid();
                 $stmt = $this->db->prepare("
                     INSERT INTO employee_attendance
                         (id, user_id, attendance_date, clock_in, status, work_mode,
-                         clock_in_latitude, clock_in_longitude, location_method, ip_address)
-                    VALUES (:id, :uid, :date, :ci, :status, :wm, :lat, :lng, :method, :ip)
+                         clock_in_latitude, clock_in_longitude, location_method, ip_address, metode_presensi, clock_in_photo)
+                    VALUES (:id, :uid, :date, :ci, :status, :wm, :lat, :lng, :method, :ip, :mp, :cip)
                 ");
-                $stmt->execute(['id' => $id, 'uid' => $userId, 'date' => $today, 'ci' => $nowTime, 'status' => $status, 'wm' => $workMode, 'lat' => $lat, 'lng' => $lng, 'method' => $method, 'ip' => $ipAddr]);
+                $stmt->execute(['id' => $id, 'uid' => $userId, 'date' => $today, 'ci' => $nowTime, 'status' => $status, 'wm' => $workMode, 'lat' => $lat, 'lng' => $lng, 'method' => $method, 'ip' => $ipAddr, 'mp' => $userMetode, 'cip' => $inPhotoPath]);
             }
 
             $lateMsg = '';
             if ($status === 'terlambat') {
                 $lateMin = $nowMin - ($startH * 60 + $startM);
-                $lateMsg = " Terlambat {$lateMin} menit.";
+                $lateMsg = " Terlambat " . format_duration_minutes($lateMin) . ".";
             }
             
             $locationMsg = '';
@@ -378,7 +464,9 @@ class AttendanceController {
     // =========================================================================
     public function clockOut() {
         header('Content-Type: application/json');
-        session_start();
+        if (session_status() === PHP_SESSION_NONE) {
+            session_start();
+        }
 
         if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'employee') {
             echo json_encode(['success' => false, 'message' => 'Akses ditolak.']);
@@ -424,12 +512,55 @@ class AttendanceController {
             return;
         }
 
-        // Fetch user home coordinates
-        $userStmt = $this->db->prepare("SELECT home_latitude, home_longitude FROM users WHERE id = :uid LIMIT 1");
+        // Fetch user home coordinates, metode presensi, and physical access IDs
+        $userStmt = $this->db->prepare("SELECT home_latitude, home_longitude, metode_presensi, id_qrcode, id_kartu FROM users WHERE id = :uid LIMIT 1");
         $userStmt->execute(['uid' => $userId]);
         $user = $userStmt->fetch();
         $homeLat = $user && $user['home_latitude'] !== null ? (float)$user['home_latitude'] : null;
         $homeLng = $user && $user['home_longitude'] !== null ? (float)$user['home_longitude'] : null;
+        $userMetode = $user['metode_presensi'] ?? 'default';
+
+        // ── QR / NFC Identity Cross-Check ────────────────────────────────────
+        if ($userMetode === 'scan_qr') {
+            $submittedQr = trim($_POST['qr_code'] ?? '');
+            $registeredQr = trim($user['id_qrcode'] ?? '');
+            if (empty($submittedQr)) {
+                echo json_encode(['success' => false, 'message' => 'Presensi QR Code ditolak: kode QR tidak terbaca atau tidak dikirim.']);
+                return;
+            }
+            if (empty($registeredQr)) {
+                echo json_encode(['success' => false, 'message' => 'Presensi QR Code ditolak: akun Anda belum memiliki ID QR Code terdaftar. Hubungi administrator.']);
+                return;
+            }
+            if (!hash_equals($registeredQr, $submittedQr)) {
+                echo json_encode(['success' => false, 'message' => 'Presensi QR Code ditolak: kode QR yang dipindai tidak sesuai dengan identitas akun Anda yang terdaftar di sistem.']);
+                return;
+            }
+        }
+
+        if ($userMetode === 'nfc') {
+            $submittedNfc = trim($_POST['nfc_card_id'] ?? '');
+            $registeredNfc = trim($user['id_kartu'] ?? '');
+            if (empty($submittedNfc)) {
+                echo json_encode(['success' => false, 'message' => 'Presensi NFC ditolak: ID kartu tidak terbaca atau tidak dikirim.']);
+                return;
+            }
+            if (empty($registeredNfc)) {
+                echo json_encode(['success' => false, 'message' => 'Presensi NFC ditolak: akun Anda belum memiliki ID Kartu Akses terdaftar. Hubungi administrator.']);
+                return;
+            }
+            if (!hash_equals($registeredNfc, $submittedNfc)) {
+                echo json_encode(['success' => false, 'message' => 'Presensi NFC ditolak: kartu yang digunakan tidak sesuai dengan identitas akun Anda yang terdaftar di sistem.']);
+                return;
+            }
+        }
+
+        // Check photo if metode_presensi === 'foto'
+        $outPhotoPath = $this->handlePhotoUpload('clock_out');
+        if ($userMetode === 'foto' && empty($outPhotoPath)) {
+            echo json_encode(['success' => false, 'message' => 'Foto swafoto (kamera) wajib diambil untuk metode presensi pulang ini.']);
+            return;
+        }
 
         $distM = null;
         $distHomeM = null;
@@ -456,39 +587,8 @@ class AttendanceController {
         $clockInLat = $existing['clock_in_latitude'] !== null ? (float)$existing['clock_in_latitude'] : null;
         $clockInLng = $existing['clock_in_longitude'] !== null ? (float)$existing['clock_in_longitude'] : null;
 
-        // Perform location match validation! (Bypassed by request: allow clock-out from anywhere and record actual location)
-        /*
-        if ($workModeIn === 'WFO') {
-            if ($workModeOut !== 'WFO') {
-                echo json_encode([
-                    'success' => false,
-                    'message' => "Clock-Out ditolak. Anda melakukan Clock-In sebagai WFO (Kantor), tetapi lokasi Clock-Out Anda berada di luar radius kantor (" . $this->formatDistance($distM) . ", batas WFO: " . $this->formatDistance($this->radiusM()) . "). Anda harus Clock-Out di area Kantor."
-                ]);
-                return;
-            }
-        } elseif ($workModeIn === 'WFH') {
-            if ($workModeOut !== 'WFH') {
-                $distHomeStr = $distHomeM !== null ? " (" . $this->formatDistance($distHomeM) . ", batas WFH: " . $this->formatDistance($this->homeRadiusM()) . ")" : "";
-                echo json_encode([
-                    'success' => false,
-                    'message' => "Clock-Out ditolak. Anda melakukan Clock-In sebagai WFH (Rumah), tetapi lokasi Clock-Out Anda berada di luar radius rumah Anda{$distHomeStr}. Anda harus Clock-Out di area Rumah."
-                ]);
-                return;
-            }
-        } elseif ($workModeIn === 'WFA') {
-            // For WFA, they must stay in the same place! Let's check distance to their clock-in point
-            if ($clockInLat !== null && $clockInLng !== null) {
-                $distChangeM = $this->haversine($clockInLat, $clockInLng, $lat, $lng);
-                if ($distChangeM > $this->radiusM()) { // limit using WFO radius (default 150m)
-                    echo json_encode([
-                        'success' => false,
-                        'message' => "Clock-Out ditolak. Lokasi Clock-Out Anda berjarak " . $this->formatDistance($distChangeM) . " dari lokasi Clock-In Anda (maksimal perpindahan: " . $this->formatDistance($this->radiusM()) . "). Anda harus melakukan Clock-Out dari area tempat yang sama saat Anda Clock-In."
-                    ]);
-                    return;
-                }
-            }
-        }
-        */
+        // Location check complete.
+
 
         // Enforce minimal clock-out time if enabled
         $minEndEnabled = ($this->cfg['work_min_end_time_enabled'] ?? 'false') === 'true';
@@ -514,9 +614,10 @@ class AttendanceController {
             $this->db->prepare("
                 UPDATE employee_attendance
                 SET clock_out = :co, clock_out_latitude = :lat, clock_out_longitude = :lng,
-                    clock_out_status = :coStatus, work_mode_out = :wmo, ip_address = :ip, updated_at = NOW()
+                    clock_out_status = :coStatus, work_mode_out = :wmo, ip_address = :ip,
+                    clock_out_photo = :cop, updated_at = NOW()
                 WHERE id = :id
-            ")->execute(['co' => $nowTime, 'lat' => $lat, 'lng' => $lng, 'coStatus' => $coStatus, 'wmo' => $workModeOut, 'ip' => $ipAddr, 'id' => $existing['id']]);
+            ")->execute(['co' => $nowTime, 'lat' => $lat, 'lng' => $lng, 'coStatus' => $coStatus, 'wmo' => $workModeOut, 'ip' => $ipAddr, 'cop' => $outPhotoPath, 'id' => $existing['id']]);
 
             $diffSec = strtotime($nowTime) - strtotime($existing['clock_in']);
             $diffH   = floor($diffSec / 3600);
@@ -784,7 +885,9 @@ class AttendanceController {
     // =========================================================================
     public function hrLogs() {
         header('Content-Type: application/json');
-        session_start();
+        if (session_status() === PHP_SESSION_NONE) {
+            session_start();
+        }
 
         if (!isset($_SESSION['user_id']) || !in_array($_SESSION['role'], ['hr_ops', 'hiring_manager', 'admin', 'superadmin'])) {
             echo json_encode(['success' => false, 'message' => 'Akses ditolak. Otoritas manajemen diperlukan.']);
@@ -846,7 +949,9 @@ class AttendanceController {
     // =========================================================================
     public function correct() {
         header('Content-Type: application/json');
-        session_start();
+        if (session_status() === PHP_SESSION_NONE) {
+            session_start();
+        }
 
         if (!isset($_SESSION['user_id']) || !in_array($_SESSION['role'], ['hr_ops', 'hiring_manager', 'admin', 'superadmin'])) {
             echo json_encode(['success' => false, 'message' => 'Akses ditolak. Otoritas manajemen diperlukan.']);
@@ -985,7 +1090,9 @@ class AttendanceController {
 
     public function memberMonthly() {
         header('Content-Type: application/json');
-        session_start();
+        if (session_status() === PHP_SESSION_NONE) {
+            session_start();
+        }
 
         if (!isset($_SESSION['user_id']) || !in_array($_SESSION['role'], ['hiring_manager', 'hr_ops', 'admin', 'superadmin'])) {
             echo json_encode(['success' => false, 'message' => 'Akses ditolak.']);
@@ -1043,6 +1150,244 @@ class AttendanceController {
         $records = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
         echo json_encode(['success' => true, 'data' => $records, 'settings' => $this->cfg]);
+    }
+
+    /**
+     * POST /admin/mass-attendance/process (or /superadmin/mass-attendance/process)
+     * Handles mass attendance terminal scanning via QR Code or NFC/RFID Card.
+     * Strict Access: Admin and Super Admin roles only.
+     */
+    public function processMassAttendance() {
+        if (session_status() === PHP_SESSION_NONE) {
+            session_start();
+        }
+
+        header('Content-Type: application/json');
+
+        $role = $_SESSION['role'] ?? '';
+        $originalRole = $_SESSION['original_role'] ?? '';
+        $effectiveRole = (!empty($originalRole) && $originalRole === 'superadmin') ? 'superadmin' : $role;
+
+        if (!in_array($effectiveRole, ['admin', 'superadmin'])) {
+            http_response_code(403);
+            echo json_encode([
+                'success' => false, 
+                'message' => 'Akses ditolak. Fitur Presensi Massal hanya dapat diakses oleh Admin dan Super Admin.'
+            ]);
+            return;
+        }
+
+        try {
+            $scanType   = trim($_POST['scan_type'] ?? '');
+            $scannedVal = trim($_POST['scanned_value'] ?? '');
+            $lat        = isset($_POST['lat']) && $_POST['lat'] !== '' ? (float)$_POST['lat'] : null;
+            $lng        = isset($_POST['lng']) && $_POST['lng'] !== '' ? (float)$_POST['lng'] : null;
+            $ipAddr     = $_SERVER['REMOTE_ADDR'] ?? '127.0.0.1';
+
+            if (empty($scanType) || empty($scannedVal)) {
+                echo json_encode(['success' => false, 'message' => 'Data pemindaian tidak boleh kosong.']);
+                return;
+            }
+
+            $scannedRaw = trim($scannedVal);
+            
+            // Extract actual value if payload is JSON object/string (e.g. from Scan-IT to Office)
+            if (str_starts_with($scannedRaw, '{') && str_ends_with($scannedRaw, '}')) {
+                $json = json_decode($scannedRaw, true);
+                if (is_array($json)) {
+                    $scannedRaw = $json['value'] ?? $json['code'] ?? $json['barcode'] ?? $json['text'] ?? $scannedRaw;
+                }
+            }
+            if (preg_match('/"value"\s*:\s*"([^"]+)"/i', $scannedRaw, $m)) {
+                $scannedRaw = $m[1];
+            }
+
+            $scannedClean = strtolower(preg_replace('/[^a-zA-Z0-9]/', '', $scannedRaw));
+
+            // Flexible lookup: searches id_kartu and id_qrcode with case-insensitivity and character cleaning
+            $query = "SELECT u.*, d.name AS department_name 
+                      FROM users u 
+                      LEFT JOIN departments d ON u.department_id = d.id 
+                      WHERE u.is_deleted = 0 AND (
+                            u.id_kartu = :raw1 
+                         OR u.id_qrcode = :raw2 
+                         OR LOWER(TRIM(u.id_kartu)) = LOWER(:raw3)
+                         OR LOWER(TRIM(u.id_qrcode)) = LOWER(:raw4)
+                         OR (CHAR_LENGTH(:clean1) > 0 AND (
+                            LOWER(REPLACE(REPLACE(REPLACE(u.id_kartu, ':', ''), ' ', ''), '-', '')) = :clean2
+                            OR LOWER(REPLACE(REPLACE(REPLACE(u.id_qrcode, ':', ''), ' ', ''), '-', '')) = :clean3
+                         ))
+                      ) LIMIT 1";
+
+            $stmt = $this->db->prepare($query);
+            $stmt->execute([
+                'raw1' => $scannedRaw,
+                'raw2' => $scannedRaw,
+                'raw3' => $scannedRaw,
+                'raw4' => $scannedRaw,
+                'clean1' => $scannedClean,
+                'clean2' => $scannedClean,
+                'clean3' => $scannedClean,
+            ]);
+            $targetUser = $stmt->fetch(PDO::FETCH_ASSOC);
+
+            if (!$targetUser) {
+                echo json_encode([
+                    'success' => false, 
+                    'message' => "Identitas tidak dikenali. Hasil pemindaian ('{$scannedRaw}') belum terdaftar pada profil karyawan mana pun di sistem."
+                ]);
+                return;
+            }
+
+            if (!empty($targetUser['is_suspended'])) {
+                $fullName = trim(($targetUser['first_name'] ?? '') . ' ' . ($targetUser['last_name'] ?? ''));
+                echo json_encode([
+                    'success' => false, 
+                    'message' => "Akun karyawan ({$fullName}) dalam status di-nonaktifkan (suspend)."
+                ]);
+                return;
+            }
+
+            $targetUserId = $targetUser['id'];
+            $today        = date('Y-m-d');
+            $nowTime      = date('H:i:s');
+            $nowMin       = (int)date('H') * 60 + (int)date('i');
+
+            // Check today's attendance record
+            $stmtAtt = $this->db->prepare("SELECT * FROM employee_attendance WHERE user_id = :uid AND attendance_date = :date LIMIT 1");
+            $stmtAtt->execute(['uid' => $targetUserId, 'date' => $today]);
+            $existingAtt = $stmtAtt->fetch(PDO::FETCH_ASSOC);
+
+            $fullName  = trim(($targetUser['first_name'] ?? '') . ' ' . ($targetUser['last_name'] ?? ''));
+            $avatarUrl = $targetUser['profile_picture'] ?? null;
+            if (empty($avatarUrl)) {
+                $avatarUrl = "https://www.gravatar.com/avatar/" . md5(strtolower(trim($targetUser['email']))) . "?d=identicon";
+            }
+
+            $methodLabel = 'presensi_massal';
+            $locationMethodStr = 'Kiosk Admin (' . ($scanType === 'qr' ? 'QR Code' : 'NFC Card') . ')';
+
+            // Case 1: Perform Clock-In
+            if (!$existingAtt || empty($existingAtt['clock_in'])) {
+                list($startH, $startM) = explode(':', $this->cfg['work_start_time'] ?? '08:00');
+                $startMin    = (int)$startH * 60 + (int)$startM;
+                $grace       = (int)($this->cfg['grace_period_min'] ?? 10);
+                $deadlineMin = $startMin + $grace;
+
+                $status  = ($nowMin <= $deadlineMin) ? 'tepat waktu' : 'terlambat';
+                $lateMin = max(0, $nowMin - $startMin);
+
+                if (!$existingAtt) {
+                    $id = $this->generateUuid();
+                    $stmtIns = $this->db->prepare("
+                        INSERT INTO employee_attendance 
+                        (id, user_id, attendance_date, clock_in, status, work_mode, clock_in_latitude, clock_in_longitude, location_method, ip_address, metode_presensi, created_at)
+                        VALUES 
+                        (:id, :uid, :date, :ci, :status, 'WFO', :lat, :lng, :loc_method, :ip, :mp, NOW())
+                    ");
+                    $stmtIns->execute([
+                        'id' => $id, 'uid' => $targetUserId, 'date' => $today, 'ci' => $nowTime,
+                        'status' => $status, 'lat' => $lat, 'lng' => $lng,
+                        'loc_method' => $locationMethodStr, 'ip' => $ipAddr, 'mp' => $methodLabel
+                    ]);
+                } else {
+                    $stmtUpd = $this->db->prepare("
+                        UPDATE employee_attendance SET 
+                        clock_in = :ci, status = :status, work_mode = 'WFO', clock_in_latitude = :lat, clock_in_longitude = :lng,
+                        location_method = :loc_method, ip_address = :ip, metode_presensi = :mp, updated_at = NOW()
+                        WHERE id = :id
+                    ");
+                    $stmtUpd->execute([
+                        'ci' => $nowTime, 'status' => $status, 'lat' => $lat, 'lng' => $lng,
+                        'loc_method' => $locationMethodStr, 'ip' => $ipAddr, 'mp' => $methodLabel, 'id' => $existingAtt['id']
+                    ]);
+                }
+
+                $lateText = ($status === 'terlambat') ? ' (Terlambat ' . format_duration_minutes($lateMin) . ')' : ' (Tepat Waktu)';
+                $this->writeAuditLog($this->db, "Presensi Massal Clock-In untuk: {$fullName} ({$targetUser['email']})");
+
+                echo json_encode([
+                    'success' => true,
+                    'action'  => 'clock_in',
+                    'time'    => date('H:i'),
+                    'status'  => $status,
+                    'message' => 'Clock-In Presensi Massal Berhasil' . $lateText,
+                    'user'    => [
+                        'id'              => $targetUser['id'],
+                        'employee_id'     => $targetUser['employee_id'] ?? '-',
+                        'full_name'       => $fullName,
+                        'job_title'       => $targetUser['job_title'] ?? '-',
+                        'department_name' => $targetUser['department_name'] ?? '-',
+                        'profile_picture' => $avatarUrl
+                    ]
+                ]);
+                return;
+            }
+
+            // Case 2: Perform Clock-Out
+            if (!empty($existingAtt['clock_in']) && empty($existingAtt['clock_out'])) {
+                $stmtCo = $this->db->prepare("
+                    UPDATE employee_attendance SET 
+                    clock_out = :co, clock_out_latitude = :lat, clock_out_longitude = :lng, updated_at = NOW()
+                    WHERE id = :id
+                ");
+                $stmtCo->execute([
+                    'co'  => $nowTime,
+                    'lat' => $lat,
+                    'lng' => $lng,
+                    'id'  => $existingAtt['id']
+                ]);
+
+                $this->writeAuditLog($this->db, "Presensi Massal Clock-Out untuk: {$fullName} ({$targetUser['email']})");
+
+                echo json_encode([
+                    'success' => true,
+                    'action'  => 'clock_out',
+                    'time'    => date('H:i'),
+                    'status'  => 'selesai',
+                    'message' => 'Clock-Out Presensi Massal Berhasil pada ' . date('H:i'),
+                    'user'    => [
+                        'id'              => $targetUser['id'],
+                        'employee_id'     => $targetUser['employee_id'] ?? '-',
+                        'full_name'       => $fullName,
+                        'job_title'       => $targetUser['job_title'] ?? '-',
+                        'department_name' => $targetUser['department_name'] ?? '-',
+                        'profile_picture' => $avatarUrl
+                    ]
+                ]);
+                return;
+            }
+
+            // Case 3: Already Clocked In & Out today
+            $ciTime = date('H:i', strtotime($existingAtt['clock_in']));
+            $coTime = date('H:i', strtotime($existingAtt['clock_out']));
+            echo json_encode([
+                'success' => false,
+                'message' => "Karyawan ({$fullName}) sudah menyelesaikan Clock-In ({$ciTime}) & Clock-Out ({$coTime}) hari ini."
+            ]);
+        } catch (\Throwable $e) {
+            echo json_encode([
+                'success' => false,
+                'message' => 'Gagal memproses presensi: ' . $e->getMessage()
+            ]);
+        }
+    }
+
+    private function writeAuditLog(\PDO $db, string $action, string $tableName = 'employee_attendance') {
+        $logId = sprintf('%04x%04x-%04x-%04x-%04x-%04x%04x%04x',
+            mt_rand(0, 0xffff), mt_rand(0, 0xffff),
+            mt_rand(0, 0xffff),
+            mt_rand(0, 0x0fff) | 0x4000,
+            mt_rand(0, 0x3fff) | 0x8000,
+            mt_rand(0, 0xffff), mt_rand(0, 0xffff), mt_rand(0, 0xffff)
+        );
+        try {
+            $stmtLog = $db->prepare("
+                INSERT INTO audit_logs (id, user_id, action, table_name, ip_address) 
+                VALUES (?, ?, ?, ?, ?)
+            ");
+            $stmtLog->execute([$logId, $_SESSION['user_id'] ?? null, $action, $tableName, $_SERVER['REMOTE_ADDR'] ?? '127.0.0.1']);
+        } catch (\Exception $e) {}
     }
 
     private function generateUuid(): string {

@@ -15,17 +15,17 @@ $appName = ViewHelper::getSetting('app_name', 'siCare');
         <div class="hidden md:flex flex-col space-y-8 pr-12">
             <div class="inline-flex items-center gap-2 bg-tertiary-fixed text-on-tertiary-fixed-variant px-3 py-1 rounded-full text-xs font-bold tracking-wide uppercase w-max">
                 <span class="material-symbols-outlined text-sm" data-icon="shield_lock" style="font-variation-settings: 'FILL' 1;">shield_lock</span> 
-                KEAMANAN TINGKAT PERUSAHAAN
+                SISTEM REKRUTMEN EKSTRAKURIKULER
             </div>
-            <h1 class="font-headline text-6xl font-extrabold text-primary leading-tight tracking-tighter">Akses Masa <br/><span class="text-secondary">Depan Karirmu.</span></h1>
-            <p class="text-on-surface-variant text-lg leading-relaxed max-w-md"><?= htmlspecialchars($appName) ?> menyediakan gerbang yang aman dan terpadu untuk mengakses portal HR, melacak lamaran, dan sumber daya perusahaan Anda.</p>
+            <h1 class="font-headline text-6xl font-extrabold text-primary leading-tight tracking-tighter">Akses Portal <br/><span class="text-secondary">Ekstrakurikuler.</span></h1>
+            <p class="text-on-surface-variant text-lg leading-relaxed max-w-md"><?= htmlspecialchars($appName) ?> menyediakan gerbang yang aman dan terpadu untuk mengakses portal keanggotaan, melacak status pendaftaran divisi, dan informasi ekstrakurikuler Anda.</p>
             <div class="flex items-center gap-6 mt-4">
                 <div class="flex -space-x-3">
-                    <img class="w-10 h-10 rounded-full border-2 border-surface bg-white" alt="Abstract Profile 1" src="https://www.gravatar.com/avatar/12345678901234567890123456789012?d=identicon&f=y"/>
-                    <img class="w-10 h-10 rounded-full border-2 border-surface bg-white" alt="Abstract Profile 2" src="https://www.gravatar.com/avatar/abcdefabcdefabcdefabcdefabcdef12?d=identicon&f=y"/>
-                    <img class="w-10 h-10 rounded-full border-2 border-surface bg-white" alt="Abstract Profile 3" src="https://www.gravatar.com/avatar/98765432109876543210987654321098?d=identicon&f=y"/>
+                    <img class="w-10 h-10 rounded-full border-2 border-surface bg-white" alt="Profile 1" src="https://www.gravatar.com/avatar/12345678901234567890123456789012?d=identicon&f=y"/>
+                    <img class="w-10 h-10 rounded-full border-2 border-surface bg-white" alt="Profile 2" src="https://www.gravatar.com/avatar/abcdefabcdefabcdefabcdefabcdef12?d=identicon&f=y"/>
+                    <img class="w-10 h-10 rounded-full border-2 border-surface bg-white" alt="Profile 3" src="https://www.gravatar.com/avatar/98765432109876543210987654321098?d=identicon&f=y"/>
                 </div>
-                <p class="text-sm font-medium text-on-surface-variant">Dipercaya oleh 50.000+ karyawan & pelamar.</p>
+                <p class="text-sm font-medium text-on-surface-variant">Wadah kreasi & kolaborasi seluruh anggota ekstrakurikuler.</p>
             </div>
         </div>
         
@@ -62,7 +62,7 @@ $appName = ViewHelper::getSetting('app_name', 'siCare');
                     <?php endif; ?>
 
                     <!-- Google Auth Button -->
-                    <button onclick="handleGoogleLogin()" class="w-full flex items-center justify-center gap-3 py-2.5 px-4 bg-surface-container-lowest border border-outline-variant/30 rounded-lg text-on-surface-variant font-medium hover:bg-surface-container-low transition-all duration-150">
+                    <button onclick="handleGoogleLogin()" class="w-full flex items-center justify-center gap-3 py-2.5 px-4 bg-surface-container-lowest border border-outline-variant/30 rounded-lg text-on-surface-variant font-medium hover:bg-surface-container-low transition-all duration-150 cursor-pointer">
                         <svg class="w-5 h-5" viewBox="0 0 24 24">
                             <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"></path>
                             <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"></path>
@@ -94,14 +94,14 @@ $appName = ViewHelper::getSetting('app_name', 'siCare');
                         <input type="hidden" name="csrf_token" value="dummy_token_here">
                         <input type="hidden" name="redirect" value="<?= htmlspecialchars($_GET['redirect'] ?? '') ?>">
                         <div class="space-y-2">
-                            <label class="text-sm font-semibold text-on-surface-variant ml-1" for="employee_id">Email Karyawan</label>
-                            <input class="w-full px-4 py-2.5 bg-surface-container-high border-none rounded-lg focus:ring-0 focus:bg-surface-container-lowest focus:border-b-2 focus:border-primary transition-all text-on-surface" id="email" name="email" placeholder="email@domain.com" type="email" required/>
+                            <label class="text-sm font-semibold text-on-surface-variant ml-1" for="email">Email / Gmail Aktif</label>
+                            <input class="w-full px-4 py-2.5 bg-surface-container-high border-none rounded-lg focus:ring-0 focus:bg-surface-container-lowest focus:border-b-2 focus:border-primary transition-all text-on-surface placeholder:text-outline/50" id="email" name="email" placeholder="contoh@gmail.com" type="email" required/>
                         </div>
                         <div class="space-y-2">
                             <label class="text-sm font-semibold text-on-surface-variant ml-1" for="password">Kata Sandi</label>
                             <div class="relative">
-                                <input class="w-full pl-4 pr-12 py-2.5 bg-surface-container-high border-none rounded-lg focus:ring-0 focus:bg-surface-container-lowest focus:border-b-2 focus:border-primary transition-all text-on-surface" id="password" name="password" placeholder="••••••••" type="password" required/>
-                                <button type="button" class="absolute inset-y-0 right-0 px-3 flex items-center justify-center text-on-surface-variant hover:text-primary transition-colors focus:outline-none" onclick="const p = document.getElementById('password'); const i = this.querySelector('span'); if(p.type === 'password'){ p.type = 'text'; i.innerText = 'visibility_off'; } else { p.type = 'password'; i.innerText = 'visibility'; }">
+                                <input class="w-full pl-4 pr-12 py-2.5 bg-surface-container-high border-none rounded-lg focus:ring-0 focus:bg-surface-container-lowest focus:border-b-2 focus:border-primary transition-all text-on-surface placeholder:text-outline/50" id="password" name="password" placeholder="••••••••" type="password" required/>
+                                <button type="button" class="absolute inset-y-0 right-0 px-3 flex items-center justify-center text-on-surface-variant hover:text-primary transition-colors focus:outline-none cursor-pointer" onclick="const p = document.getElementById('password'); const i = this.querySelector('span'); if(p.type === 'password'){ p.type = 'text'; i.innerText = 'visibility_off'; } else { p.type = 'password'; i.innerText = 'visibility'; }">
                                     <span class="material-symbols-outlined text-[1.25rem]">visibility</span>
                                 </button>
                             </div>
@@ -113,7 +113,7 @@ $appName = ViewHelper::getSetting('app_name', 'siCare');
                             </label>
                             <a class="text-sm font-semibold text-primary hover:underline transition-all" href="#">Lupa kata sandi?</a>
                         </div>
-                        <button type="submit" class="w-full signature-gradient text-on-primary py-3 rounded-lg font-bold shadow-lg shadow-primary/10 hover:opacity-90 active:opacity-80 transition-all duration-150 mt-4">
+                        <button type="submit" class="w-full signature-gradient text-on-primary py-3 rounded-lg font-bold shadow-lg shadow-primary/10 hover:opacity-90 active:opacity-80 transition-all duration-150 mt-4 cursor-pointer">
                             Masuk ke Portal
                         </button>
                     </form>
@@ -173,7 +173,6 @@ $appName = ViewHelper::getSetting('app_name', 'siCare');
                                     }
                                 }, 1000);
                             } else {
-                                // warning (1-9)
                                 alertDiv.classList.add('bg-yellow-50', 'border', 'border-yellow-400', 'text-yellow-800');
                                 warningTitle.textContent = "Gagal Masuk";
                                 warningIcon.textContent = "warning";
@@ -225,7 +224,7 @@ $appName = ViewHelper::getSetting('app_name', 'siCare');
                             <div>
                                 <p class="text-sm font-bold text-blue-900">Belum punya akun?</p>
                                 <p class="text-xs text-blue-800 mt-1 leading-relaxed">
-                                    Daftarkan diri Anda untuk melamar pekerjaan atau mengakses portal mandiri. 
+                                    Daftarkan diri Anda untuk mendaftar divisi ekstrakurikuler atau mengakses portal anggota. 
                                     <a class="text-blue-700 font-bold hover:underline block mt-1" href="/signup">Daftar Sekarang</a>
                                 </p>
                             </div>

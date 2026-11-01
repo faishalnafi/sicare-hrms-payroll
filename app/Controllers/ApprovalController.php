@@ -127,13 +127,17 @@ class ApprovalController {
 
             $db->beginTransaction();
 
+            $stmtRole = $db->prepare("SELECT id FROM roles WHERE name = ? LIMIT 1");
+            $stmtRole->execute([$newRole]);
+            $newRoleId = $stmtRole->fetchColumn() ?: null;
+
             // 1. Update user
             $stmtUpdate = $db->prepare("
                 UPDATE users 
-                SET role = ?, department_id = ?, job_title = ? 
+                SET role = ?, role_id = ?, department_id = ?, job_title = ? 
                 WHERE id = ?
             ");
-            $stmtUpdate->execute([$newRole, $newDeptId, $newJobTitle, $targetUserId]);
+            $stmtUpdate->execute([$newRole, $newRoleId, $newDeptId, $newJobTitle, $targetUserId]);
 
             // 2. Insert into employment_history
             $historyId = sprintf('%04x%04x-%04x-%04x-%04x-%04x%04x%04x',

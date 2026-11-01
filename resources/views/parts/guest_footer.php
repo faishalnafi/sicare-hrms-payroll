@@ -8,7 +8,7 @@ $appName = ViewHelper::getSetting('app_name', 'siCare');
     <div class="max-w-6xl mx-auto w-full flex flex-col md:flex-row justify-between items-center gap-8">
         <div class="space-y-1 text-center md:text-left">
             <a href="/" class="font-['Manrope'] font-bold text-primary text-xl hover:text-blue-700 transition-colors inline-block"><?= htmlspecialchars($appName) ?></a>
-            <p class="font-['Inter'] text-sm antialiased text-[#454652]">© 2024 <?= htmlspecialchars($appName) ?> HRIS & ATS Systems. All rights reserved.</p>
+            <p class="font-['Inter'] text-sm antialiased text-[#454652]">© 2026 <?= htmlspecialchars($appName) ?> - Sistem Rekrutmen & Manajemen Ekstrakurikuler. All rights reserved.</p>
         </div>
         <div class="flex flex-wrap justify-center gap-8">
             <a class="font-['Inter'] text-sm antialiased text-[#454652] hover:text-primary transition-all duration-300" href="/privacy">Privacy Policy</a>

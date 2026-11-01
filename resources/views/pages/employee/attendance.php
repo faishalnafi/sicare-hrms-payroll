@@ -27,11 +27,12 @@ if ($userId) {
         $ctrl = new \App\Controllers\AttendanceController();
         $attData = $ctrl->getEmployeeData($userId, $selectedMonth, $selectedYear);
         
-        $dbUser = \App\Services\ViewHelper::getUserProfile($userId);
+        $dbUser = \App\Services\ViewHelper::getFullUserProfile($userId);
         $homeLat = $dbUser && isset($dbUser['home_latitude']) && $dbUser['home_latitude'] !== null ? (float)$dbUser['home_latitude'] : null;
         $homeLng = $dbUser && isset($dbUser['home_longitude']) && $dbUser['home_longitude'] !== null ? (float)$dbUser['home_longitude'] : null;
+        $userMetodePresensi = $dbUser['metode_presensi'] ?? 'default';
     } catch (Exception $e) {
-        // silently fail, show empty state
+        $userMetodePresensi = 'default';
     }
 }
 
@@ -742,8 +743,148 @@ function clockOutStatusLabel($status) {
 
 </div>
 
+<!-- ── MODAL KAMERA SWAFOTO (metode: foto) ── -->
+<div id="attCameraModal" class="fixed inset-0 z-[9999] bg-black/85 backdrop-blur-md hidden flex items-center justify-center p-4">
+    <div class="bg-surface-container-lowest border border-white/10 rounded-3xl p-6 max-w-md w-full shadow-2xl relative flex flex-col items-center">
+        <button type="button" onclick="window.closeCameraModal()" class="absolute top-4 right-4 w-9 h-9 rounded-full bg-surface-container-high text-on-surface-variant hover:bg-surface-container-highest flex items-center justify-center transition-all">
+            <span class="material-symbols-outlined text-lg">close</span>
+        </button>
+        <div class="flex items-center gap-2 mb-4">
+            <span class="material-symbols-outlined text-primary text-2xl">photo_camera</span>
+            <h3 class="text-base font-bold text-on-surface">Verifikasi Swafoto Kamera</h3>
+        </div>
+
+        <!-- Camera Container -->
+        <div class="relative w-full aspect-[4/3] bg-black rounded-2xl overflow-hidden border border-outline-variant/30 flex items-center justify-center">
+            <video id="attCameraVideo" autoplay playsinline class="w-full h-full object-cover"></video>
+            <canvas id="attCameraCanvas" class="hidden"></canvas>
+            <img id="attPhotoPreview" class="w-full h-full object-cover hidden" alt="Preview Foto">
+            
+            <!-- Grid overlay for camera composition -->
+            <div id="attCameraGrid" class="absolute inset-0 pointer-events-none border-2 border-white/20 rounded-2xl grid grid-cols-3 grid-rows-3 opacity-40">
+                <div class="border-r border-b border-white/20"></div>
+                <div class="border-r border-b border-white/20"></div>
+                <div class="border-b border-white/20"></div>
+                <div class="border-r border-b border-white/20"></div>
+                <div class="border-r border-b border-white/20"></div>
+                <div class="border-b border-white/20"></div>
+                <div class="border-r border-white/20"></div>
+                <div class="border-r border-white/20"></div>
+                <div></div>
+            </div>
+        </div>
+
+        <!-- Camera Switcher Pill Toggle (Front vs Rear) -->
+        <div class="mt-4 flex items-center bg-surface-container-low p-1 rounded-2xl border border-outline-variant/20 gap-1 w-full">
+            <button type="button" id="btnCamFront" onclick="window.switchCameraLens('user')" class="flex-1 py-2 px-3 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 bg-primary text-white shadow-sm">
+                <span class="material-symbols-outlined text-sm">person</span> Kamera Depan
+            </button>
+            <button type="button" id="btnCamRear" onclick="window.switchCameraLens('environment')" class="flex-1 py-2 px-3 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 text-on-surface-variant hover:text-on-surface">
+                <span class="material-symbols-outlined text-sm">photo_camera_back</span> Kamera Belakang
+            </button>
+        </div>
+
+        <!-- Action Controls -->
+        <div class="mt-5 flex gap-3 w-full">
+            <button type="button" id="btnCapturePhoto" onclick="window.capturePhotoFrame()" class="flex-1 bg-primary hover:bg-primary/90 text-white font-extrabold text-xs py-3.5 px-4 rounded-xl flex items-center justify-center gap-2 shadow-lg transition-all">
+                <span class="material-symbols-outlined text-base">aperture</span> Jepret Foto
+            </button>
+            <button type="button" id="btnRetakePhoto" onclick="window.retakePhotoFrame()" class="hidden flex-1 bg-surface-container-high hover:bg-surface-container-highest text-on-surface font-extrabold text-xs py-3.5 px-4 rounded-xl flex items-center justify-center gap-2 transition-all">
+                <span class="material-symbols-outlined text-base">refresh</span> Foto Ulang
+            </button>
+            <button type="button" id="btnSubmitPhoto" onclick="window.submitPhotoAttendance()" class="hidden flex-1 bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold text-xs py-3.5 px-4 rounded-xl flex items-center justify-center gap-2 shadow-lg transition-all">
+                <span class="material-symbols-outlined text-base">send</span> Kirim Presensi
+            </button>
+        </div>
+        <p class="text-[10px] text-on-surface-variant/70 mt-3 text-center">Ukuran foto otomatis dikompresi maksimal 1MB secara aman di browser.</p>
+    </div>
+</div>
+
+<!-- ── MODAL SCAN QR CODE (metode: scan_qr) ── -->
+<div id="attQrModal" class="fixed inset-0 z-[9999] bg-black/85 backdrop-blur-md hidden flex items-center justify-center p-4">
+    <div class="bg-surface-container-lowest border border-white/10 rounded-3xl p-6 max-w-md w-full shadow-2xl relative flex flex-col items-center">
+        <button type="button" onclick="window.closeQrModal()" class="absolute top-4 right-4 w-9 h-9 rounded-full bg-surface-container-high text-on-surface-variant hover:bg-surface-container-highest flex items-center justify-center transition-all">
+            <span class="material-symbols-outlined text-lg">close</span>
+        </button>
+        <div class="flex items-center gap-2 mb-4">
+            <span class="material-symbols-outlined text-primary text-2xl">qr_code_scanner</span>
+            <h3 class="text-base font-bold text-on-surface">Scan QR Code Presensi</h3>
+        </div>
+
+        <div class="relative w-full aspect-square bg-black rounded-2xl overflow-hidden border border-outline-variant/30 flex items-center justify-center">
+            <video id="attQrVideo" autoplay playsinline class="w-full h-full object-cover"></video>
+            <!-- Target Box Frame -->
+            <div class="absolute inset-8 border-2 border-primary/80 rounded-2xl pointer-events-none flex items-center justify-center shadow-[0_0_20px_rgba(59,130,246,0.3)]">
+                <div class="w-full h-0.5 bg-gradient-to-r from-transparent via-primary to-transparent animate-pulse"></div>
+            </div>
+        </div>
+
+        <!-- Manual QR Code Text Fallback Input -->
+        <div class="mt-4 w-full">
+            <p class="text-xs text-on-surface-variant text-center mb-2 font-medium">Arahkan kamera ke QR Code atau ketik kode QR:</p>
+            <div class="flex gap-2">
+                <input type="text" id="attManualQrInput" onkeypress="if(event.key==='Enter') window.submitManualQrCode()" placeholder="Ketik Kode QR (Cth: QR-839283)..." class="flex-1 bg-surface-container-low border border-outline-variant/30 text-on-surface text-xs rounded-xl px-3 py-2.5 focus:outline-none focus:border-primary">
+                <button type="button" onclick="window.submitManualQrCode()" class="bg-primary hover:bg-primary/90 text-white font-bold text-xs px-4 py-2.5 rounded-xl flex items-center gap-1">
+                    <span class="material-symbols-outlined text-sm">check</span> Ok
+                </button>
+            </div>
+        </div>
+        <p class="text-[10px] text-emerald-600 font-bold mt-3 text-center bg-emerald-50 px-3 py-1.5 rounded-full flex items-center justify-center gap-1">
+            <span class="material-symbols-outlined text-xs">bolt</span> Presensi langsung terproses otomatis begitu QR Code ter-scan!
+        </p>
+    </div>
+</div>
+
+<!-- ── MODAL TAP NFC / KARTU (metode: nfc) ── -->
+<div id="attNfcModal" class="fixed inset-0 z-[9999] bg-black/85 backdrop-blur-md hidden flex items-center justify-center p-4">
+    <div class="bg-surface-container-lowest border border-white/10 rounded-3xl p-6 max-w-md w-full shadow-2xl relative flex flex-col items-center text-center">
+        <button type="button" onclick="window.closeNfcModal()" class="absolute top-4 right-4 w-9 h-9 rounded-full bg-surface-container-high text-on-surface-variant hover:bg-surface-container-highest flex items-center justify-center transition-all">
+            <span class="material-symbols-outlined text-lg">close</span>
+        </button>
+
+        <!-- Hardware Unsupported Warning Banner (Shown on PC / Devices without NFC) -->
+        <div id="attNfcHardwareNotice" class="hidden w-full bg-amber-500/10 border border-amber-500/30 text-amber-800 rounded-2xl p-3 text-left text-xs mb-2 flex items-start gap-2.5">
+            <span class="material-symbols-outlined text-amber-600 text-lg shrink-0 mt-0.5">warning</span>
+            <div>
+                <strong class="font-bold block text-amber-900 mb-0.5">Hardware NFC Tidak Didukung</strong>
+                <span>Perangkat / browser ini tidak dilengkapi sensor Web NFC internal. Silakan gunakan USB RFID Card Reader atau ketik ID Kartu Akses Anda di bawah.</span>
+            </div>
+        </div>
+        
+        <!-- Glowing NFC Card Tap Animation -->
+        <div class="relative my-4 flex items-center justify-center">
+            <div id="attNfcPingBg" class="w-32 h-32 rounded-full bg-primary/10 animate-ping absolute"></div>
+            <div id="attNfcIconBox" class="w-24 h-24 rounded-full bg-primary/20 flex items-center justify-center relative z-10 shadow-[0_0_30px_rgba(59,130,246,0.4)]">
+                <span id="attNfcIcon" class="material-symbols-outlined text-5xl text-primary animate-pulse">contactless</span>
+            </div>
+        </div>
+
+        <h3 id="attNfcTitle" class="text-xl font-black text-on-surface">Tap Kartu Akses / NFC</h3>
+        <p id="attNfcDesc" class="text-xs text-on-surface-variant mt-1.5 max-w-xs leading-relaxed">
+            Tempelkan Kartu Akses / HP berfitur NFC Anda pada bagian belakang perangkat ini.
+        </p>
+
+        <!-- Manual RFID / NFC Card ID Input Fallback -->
+        <div class="mt-4 w-full bg-surface-container-low p-4 rounded-2xl border border-outline-variant/20">
+            <p class="text-[11px] font-bold text-on-surface-variant mb-2">Input ID Kartu / USB RFID Reader:</p>
+            <div class="flex gap-2">
+                <input type="text" id="attManualNfcInput" onkeypress="if(event.key==='Enter') window.submitManualNfcCard()" placeholder="Tap Kartu atau ketik ID (Cth: AC-829381)..." class="flex-1 bg-surface-container-lowest border border-outline-variant/30 text-on-surface text-xs rounded-xl px-3 py-2.5 focus:outline-none focus:border-primary font-mono">
+                <button type="button" onclick="window.submitManualNfcCard()" class="bg-primary hover:bg-primary/90 text-white font-bold text-xs px-4 py-2.5 rounded-xl flex items-center gap-1">
+                    <span class="material-symbols-outlined text-sm">check</span> Submit
+                </button>
+            </div>
+        </div>
+
+        <p id="attNfcStatusBadge" class="text-[10px] text-emerald-600 font-bold mt-4 text-center bg-emerald-50 px-3 py-1.5 rounded-full flex items-center justify-center gap-1">
+            <span class="material-symbols-outlined text-xs">bolt</span> Presensi langsung terproses otomatis begitu kartu ter-tap!
+        </p>
+    </div>
+</div>
+
 <!-- ── JAVASCRIPT ── -->
 <script>
+window.userMetodePresensi = <?= json_encode($userMetodePresensi) ?>;
+
 // ── Table Pagination Logic ──────────────────────────────────────────
 (function() {
     const rows = Array.from(document.querySelectorAll('.att-table-row'));
@@ -927,7 +1068,7 @@ function detectLocationStatus() {
         text.textContent = 'GPS tidak tersedia';
         return;
     }
-    navigator.geolocation.getCurrentPosition(pos => {
+    const processLocationSuccess = (pos) => {
         const dist = haversineM(ATT_CFG.officeLat, ATT_CFG.officeLng, pos.coords.latitude, pos.coords.longitude);
         const distKm = formatJsDistance(dist);
         
@@ -957,15 +1098,33 @@ function detectLocationStatus() {
             tag.className = 'mt-3 inline-flex items-center gap-2 px-3 py-1.5 rounded-xl text-xs font-bold bg-red-500/20 text-red-200 border border-red-400/30';
             tag.innerHTML = '<span class="material-symbols-outlined text-sm">location_off</span><span>Di luar kantor (' + distKm + ')' + homeStr + ' · ' + modeLabel + ' nonaktif</span>';
         }
-    }, () => {
-        if (ATT_CFG.isOfficeWifi) {
-            tag.className = 'mt-3 inline-flex items-center gap-2 px-3 py-1.5 rounded-xl text-xs font-bold bg-green-500/20 text-green-200 border border-green-400/30';
-            tag.innerHTML = '<span class="material-symbols-outlined text-sm">wifi</span><span>WFO · Terdeteksi via WIFI Kantor</span>';
-        } else {
-            tag.className = 'mt-3 inline-flex items-center gap-2 px-3 py-1.5 rounded-xl text-xs font-bold bg-amber-500/20 text-amber-200 border border-amber-400/30';
-            tag.innerHTML = '<span class="material-symbols-outlined text-sm">warning</span><span>GPS Gagal Dideteksi. Aktifkan lokasi atau gunakan WIFI Kantor.</span>';
-        }
-    }, { timeout: 7000, enableHighAccuracy: true, maximumAge: 0 });
+    };
+
+    const tryDetectPosition = (highAcc) => {
+        navigator.geolocation.getCurrentPosition(
+            processLocationSuccess,
+            (err) => {
+                if (highAcc && (err.code === err.TIMEOUT || err.code === err.POSITION_UNAVAILABLE)) {
+                    // Fallback to Network / Wi-Fi Triangulation (Fast Indoor Geolocation)
+                    tryDetectPosition(false);
+                    return;
+                }
+                if (ATT_CFG.isOfficeWifi) {
+                    tag.className = 'mt-3 inline-flex items-center gap-2 px-3 py-1.5 rounded-xl text-xs font-bold bg-green-500/20 text-green-200 border border-green-400/30';
+                    tag.innerHTML = '<span class="material-symbols-outlined text-sm">wifi</span><span>WFO · Terdeteksi via WIFI Kantor</span>';
+                } else if (err && err.code === err.PERMISSION_DENIED) {
+                    tag.className = 'mt-3 inline-flex items-center gap-2 px-3 py-1.5 rounded-xl text-xs font-bold bg-amber-500/20 text-amber-200 border border-amber-400/30 cursor-pointer hover:bg-amber-500/30 transition-all';
+                    tag.innerHTML = '<span class="material-symbols-outlined text-sm">warning</span><span>Izin Lokasi Diblokir · <button type="button" onclick="window.showLocationPermissionGuide()" class="underline font-black">Klik Buka Izin Lokasi</button></span>';
+                } else {
+                    tag.className = 'mt-3 inline-flex items-center gap-2 px-3 py-1.5 rounded-xl text-xs font-bold bg-amber-500/20 text-amber-200 border border-amber-400/30';
+                    tag.innerHTML = '<span class="material-symbols-outlined text-sm">warning</span><span>GPS Gagal Dideteksi. Pastikan Lokasi/Wi-Fi HP Aktif atau <button type="button" onclick="detectLocationStatus()" class="underline font-black">Coba Lagi</button></span>';
+                }
+            },
+            { enableHighAccuracy: highAcc, timeout: highAcc ? 4000 : 12000, maximumAge: highAcc ? 0 : 30000 }
+        );
+    };
+
+    tryDetectPosition(true);
 }
 window.detectLocationStatus = detectLocationStatus;
 
@@ -1016,41 +1175,50 @@ function getLocation(callback) {
         return callback(null, null, 'fake_gps', 'Sistem mendeteksi adanya manipulasi lokasi menggunakan ekstensi Fake GPS atau lokasi tiruan (Mock Location).');
     }
 
-    navigator.geolocation.getCurrentPosition(
-        pos => {
-            // Suspiciously perfect accuracy check (e.g. exactly 0 or negative)
-            if (pos.coords.accuracy <= 0) {
-                return callback(null, null, 'fake_gps', 'Akurasi GPS mencurigakan (tidak wajar). Harap gunakan perangkat fisik asli tanpa emulator.');
-            }
-            callback(pos.coords.latitude, pos.coords.longitude, null, null);
-        },
-        error => {
-            let reason = 'gps_failed';
-            let msg = 'Gagal mengambil koordinat lokasi perangkat Anda.';
-            if (error.code === error.PERMISSION_DENIED) {
-                reason = 'permission_denied';
-                msg = 'Izin akses lokasi (Location Permission) diblokir oleh browser Anda.';
-            } else if (error.code === error.POSITION_UNAVAILABLE) {
-                reason = 'unavailable';
-                msg = 'Sinyal GPS lemah atau koordinat lokasi tidak dapat ditentukan.';
-            } else if (error.code === error.TIMEOUT) {
-                reason = 'timeout';
-                msg = 'Waktu pengambilan koordinat lokasi habis (Timeout).';
-            }
-            callback(null, null, reason, msg);
-        },
-        { timeout: 6000, enableHighAccuracy: true, maximumAge: 0 }
-    );
+    const tryGetPos = (highAcc) => {
+        navigator.geolocation.getCurrentPosition(
+            pos => {
+                if (pos.coords.accuracy <= 0) {
+                    return callback(null, null, 'fake_gps', 'Akurasi GPS mencurigakan (tidak wajar). Harap gunakan perangkat fisik asli tanpa emulator.');
+                }
+                callback(pos.coords.latitude, pos.coords.longitude, null, null);
+            },
+            error => {
+                if (highAcc && (error.code === error.TIMEOUT || error.code === error.POSITION_UNAVAILABLE)) {
+                    // Fallback to Network / Wi-Fi Triangulation (Fast Indoor Geolocation)
+                    tryGetPos(false);
+                    return;
+                }
+
+                let reason = 'gps_failed';
+                let msg = 'Gagal mengambil koordinat lokasi perangkat Anda.';
+                if (error.code === error.PERMISSION_DENIED) {
+                    reason = 'permission_denied';
+                    msg = 'Izin akses lokasi (Location Permission) diblokir oleh browser Anda.';
+                } else if (error.code === error.POSITION_UNAVAILABLE) {
+                    reason = 'unavailable';
+                    msg = 'Sinyal GPS lemah atau koordinat lokasi tidak dapat ditentukan. Pastikan Wi-Fi atau GPS HP aktif.';
+                } else if (error.code === error.TIMEOUT) {
+                    reason = 'timeout';
+                    msg = 'Waktu pengambilan koordinat lokasi habis (Timeout). Pastikan fitur Lokasi HP Anda aktif.';
+                }
+                callback(null, null, reason, msg);
+            },
+            { enableHighAccuracy: highAcc, timeout: highAcc ? 4000 : 12000, maximumAge: highAcc ? 0 : 30000 }
+        );
+    };
+
+    tryGetPos(true);
 }
 window.getLocation = getLocation;
 
 // ── Location Error Handler UI ──────────────────────────────────────
 function showLocationErrorAlert(titlePrefix, errCode, errMsg, btnEl, originalBtnHtml) {
-    let title = '⚠️ Akses Lokasi Ditolak';
+    let title = 'Akses Lokasi Ditolak';
     let solutionHtml = '';
 
     if (errCode === 'fake_gps') {
-        title = '⚠️ Manipulasi GPS Terdeteksi!';
+        title = 'Manipulasi GPS Terdeteksi!';
         solutionHtml = `
             <div class="text-left bg-red-50 p-4 rounded-xl border border-red-200 mt-3 text-xs space-y-2 text-red-950 leading-relaxed font-medium">
                 <p class="font-bold text-red-800 text-sm">Alasan Gagal:</p>
@@ -1065,7 +1233,15 @@ function showLocationErrorAlert(titlePrefix, errCode, errMsg, btnEl, originalBtn
             </div>
         `;
     } else if (errCode === 'permission_denied') {
-        title = '⚠️ Izin Lokasi Diblokir';
+        if (typeof window.showLocationPermissionGuide === 'function') {
+            window.showLocationPermissionGuide(errMsg);
+            if (btnEl) {
+                btnEl.innerHTML = originalBtnHtml;
+                btnEl.disabled = false;
+            }
+            return;
+        }
+        title = 'Izin Lokasi Diblokir';
         solutionHtml = `
             <div class="text-left bg-amber-50 p-4 rounded-xl border border-amber-200 mt-3 text-xs space-y-2 text-amber-950 leading-relaxed font-medium">
                 <p class="font-bold text-amber-800 text-sm">Alasan Gagal:</p>
@@ -1079,17 +1255,28 @@ function showLocationErrorAlert(titlePrefix, errCode, errMsg, btnEl, originalBtn
             </div>
         `;
     } else {
-        title = '⚠️ Sinyal GPS Lemah / Tidak Aktif';
+        let isHttpLocal = (window.isSecureContext === false && location.hostname !== 'localhost' && location.hostname !== '127.0.0.1');
+        title = isHttpLocal ? 'Browser Memblokir Akses HTTP' : 'Sinyal GPS / Izin Perangkat Lemah';
         solutionHtml = `
             <div class="text-left bg-amber-50 p-4 rounded-xl border border-amber-200 mt-3 text-xs space-y-2 text-amber-950 leading-relaxed font-medium">
-                <p class="font-bold text-amber-800 text-sm">Alasan Gagal:</p>
-                <p class="text-gray-700">${errMsg || 'Perangkat gagal mendeteksi koordinat GPS aktif.'}</p>
+                <p class="font-bold text-amber-800 text-sm">Mengapa Terjadi (Meskipun GPS & Wi-Fi HP Aktif)?</p>
+                <p class="text-gray-700">
+                    ${isHttpLocal 
+                        ? 'HP Anda sudah aktif GPS & Wi-Fi nya, namun <strong>browser Google Chrome memblokir penuh fitur GPS</strong> karena web diakses melalui koneksi <strong>HTTP IP (' + location.origin + ')</strong> tanpa SSL/HTTPS.' 
+                        : (errMsg || 'Perangkat gagal mengambil koordinat lokasi aktif.')}
+                </p>
                 <p class="font-bold text-amber-800 text-sm mt-3">Solusi Penyelesaian:</p>
                 <ul class="list-decimal list-inside space-y-1 text-gray-700">
-                    <li>Pastikan fitur <strong>GPS / Layanan Lokasi</strong> di perangkat Anda sudah <strong>AKTIF</strong>.</li>
-                    <li>Jika berada di dalam ruangan/gedung, cobalah bergeser mendekati jendela untuk sinyal yang lebih kuat.</li>
-                    <li>Hubungkan ke koneksi <strong>Wi-Fi Kantor</strong> jika tersedia untuk mempermudah deteksi.</li>
-                    <li>Muat ulang (*refresh*) halaman dan lakukan presensi kembali.</li>
+                    ${isHttpLocal ? `
+                        <li>Buka tab baru Chrome di HP: <code>chrome://flags/#unsafely-treat-insecure-origin-as-secure</code></li>
+                        <li>Masukkan alamat <code>${location.origin}</code> di kolom yang tersedia.</li>
+                        <li>Ubah status menjadi <strong>Enabled</strong> lalu tekan <strong>Relaunch</strong>.</li>
+                        <li>Atau gunakan URL HTTPS resmi (seperti ngrok / localtunnel).</li>
+                    ` : `
+                        <li>Buka <strong>Pengaturan HP -> Aplikasi -> Chrome -> Izin -> Lokasi</strong> dan pilih <strong>Izinkan</strong>.</li>
+                        <li>Pastikan opsi <strong>Akurasi Lokasi Tepat (Precise Location)</strong> di HP dalam posisi <strong>AKTIF</strong>.</li>
+                        <li>Muat ulang (*refresh*) halaman dan lakukan presensi kembali.</li>
+                    `}
                 </ul>
             </div>
         `;
@@ -1109,6 +1296,416 @@ function showLocationErrorAlert(titlePrefix, errCode, errMsg, btnEl, originalBtn
     }
 }
 
+// ── LAYER 2 SECURITY STATE & MODALS ─────────────────────────────────
+window.attCurrentAction = 'clockin';
+window.attCurrentLat = null;
+window.attCurrentLng = null;
+window.attCameraStream = null;
+window.attCurrentFacingMode = 'user';
+window.attCapturedPhotoBase64 = null;
+
+window.switchCameraLens = function(facingMode) {
+    window.attCurrentFacingMode = facingMode;
+    const btnFront = document.getElementById('btnCamFront');
+    const btnRear = document.getElementById('btnCamRear');
+    if (facingMode === 'user') {
+        btnFront.className = 'flex-1 py-2 px-3 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 bg-primary text-white shadow-sm';
+        btnRear.className = 'flex-1 py-2 px-3 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 text-on-surface-variant hover:text-on-surface';
+    } else {
+        btnRear.className = 'flex-1 py-2 px-3 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 bg-primary text-white shadow-sm';
+        btnFront.className = 'flex-1 py-2 px-3 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 text-on-surface-variant hover:text-on-surface';
+    }
+    window.startCameraStream();
+};
+
+window.startCameraStream = function() {
+    if (window.attCameraStream) {
+        window.attCameraStream.getTracks().forEach(track => track.stop());
+    }
+    const constraints = {
+        video: { facingMode: window.attCurrentFacingMode, width: { ideal: 1280 }, height: { ideal: 720 } },
+        audio: false
+    };
+    navigator.mediaDevices.getUserMedia(constraints)
+        .then(stream => {
+            window.attCameraStream = stream;
+            const video = document.getElementById('attCameraVideo');
+            video.srcObject = stream;
+            video.classList.remove('hidden');
+            document.getElementById('attPhotoPreview').classList.add('hidden');
+            document.getElementById('attCameraGrid').classList.remove('hidden');
+            document.getElementById('btnCapturePhoto').classList.remove('hidden');
+            document.getElementById('btnRetakePhoto').classList.add('hidden');
+            document.getElementById('btnSubmitPhoto').classList.add('hidden');
+        })
+        .catch(err => {
+            Swal.fire('Error Kamera', 'Gagal mengakses kamera perangkat: ' + err.message, 'error');
+        });
+};
+
+window.openCameraModal = function(action, lat, lng) {
+    window.attCurrentAction = action;
+    window.attCurrentLat = lat;
+    window.attCurrentLng = lng;
+    window.attCapturedPhotoBase64 = null;
+    const modal = document.getElementById('attCameraModal');
+    modal.classList.remove('hidden');
+    modal.classList.add('flex');
+    window.switchCameraLens('user');
+};
+
+window.closeCameraModal = function() {
+    if (window.attCameraStream) {
+        window.attCameraStream.getTracks().forEach(track => track.stop());
+        window.attCameraStream = null;
+    }
+    const modal = document.getElementById('attCameraModal');
+    modal.classList.add('hidden');
+    modal.classList.remove('flex');
+    resetClockInBtn();
+};
+
+window.capturePhotoFrame = function() {
+    const video = document.getElementById('attCameraVideo');
+    const canvas = document.getElementById('attCameraCanvas');
+    const preview = document.getElementById('attPhotoPreview');
+
+    canvas.width = video.videoWidth || 640;
+    canvas.height = video.videoHeight || 480;
+    const ctx = canvas.getContext('2d');
+    ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+    let quality = 0.85;
+    let dataUrl = canvas.toDataURL('image/jpeg', quality);
+    while (dataUrl.length * 0.75 > 1048576 && quality > 0.3) {
+        quality -= 0.1;
+        dataUrl = canvas.toDataURL('image/jpeg', quality);
+    }
+    window.attCapturedPhotoBase64 = dataUrl;
+
+    preview.src = dataUrl;
+    preview.classList.remove('hidden');
+    video.classList.add('hidden');
+    document.getElementById('attCameraGrid').classList.add('hidden');
+
+    document.getElementById('btnCapturePhoto').classList.add('hidden');
+    document.getElementById('btnRetakePhoto').classList.remove('hidden');
+    document.getElementById('btnSubmitPhoto').classList.remove('hidden');
+};
+
+window.retakePhotoFrame = function() {
+    window.attCapturedPhotoBase64 = null;
+    document.getElementById('attPhotoPreview').classList.add('hidden');
+    document.getElementById('attCameraVideo').classList.remove('hidden');
+    document.getElementById('attCameraGrid').classList.remove('hidden');
+    document.getElementById('btnCapturePhoto').classList.remove('hidden');
+    document.getElementById('btnRetakePhoto').classList.add('hidden');
+    document.getElementById('btnSubmitPhoto').classList.add('hidden');
+};
+
+window.submitPhotoAttendance = function() {
+    if (!window.attCapturedPhotoBase64) {
+        Swal.fire('Error', 'Harap jepret foto terlebih dahulu.', 'warning');
+        return;
+    }
+    window.executeFinalAttendance(window.attCurrentAction, window.attCurrentLat, window.attCurrentLng, {
+        photo_base64: window.attCapturedPhotoBase64
+    });
+    window.closeCameraModal();
+};
+
+// ── QR CODE MODAL ──
+window.openQrModal = function(action, lat, lng) {
+    window.attCurrentAction = action;
+    window.attCurrentLat = lat;
+    window.attCurrentLng = lng;
+    window.attQrScanning = true;
+
+    const modal = document.getElementById('attQrModal');
+    modal.classList.remove('hidden');
+    modal.classList.add('flex');
+
+    const video = document.getElementById('attQrVideo');
+
+    if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+        navigator.mediaDevices.getUserMedia({ 
+            video: { 
+                facingMode: { ideal: 'environment' },
+                width: { ideal: 1280 },
+                height: { ideal: 720 }
+            } 
+        })
+        .then(stream => {
+            window.attCameraStream = stream;
+            video.srcObject = stream;
+            video.setAttribute('playsinline', true);
+            video.play();
+
+            // Start Realtime Frame Scanning Loop
+            startQrDecodingLoop(video);
+        }).catch(e => {
+            console.error('Camera access error:', e);
+        });
+    }
+
+    setTimeout(() => {
+        const manualInput = document.getElementById('attManualQrInput');
+        if (manualInput) {
+            manualInput.value = '';
+            manualInput.focus();
+        }
+    }, 150);
+};
+
+function startQrDecodingLoop(video) {
+    const canvas = document.createElement('canvas');
+    const ctx = canvas.getContext('2d', { willReadFrequently: true });
+
+    let hasBarcodeDetector = ('BarcodeDetector' in window);
+    let detector = null;
+    if (hasBarcodeDetector) {
+        try {
+            detector = new BarcodeDetector({ formats: ['qr_code'] });
+        } catch(e) {
+            hasBarcodeDetector = false;
+        }
+    }
+
+    function scanFrame() {
+        if (!window.attQrScanning || !window.attCameraStream) return;
+
+        if (video.readyState === video.HAVE_ENOUGH_DATA) {
+            if (hasBarcodeDetector && detector) {
+                detector.detect(video).then(barcodes => {
+                    if (barcodes.length > 0 && barcodes[0].rawValue) {
+                        const code = barcodes[0].rawValue.trim();
+                        if (code) {
+                            window.onQrCodeScanned(code);
+                            return;
+                        }
+                    }
+                    if (window.attQrScanning) requestAnimationFrame(scanFrame);
+                }).catch(() => {
+                    scanWithJsQr();
+                });
+            } else {
+                scanWithJsQr();
+            }
+        } else {
+            if (window.attQrScanning) requestAnimationFrame(scanFrame);
+        }
+    }
+
+    function scanWithJsQr() {
+        if (typeof jsQR === 'function') {
+            canvas.width = video.videoWidth;
+            canvas.height = video.videoHeight;
+            ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+            const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+            const code = jsQR(imageData.data, imageData.width, imageData.height, {
+                inversionAttempts: 'dontInvert'
+            });
+
+            if (code && code.data && code.data.trim()) {
+                window.onQrCodeScanned(code.data.trim());
+                return;
+            }
+        }
+        if (window.attQrScanning) requestAnimationFrame(scanFrame);
+    }
+
+    requestAnimationFrame(scanFrame);
+}
+
+window.onQrCodeScanned = function(qrVal) {
+    if (!window.attQrScanning) return;
+    window.attQrScanning = false;
+
+    if (typeof window.playSuccessSound === 'function') {
+        window.playSuccessSound();
+    }
+
+    window.closeQrModal();
+    window.executeFinalAttendance(window.attCurrentAction, window.attCurrentLat, window.attCurrentLng, { qr_code: qrVal });
+};
+
+window.closeQrModal = function() {
+    window.attQrScanning = false;
+    if (window.attCameraStream) {
+        window.attCameraStream.getTracks().forEach(t => t.stop());
+        window.attCameraStream = null;
+    }
+    const modal = document.getElementById('attQrModal');
+    modal.classList.add('hidden');
+    modal.classList.remove('flex');
+    resetClockInBtn();
+};
+
+window.submitManualQrCode = function() {
+    const val = (document.getElementById('attManualQrInput').value || '').trim();
+    if (!val) {
+        Swal.fire('Error', 'Masukkan kode QR terlebih dahulu.', 'warning');
+        return;
+    }
+    window.closeQrModal();
+    window.executeFinalAttendance(window.attCurrentAction, window.attCurrentLat, window.attCurrentLng, { qr_code: val });
+};
+
+// ── NFC CARD MODAL ──
+window.openNfcModal = function(action, lat, lng) {
+    window.attCurrentAction = action;
+    window.attCurrentLat = lat;
+    window.attCurrentLng = lng;
+    const modal = document.getElementById('attNfcModal');
+    modal.classList.remove('hidden');
+    modal.classList.add('flex');
+
+    const noticeEl = document.getElementById('attNfcHardwareNotice');
+    const pingEl = document.getElementById('attNfcPingBg');
+    const iconEl = document.getElementById('attNfcIcon');
+    const iconBox = document.getElementById('attNfcIconBox');
+    const titleEl = document.getElementById('attNfcTitle');
+    const descEl = document.getElementById('attNfcDesc');
+    const badgeEl = document.getElementById('attNfcStatusBadge');
+
+    const isSupported = ('NDEFReader' in window);
+
+    if (isSupported) {
+        if (noticeEl) noticeEl.classList.add('hidden');
+        if (pingEl) pingEl.classList.remove('hidden');
+        if (iconEl) {
+            iconEl.textContent = 'contactless';
+            iconEl.className = 'material-symbols-outlined text-5xl text-primary animate-pulse';
+        }
+        if (iconBox) iconBox.className = 'w-24 h-24 rounded-full bg-primary/20 flex items-center justify-center relative z-10 shadow-[0_0_30px_rgba(59,130,246,0.4)]';
+        if (titleEl) titleEl.textContent = 'Tap Kartu Akses / NFC';
+        if (descEl) descEl.textContent = 'Tempelkan Kartu Akses / HP berfitur NFC Anda pada bagian belakang perangkat ini.';
+        if (badgeEl) {
+            badgeEl.className = 'text-[10px] text-emerald-600 font-bold mt-4 text-center bg-emerald-50 px-3 py-1.5 rounded-full flex items-center justify-center gap-1';
+            badgeEl.innerHTML = '<span class="material-symbols-outlined text-xs">bolt</span> Sensor NFC aktif & siap membaca kartu!';
+        }
+
+        try {
+            const ndef = new NDEFReader();
+            ndef.scan().then(() => {
+                ndef.onreading = event => {
+                    const serialNum = event.serialNumber || 'NFC-' + Date.now();
+                    window.closeNfcModal();
+                    window.executeFinalAttendance(window.attCurrentAction, window.attCurrentLat, window.attCurrentLng, { nfc_card_id: serialNum });
+                };
+            }).catch(e => {});
+        } catch(e) {}
+    } else {
+        // Hardware NFC not supported on this device/browser
+        if (noticeEl) noticeEl.classList.remove('hidden');
+        if (pingEl) pingEl.classList.add('hidden');
+        if (iconEl) {
+            iconEl.textContent = 'phonelink_erase';
+            iconEl.className = 'material-symbols-outlined text-5xl text-amber-600';
+        }
+        if (iconBox) iconBox.className = 'w-24 h-24 rounded-full bg-amber-500/10 flex items-center justify-center relative z-10 border border-amber-500/20';
+        if (titleEl) titleEl.textContent = 'Tap Kartu Akses / NFC';
+        if (descEl) descEl.textContent = 'Perangkat / browser ini tidak memiliki sensor Web NFC internal.';
+        if (badgeEl) {
+            badgeEl.className = 'text-[10px] text-amber-700 font-bold mt-4 text-center bg-amber-50 px-3 py-1.5 rounded-full flex items-center justify-center gap-1 border border-amber-200';
+            badgeEl.innerHTML = '<span class="material-symbols-outlined text-xs">info</span> Gunakan USB RFID Reader / ketik ID Kartu Akses di bawah.';
+        }
+    }
+
+    setTimeout(() => {
+        const manualInput = document.getElementById('attManualNfcInput');
+        if (manualInput) {
+            manualInput.value = '';
+            manualInput.focus();
+        }
+    }, 150);
+};
+
+window.closeNfcModal = function() {
+    const modal = document.getElementById('attNfcModal');
+    modal.classList.add('hidden');
+    modal.classList.remove('flex');
+    resetClockInBtn();
+};
+
+window.submitManualNfcCard = function() {
+    const val = (document.getElementById('attManualNfcInput').value || '').trim();
+    if (!val) {
+        Swal.fire('Error', 'Tap kartu atau masukkan ID kartu terlebih dahulu.', 'warning');
+        return;
+    }
+    window.closeNfcModal();
+    window.executeFinalAttendance(window.attCurrentAction, window.attCurrentLat, window.attCurrentLng, { nfc_card_id: val });
+};
+
+function resetClockInBtn() {
+    const btnIn = document.getElementById('btnClockIn');
+    if (btnIn) {
+        btnIn.innerHTML = '<span class="material-symbols-outlined font-bold">login</span> Clock-In';
+        btnIn.disabled = false;
+    }
+    const btnOut = document.getElementById('btnClockOut');
+    if (btnOut) {
+        btnOut.innerHTML = '<span class="material-symbols-outlined font-bold">logout</span> Clock-Out';
+        btnOut.disabled = false;
+    }
+}
+
+// ── FINAL ATTENDANCE SUBMITTER ──
+window.executeFinalAttendance = function(action, lat, lng, extraParams = {}) {
+    const endpoint = action === 'clockout' ? '/employee/attendance/clockout' : '/employee/attendance/clockin';
+    const fd = new FormData();
+    fd.append('lat', lat);
+    fd.append('lng', lng);
+    fd.append('csrf_token', ATT_CFG.csrfToken);
+    for (const [k, v] of Object.entries(extraParams)) {
+        fd.append(k, v);
+    }
+
+    fetch(endpoint, {
+        method: 'POST',
+        headers: { 'X-Requested-With': 'XMLHttpRequest' },
+        body: fd
+    })
+    .then(r => r.text())
+    .then(text => {
+        resetClockInBtn();
+        let data;
+        let cleanText = text.trim();
+        const jsonMatch = cleanText.match(/\{[\s\S]*\}/);
+        if (jsonMatch) {
+            cleanText = jsonMatch[0];
+        }
+        try {
+            data = JSON.parse(cleanText);
+        } catch (e) {
+            console.error('Server response non-JSON:', text);
+            Swal.fire({ title: 'Gagal Presensi', text: 'Respon server tidak valid. Teks: ' + text.substring(0, 100), icon: 'error', confirmButtonColor: '#ba1a1a' });
+            return;
+        }
+        if (data.success) {
+            if (typeof window.playSuccessSound === 'function') window.playSuccessSound();
+            const title = action === 'clockout' ? 'Clock-Out Berhasil!' : 'Clock-In Berhasil!';
+            Swal.fire({
+                title: title,
+                html: `<p class="text-sm text-gray-600 mb-3">${data.message}</p>`,
+                icon: 'success',
+                confirmButtonColor: '#000666',
+                confirmButtonText: 'OK'
+            }).then(() => {
+                if (window.loadPage) window.loadPage('/employee/attendance');
+                else window.location.reload();
+            });
+        } else {
+            Swal.fire({ title: 'Gagal Presensi', text: data.message, icon: 'error', confirmButtonColor: '#ba1a1a' });
+        }
+    })
+    .catch(err => {
+        resetClockInBtn();
+        Swal.fire({ title: 'Error Koneksi', text: 'Gagal menghubungi server: ' + (err.message || err), icon: 'error', confirmButtonColor: '#ba1a1a' });
+    });
+};
+
 // ── Clock-In ──────────────────────────────────────────────────────
 function doClockIn() {
     const btn = document.getElementById('btnClockIn');
@@ -1123,60 +1720,16 @@ function doClockIn() {
             return;
         }
 
-        const fd = new FormData();
-        fd.append('lat', lat);
-        fd.append('lng', lng);
-        fd.append('csrf_token', ATT_CFG.csrfToken);
-
-        fetch('/employee/attendance/clockin', {
-            method: 'POST',
-            headers: { 'X-Requested-With': 'XMLHttpRequest' },
-            body: fd
-        })
-        .then(r => r.json())
-        .then(data => {
-            if (data.success) {
-                if (typeof window.playSuccessSound === 'function') window.playSuccessSound();
-                const isWfa = data.work_mode === 'WFA';
-                const isWfh = data.work_mode === 'WFH';
-                const statusColor = data.status === 'tepat waktu' ? 'bg-green-100 text-green-700' : (data.status === 'awal' ? 'bg-indigo-100 text-indigo-700' : 'bg-amber-100 text-amber-700');
-                const modeColor   = isWfa ? 'bg-blue-100 text-blue-700' : (isWfh ? 'bg-indigo-100 text-indigo-700' : 'bg-green-100 text-green-700');
-                const modeIcon    = isWfa ? '☕' : (isWfh ? '🏠' : '🏢');
-                const hasHomeSet = ATT_CFG.homeLat !== null && ATT_CFG.homeLng !== null;
-                const modeLabel   = isWfa ? (hasHomeSet ? 'WFA/WFC (Work From Anywhere/Cafe)' : 'WFA/WFC/WFH (Work From Anywhere/Cafe/Home)') : (isWfh ? 'WFH (Work From Home)' : 'WFO (Work From Office)');
-                const statusText  = data.status === 'tepat waktu' ? '🟢 Tepat Waktu' : (data.status === 'awal' ? '🔵 Masuk Awal' : '🟡 Terlambat');
-                Swal.fire({
-                    title: '✅ Clock-In Berhasil!',
-                    html: `<p class="text-sm text-gray-600 mb-3">${data.message}</p>
-                           <div class="flex flex-col gap-2">
-                               <div class="inline-flex items-center justify-center gap-2 px-4 py-2 rounded-full text-xs font-bold ${statusColor}">
-                                   ${statusText}
-                                </div>
-                               <div class="inline-flex items-center justify-center gap-2 px-4 py-2 rounded-full text-xs font-bold ${modeColor}">
-                                   ${modeIcon} ${modeLabel}
-                                </div>
-                           </div>`,
-                    icon: 'success',
-                    confirmButtonColor: '#000666',
-                    confirmButtonText: 'Lihat Status'
-                }).then(() => {
-                    if (window.loadPage) {
-                        window.loadPage('/employee/attendance');
-                    } else {
-                        window.location.reload();
-                    }
-                });
-            } else {
-                Swal.fire({ title: 'Gagal Clock-In', text: data.message, icon: 'error', confirmButtonColor: '#ba1a1a' });
-                btn.innerHTML = originalBtn;
-                btn.disabled = false;
-            }
-        })
-        .catch(() => {
-            Swal.fire({ title: 'Error Koneksi', text: 'Tidak dapat terhubung ke server. Periksa koneksi internet Anda.', icon: 'error', confirmButtonColor: '#ba1a1a' });
-            btn.innerHTML = originalBtn;
-            btn.disabled = false;
-        });
+        const metode = window.userMetodePresensi || 'default';
+        if (metode === 'foto') {
+            window.openCameraModal('clockin', lat, lng);
+        } else if (metode === 'scan_qr') {
+            window.openQrModal('clockin', lat, lng);
+        } else if (metode === 'nfc') {
+            window.openNfcModal('clockin', lat, lng);
+        } else {
+            window.executeFinalAttendance('clockin', lat, lng);
+        }
     });
 }
 window.doClockIn = doClockIn;
@@ -1189,7 +1742,7 @@ function doClockOut() {
 
     Swal.fire({
         title: 'Konfirmasi Clock-Out',
-        text: 'Apakah Anda yakin ingin melakukan Clock-Out sekarang? Tindakan ini tidak dapat dibatalkan untuk hari ini.',
+        text: 'Apakah Anda yakin ingin melakukan Clock-Out sekarang?',
         icon: 'question',
         showCancelButton: true,
         confirmButtonColor: '#ff6f00',
@@ -1207,43 +1760,16 @@ function doClockOut() {
                 return;
             }
 
-            const fd = new FormData();
-            fd.append('lat', lat);
-            fd.append('lng', lng);
-            fd.append('csrf_token', ATT_CFG.csrfToken);
-            
-            fetch('/employee/attendance/clockout', {
-                method: 'POST',
-                headers: { 'X-Requested-With': 'XMLHttpRequest' },
-                body: fd
-            })
-            .then(r => r.json())
-            .then(data => {
-                if (data.success) {
-                    if (typeof window.playSuccessSound === 'function') window.playSuccessSound();
-                    Swal.fire({
-                        title: '✅ Clock-Out Berhasil!',
-                        html: `<p class="text-sm text-gray-600">${data.message}</p>`,
-                        icon: 'success',
-                        confirmButtonColor: '#000666',
-                    }).then(() => {
-                        if (window.loadPage) {
-                            window.loadPage('/employee/attendance');
-                        } else {
-                            window.location.reload();
-                        }
-                    });
-                } else {
-                    Swal.fire({ title: 'Gagal Clock-Out', text: data.message, icon: 'error', confirmButtonColor: '#ba1a1a' });
-                    btn.innerHTML = originalBtn;
-                    btn.disabled = false;
-                }
-            })
-            .catch(() => {
-                Swal.fire({ title: 'Error Koneksi', text: 'Tidak dapat terhubung ke server. Periksa koneksi internet Anda.', icon: 'error', confirmButtonColor: '#ba1a1a' });
-                btn.innerHTML = originalBtn;
-                btn.disabled = false;
-            });
+            const metode = window.userMetodePresensi || 'default';
+            if (metode === 'foto') {
+                window.openCameraModal('clockout', lat, lng);
+            } else if (metode === 'scan_qr') {
+                window.openQrModal('clockout', lat, lng);
+            } else if (metode === 'nfc') {
+                window.openNfcModal('clockout', lat, lng);
+            } else {
+                window.executeFinalAttendance('clockout', lat, lng);
+            }
         });
     });
 }

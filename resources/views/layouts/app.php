@@ -87,6 +87,12 @@ if (!empty($resolvedPage)) {
 <head>
     <meta charset="utf-8"/>
     <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+    
+    <!-- Anti-Cache Meta Tags for iOS Safari, Samsung Internet, Mi Browser & WebViews -->
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate"/>
+    <meta http-equiv="Pragma" content="no-cache"/>
+    <meta http-equiv="Expires" content="0"/>
+
     <title><?= htmlspecialchars($pageTitle) ?></title>
     <!-- Favicon from Uploaded Logo -->
     <link rel="icon" type="image/x-icon" href="<?= htmlspecialchars($appLogoImage ?: '/favicon.ico') ?>"/>
@@ -107,6 +113,8 @@ if (!empty($resolvedPage)) {
     <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
     <!-- SweetAlert2 -->
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <!-- jsQR Code Reader -->
+    <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js"></script>
     <!-- Leaflet CSS & JS -->
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin=""/>
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
@@ -2293,12 +2301,25 @@ if (!empty($resolvedPage)) {
         };
     </script>
     
-    <!-- PWA Service Worker Registration & Offline Handler -->
+    <!-- PWA Service Worker Registration & Stale Cache Auto-Cleaner -->
     <script>
+        // Proactively clean stale browser/PWA caches on every launch across all mobile browsers
+        if ('caches' in window) {
+            caches.keys().then(function(names) {
+                for (let name of names) {
+                    if (name !== 'sicare-cache-v2.4.0') {
+                        caches.delete(name);
+                    }
+                }
+            });
+        }
+
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', function() {
                 navigator.serviceWorker.register('/sw.js').then(function(reg) {
-                    console.log('ServiceWorker registration successful with scope: ', reg.scope);
+                    // Force update on each launch to ensure newest frontend logic
+                    reg.update();
+                    console.log('ServiceWorker active and updated: ', reg.scope);
                 }, function(err) {
                     console.error('ServiceWorker registration failed: ', err);
                 });
@@ -2740,5 +2761,159 @@ if (!empty($resolvedPage)) {
         });
     </script>
     <?php endif; ?>
+
+    <!-- GLOBAL LOCATION PERMISSION GUIDE MODAL -->
+    <div id="globalLocationGuideModal" class="fixed inset-0 z-50 flex items-center justify-center opacity-0 pointer-events-none transition-opacity duration-300">
+        <div class="absolute inset-0 bg-black/60 backdrop-blur-md" onclick="window.closeGlobalLocationGuide()"></div>
+        <div class="bg-surface-container-lowest rounded-3xl w-full max-w-lg shadow-2xl overflow-hidden scale-90 transition-transform duration-300 relative z-10 border border-outline-variant/30 p-6 text-center space-y-6">
+            
+            <!-- Header Badge -->
+            <div class="w-16 h-16 rounded-2xl bg-amber-500/10 border border-amber-500/20 text-amber-600 flex items-center justify-center mx-auto shadow-inner">
+                <span class="material-symbols-outlined text-3xl font-bold">location_off</span>
+            </div>
+
+            <div>
+                <h3 class="font-headline font-black text-xl text-on-surface tracking-tight">Izin Akses Lokasi (GPS) Diblokir Browser</h3>
+                <p class="text-xs font-semibold text-on-surface-variant mt-1 max-w-sm mx-auto">
+                    Browser Anda saat ini memblokir izin lokasi. Ikuti 3 langkah mudah berikut untuk mengizinkannya:
+            <!-- HTTP Non-Secure Origin Alert Card -->
+            <div id="httpNonSecureNoticeCard" class="hidden text-left bg-red-500/10 border border-red-500/30 p-4 rounded-2xl space-y-2 text-xs text-red-900">
+                <div class="flex items-center gap-2 font-bold text-red-800">
+                    <span class="material-symbols-outlined text-lg">shield_with_house</span>
+                    <span>Akses HTTP Non-Secure Origin Terdeteksi (<span id="httpNonSecureIpText">HTTP IP</span>)</span>
+                </div>
+                <p class="text-[11px] leading-relaxed text-red-900/90">
+                    Browser modern (Chrome/Edge/Safari) <strong>memblokir otomatis Geolocation, Kamera, & NFC</strong> jika diakses via koneksi HTTP non-HTTPS (seperti IP jaringan lokal <code>http://192.168.x.x</code>).
+                </p>
+                <div class="pt-1 font-bold text-[11px]">Solusi Pengujian Lokal:</div>
+                <ol class="list-decimal list-inside space-y-1 text-[11px] text-red-900/90">
+                    <li>Buka tab baru Chrome di HP/Laptop: <code>chrome://flags/#unsafely-treat-insecure-origin-as-secure</code></li>
+                    <li>Aktifkan opsi tersebut dan masukkan URL IP Anda, lalu klik <strong>Relaunch</strong>.</li>
+                    <li>Atau gunakan tunnel HTTPS gratis seperti <code>npx localtunnel --port 8002</code> / <code>ngrok</code>.</li>
+                </ol>
+            </div>
+
+            <!-- 3-Step Visual Guide Cards -->
+            <div class="text-left space-y-3 bg-surface-container-low p-4 rounded-2xl border border-outline-variant/20">
+                <div class="flex items-start gap-3">
+                    <div class="w-7 h-7 rounded-xl bg-primary text-white flex items-center justify-center text-xs font-bold shrink-0 mt-0.5">1</div>
+                    <div>
+                        <h5 class="text-xs font-bold text-on-surface">Klik Ikon Gembok (🔒) / Setelan Situs</h5>
+                        <p class="text-[11px] text-on-surface-variant leading-relaxed">
+                            Lihat bilah alamat URL browser di paling atas (sebelah kiri tulisan <code>localhost</code> atau alamat domain). Klik ikon gembok 🔒 atau tombol 🎛️.
+                        </p>
+                    </div>
+                </div>
+
+                <div class="flex items-start gap-3 border-t border-outline-variant/15 pt-3">
+                    <div class="w-7 h-7 rounded-xl bg-primary text-white flex items-center justify-center text-xs font-bold shrink-0 mt-0.5">2</div>
+                    <div>
+                        <h5 class="text-xs font-bold text-on-surface">Ubah Opsi "Lokasi" menjadi "Izinkan" (Allow)</h5>
+                        <p class="text-[11px] text-on-surface-variant leading-relaxed">
+                            Cari menu <strong>Lokasi / Location</strong>, lalu ubah status dari <strong>Blokir (Block)</strong> menjadi <strong>Izinkan (Allow)</strong>.
+                        </p>
+                    </div>
+                </div>
+
+                <div class="flex items-start gap-3 border-t border-outline-variant/15 pt-3">
+                    <div class="w-7 h-7 rounded-xl bg-primary text-white flex items-center justify-center text-xs font-bold shrink-0 mt-0.5">3</div>
+                    <div>
+                        <h5 class="text-xs font-bold text-on-surface">Tekan Tombol Coba Minta Izin di Bawah</h5>
+                        <p class="text-[11px] text-on-surface-variant leading-relaxed">
+                            Setelah diizinkan, klik tombol <strong>"Coba Minta Izin Lokasi Lagi"</strong> atau muat ulang halaman.
+                        </p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Action Buttons -->
+            <div class="flex flex-col sm:flex-row items-center gap-3">
+                <button type="button" onclick="window.retryGlobalLocationRequest()" class="w-full flex-1 py-3 bg-primary hover:bg-primary/90 text-white font-bold text-xs rounded-xl transition-all shadow-md flex items-center justify-center gap-2 cursor-pointer">
+                    <span class="material-symbols-outlined text-base">my_location</span>
+                    Coba Minta Izin Lokasi Lagi
+                </button>
+                <button type="button" onclick="location.reload()" class="w-full flex-1 py-3 bg-surface-container hover:bg-surface-container-high text-on-surface font-bold text-xs rounded-xl border border-outline-variant/30 transition-all flex items-center justify-center gap-2 cursor-pointer">
+                    <span class="material-symbols-outlined text-base">refresh</span>
+                    Refresh Halaman Web
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+    window.showLocationPermissionGuide = function(customMsg) {
+        const modal = document.getElementById('globalLocationGuideModal');
+        if (modal) {
+            const httpNotice = document.getElementById('httpNonSecureNoticeCard');
+            if (httpNotice) {
+                if (window.isSecureContext === false && location.hostname !== 'localhost' && location.hostname !== '127.0.0.1') {
+                    httpNotice.classList.remove('hidden');
+                    const ipEl = document.getElementById('httpNonSecureIpText');
+                    if (ipEl) ipEl.textContent = location.origin;
+                } else {
+                    httpNotice.classList.add('hidden');
+                }
+            }
+
+            modal.classList.remove('opacity-0', 'pointer-events-none');
+            const container = modal.querySelector('.bg-surface-container-lowest');
+            if (container) container.classList.remove('scale-90');
+        }
+    };
+
+    window.closeGlobalLocationGuide = function() {
+        const modal = document.getElementById('globalLocationGuideModal');
+        if (modal) {
+            modal.classList.add('opacity-0', 'pointer-events-none');
+            const container = modal.querySelector('.bg-surface-container-lowest');
+            if (container) container.classList.add('scale-90');
+        }
+    };
+
+    window.retryGlobalLocationRequest = function() {
+        if (window.isSecureContext === false && location.hostname !== 'localhost' && location.hostname !== '127.0.0.1') {
+            alert('Browser memblokir Geolocation karena Anda mengakses via HTTP (' + location.origin + '). Gunakan HTTPS (ngrok/tunnel) atau aktifkan flag Chrome: chrome://flags/#unsafely-treat-insecure-origin-as-secure');
+            return;
+        }
+        if (navigator.geolocation) {
+            navigator.geolocation.getCurrentPosition(
+                function(pos) {
+                    window.closeGlobalLocationGuide();
+                    if (typeof detectLocationStatus === 'function') detectLocationStatus();
+                    if (typeof startKioskCamera === 'function') startKioskCamera();
+                    Swal.fire({
+                        icon: 'success',
+                        title: 'Akses Lokasi Berhasil!',
+                        text: 'Izin lokasi perangkat Anda telah berhasil diaktifkan.',
+                        timer: 2000,
+                        showConfirmButton: false
+                    });
+                },
+                function(err) {
+                    if (err.code === err.PERMISSION_DENIED) {
+                        alert('Browser masih memblokir izin lokasi. Pastikan Anda sudah mengubah status Lokasi menjadi "Izinkan" pada ikon gembok 🔒 di sebelah kiri URL browser!');
+                    }
+                },
+                { enableHighAccuracy: true, timeout: 5000, maximumAge: 0 }
+            );
+        }
+    };
+
+    // Automatic Background Location Pre-Prompt on Page Load
+    document.addEventListener('DOMContentLoaded', function() {
+        if (navigator.geolocation) {
+            navigator.geolocation.getCurrentPosition(
+                function(pos) {
+                    window.cachedLat = pos.coords.latitude;
+                    window.cachedLng = pos.coords.longitude;
+                },
+                function(err) {
+                    // Pre-prompt handled gracefully
+                },
+                { enableHighAccuracy: true, timeout: 5000, maximumAge: 60000 }
+            );
+        }
+    });
+    </script>
 </body>
 </html>
