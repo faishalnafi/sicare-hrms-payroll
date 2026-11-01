@@ -31,8 +31,8 @@
             </div>
         </div>
         <div class="flex-1 relative pl-0 md:pl-6 flex items-center justify-center">
-            <!-- 3D Floating 3x3 Isometric Blocks Canvas (Outer box removed, pure 3D floating grid) -->
-            <div id="sicare-3d-container" class="w-full aspect-square max-w-[540px] relative z-0"></div>
+            <!-- 3D Floating 3x3 Isometric Blocks Canvas (Enlarged Size & Google Pastel) -->
+            <div id="sicare-3d-container" class="w-full aspect-square max-w-[580px] relative z-0"></div>
             
             <!-- Identity Chip Overlapping - Floating Animation (Exact design from Gambar 1) -->
             <div class="absolute -bottom-6 left-0 md:left-4 p-5 bg-white rounded-xl shadow-[0_20px_40px_rgba(0,0,0,0.12)] border border-gray-100 flex items-center gap-4 animate-float z-10 w-[280px]">

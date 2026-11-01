@@ -1,9 +1,7 @@
 /**
  * siCare - 3D Floating Interactive Isometric Grid
- * Replaces the flat 3x3 grid with 9 extruded 3D rounded blocks.
- * Features:
- * - 9 individual 3D beveled blocks with rich corporate colors
- * - 2D crisp icons rendered on the top face
+ * - 9 individual 3D beveled blocks with Google Pastel color palette
+ * - Enlarged block size with extra-large, centered 2D icons
  * - Staggered floating wave animation
  * - Interactive raycaster hover (blocks elevate and react on hover/click)
  * - Mouse parallax & 3D tilt
@@ -14,29 +12,32 @@
     const container = document.getElementById('sicare-3d-container');
     if (!container || typeof THREE === 'undefined') return;
 
-    // --- Grid Items Specification (The 9 cards from Gambar 1) ---
+    // --- Google Pastel Colors & 9 Items with Unicode fallbacks ---
     const gridItems = [
-        { row: 0, col: 0, icon: 'work', color: '#243b91', label: 'Lowongan Kerja' },
-        { row: 0, col: 1, icon: 'badge', color: '#3e2f6b', label: 'Kartu Pegawai' },
-        { row: 0, col: 2, icon: 'groups', color: '#322c7a', label: 'Struktur Tim' },
-        { row: 1, col: 0, icon: 'assignment', color: '#1f4277', label: 'Tugas & Cuti' },
-        { row: 1, col: 1, icon: 'engineering', color: '#423d61', label: 'Operasional' },
-        { row: 1, col: 2, icon: 'corporate_fare', color: '#1e4682', label: 'Departemen' },
-        { row: 2, col: 0, icon: 'co_present', color: '#3c2a6d', label: 'Presensi ESS' },
-        { row: 2, col: 1, icon: 'leaderboard', color: '#1c3f87', label: 'KPI & Laporan' },
-        { row: 2, col: 2, icon: 'handshake', color: '#433660', label: 'Onboarding' }
+        // Row 0
+        { row: 0, col: 0, icon: 'work', unicode: '\ue8f9', color: '#7baaf7', label: 'Lowongan Kerja' },       // Google Pastel Blue
+        { row: 0, col: 1, icon: 'badge', unicode: '\uea67', color: '#f28b82', label: 'Kartu Pegawai' },       // Google Pastel Red
+        { row: 0, col: 2, icon: 'groups', unicode: '\uf233', color: '#81c995', label: 'Struktur Tim' },       // Google Pastel Green
+        // Row 1
+        { row: 1, col: 0, icon: 'assignment', unicode: '\ue85d', color: '#fdd663', label: 'Tugas & Cuti' },   // Google Pastel Yellow
+        { row: 1, col: 1, icon: 'engineering', unicode: '\uea3d', color: '#8ab4f8', label: 'Operasional' },   // Google Pastel Sky Blue
+        { row: 1, col: 2, icon: 'corporate_fare', unicode: '\ue7e7', color: '#f6aea9', label: 'Departemen' }, // Google Pastel Soft Coral
+        // Row 2
+        { row: 2, col: 0, icon: 'co_present', unicode: '\ueaf0', color: '#a8dab5', label: 'Presensi ESS' },   // Google Pastel Mint Green
+        { row: 2, col: 1, icon: 'leaderboard', unicode: '\uf20c', color: '#fde293', label: 'KPI & Laporan' }, // Google Pastel Warm Amber
+        { row: 2, col: 2, icon: 'handshake', unicode: '\uebc5', color: '#90caf9', label: 'Onboarding' }       // Google Pastel Cornflower
     ];
 
     // --- Scene, Camera, Renderer ---
     const scene = new THREE.Scene();
 
-    const width = container.clientWidth || 500;
-    const height = container.clientHeight || 500;
+    const width = container.clientWidth || 520;
+    const height = container.clientHeight || 520;
 
-    // Camera angled to give clean isometric 3D perspective
+    // Isometric-angled perspective camera
     const camera = new THREE.PerspectiveCamera(38, width / height, 0.1, 1000);
-    camera.position.set(13, 17, 18);
-    camera.lookAt(0, -0.5, 0);
+    camera.position.set(13.2, 17.0, 18.2);
+    camera.lookAt(0, -0.4, 0);
 
     const renderer = new THREE.WebGLRenderer({
         antialias: true,
@@ -48,7 +49,7 @@
     renderer.shadowMap.enabled = true;
     renderer.shadowMap.type = THREE.PCFSoftShadowMap;
     renderer.toneMapping = THREE.ACESFilmicToneMapping;
-    renderer.toneMappingExposure = 1.15;
+    renderer.toneMappingExposure = 1.18;
     container.innerHTML = '';
     container.appendChild(renderer.domElement);
 
@@ -56,49 +57,49 @@
     const masterGroup = new THREE.Group();
     scene.add(masterGroup);
 
-    // Initial slight isometric rotation to give dynamic 3D depth
+    // Initial slight isometric angle
     masterGroup.rotation.y = -Math.PI / 8; // -22.5 deg
     masterGroup.rotation.x = Math.PI / 14; // ~12 deg
 
-    // --- Lighting Setup ---
-    const ambientLight = new THREE.AmbientLight(0xffffff, 1.6);
+    // --- Soft Ambient & Sunlight ---
+    const ambientLight = new THREE.AmbientLight(0xffffff, 1.85);
     scene.add(ambientLight);
 
-    const hemiLight = new THREE.HemisphereLight(0xffffff, 0xdbeafe, 0.8);
+    const hemiLight = new THREE.HemisphereLight(0xffffff, 0xf1f5f9, 0.9);
     scene.add(hemiLight);
 
-    const sunLight = new THREE.DirectionalLight(0xffffff, 1.8);
-    sunLight.position.set(15, 25, 18);
+    const sunLight = new THREE.DirectionalLight(0xffffff, 1.6);
+    sunLight.position.set(16, 26, 18);
     sunLight.castShadow = true;
     sunLight.shadow.mapSize.width = 1024;
     sunLight.shadow.mapSize.height = 1024;
     sunLight.shadow.camera.near = 5;
     sunLight.shadow.camera.far = 60;
-    const d = 10;
+    const d = 12;
     sunLight.shadow.camera.left = -d;
     sunLight.shadow.camera.right = d;
     sunLight.shadow.camera.top = d;
     sunLight.shadow.camera.bottom = -d;
-    sunLight.shadow.bias = -0.0005;
+    sunLight.shadow.bias = -0.0004;
     scene.add(sunLight);
 
-    const fillLight = new THREE.DirectionalLight(0x93c5fd, 0.5);
-    fillLight.position.set(-15, 12, -15);
+    const fillLight = new THREE.DirectionalLight(0xe0f2fe, 0.5);
+    fillLight.position.set(-16, 12, -15);
     scene.add(fillLight);
 
-    // --- Soft Ground Shadow Receiver ---
-    const shadowPlaneGeo = new THREE.PlaneGeometry(28, 28);
-    const shadowPlaneMat = new THREE.ShadowMaterial({ opacity: 0.12 });
+    // --- Soft Contact Ground Shadow ---
+    const shadowPlaneGeo = new THREE.PlaneGeometry(32, 32);
+    const shadowPlaneMat = new THREE.ShadowMaterial({ opacity: 0.13 });
     const shadowPlane = new THREE.Mesh(shadowPlaneGeo, shadowPlaneMat);
     shadowPlane.rotation.x = -Math.PI / 2;
-    shadowPlane.position.y = -2.2;
+    shadowPlane.position.y = -2.4;
     shadowPlane.receiveShadow = true;
     masterGroup.add(shadowPlane);
 
-    // --- Geometry: Rounded 3D Block with Bevel ---
-    const blockSize = 2.8;
-    const blockThickness = 0.9;
-    const cornerRadius = 0.45;
+    // --- Geometry: Rounded 3D Block (Enlarged size) ---
+    const blockSize = 3.55;        // Enlarged block size
+    const blockThickness = 0.95;   // Chunky tactile 3D thickness
+    const cornerRadius = 0.65;     // Smooth rounded corner
 
     // Create a 2D rounded rectangle shape
     const shape = new THREE.Shape();
@@ -119,67 +120,14 @@
         bevelEnabled: true,
         bevelSegments: 6,
         steps: 1,
-        bevelSize: 0.16,
-        bevelThickness: 0.16
+        bevelSize: 0.2,
+        bevelThickness: 0.2
     };
     const blockGeo = new THREE.ExtrudeGeometry(shape, extrudeSettings);
-    // Rotate geometry so top face points up (+Y)
     blockGeo.rotateX(Math.PI / 2);
     blockGeo.center();
 
-    // --- Function to Generate 2D Icon Texture for Top Face ---
-    function makeIconTexture(iconName, baseHex, callback) {
-        const cvs = document.createElement('canvas');
-        cvs.width = 512;
-        cvs.height = 512;
-        const ctx = cvs.getContext('2d');
-
-        function renderCanvas() {
-            ctx.clearRect(0, 0, cvs.width, cvs.height);
-
-            // Background with rich smooth gradient
-            const grad = ctx.createLinearGradient(0, 0, 0, 512);
-            grad.addColorStop(0, baseHex);
-            grad.addColorStop(1, adjustColorBrightness(baseHex, -15));
-            ctx.fillStyle = grad;
-            ctx.fillRect(0, 0, 512, 512);
-
-            // Subtle inner glow border
-            ctx.strokeStyle = 'rgba(255, 255, 255, 0.15)';
-            ctx.lineWidth = 14;
-            ctx.strokeRect(7, 7, 498, 498);
-
-            // 2D White Icon in Center (Material Symbols)
-            ctx.fillStyle = '#ffffff';
-            ctx.textAlign = 'center';
-            ctx.textBaseline = 'middle';
-            ctx.font = 'bold 190px "Material Symbols Outlined", sans-serif';
-            ctx.fillText(iconName, 256, 256);
-
-            // Subtle top highlight reflection sheen
-            const sheen = ctx.createLinearGradient(0, 0, 512, 512);
-            sheen.addColorStop(0, 'rgba(255, 255, 255, 0.18)');
-            sheen.addColorStop(0.45, 'rgba(255, 255, 255, 0.0)');
-            sheen.addColorStop(1, 'rgba(0, 0, 0, 0.12)');
-            ctx.fillStyle = sheen;
-            ctx.fillRect(0, 0, 512, 512);
-        }
-
-        renderCanvas();
-        const tex = new THREE.CanvasTexture(cvs);
-        tex.anisotropy = 4;
-
-        // Re-render once document fonts are loaded to ensure glyph is crisp
-        if (document.fonts) {
-            document.fonts.ready.then(() => {
-                renderCanvas();
-                tex.needsUpdate = true;
-            });
-        }
-
-        return tex;
-    }
-
+    // --- Helper: Darken or Lighten Colors ---
     function adjustColorBrightness(hex, percent) {
         let num = parseInt(hex.replace('#', ''), 16);
         let amt = Math.round(2.55 * percent);
@@ -192,31 +140,94 @@
             .toString(16).slice(1);
     }
 
+    // --- Texture Generator: Extra-Large Full-Centered 2D Icon ---
+    function makeIconTexture(iconName, unicodeGlyph, pastelHex) {
+        const cvs = document.createElement('canvas');
+        cvs.width = 512;
+        cvs.height = 512;
+        const ctx = cvs.getContext('2d');
+
+        function renderCanvas() {
+            ctx.clearRect(0, 0, cvs.width, cvs.height);
+
+            // Google Pastel Background with gentle radial gradient
+            const grad = ctx.createRadialGradient(256, 256, 30, 256, 256, 320);
+            grad.addColorStop(0, pastelHex);
+            grad.addColorStop(1, adjustColorBrightness(pastelHex, -8));
+            ctx.fillStyle = grad;
+            ctx.fillRect(0, 0, 512, 512);
+
+            // Subtle smooth inner border
+            ctx.strokeStyle = 'rgba(255, 255, 255, 0.35)';
+            ctx.lineWidth = 10;
+            ctx.strokeRect(5, 5, 502, 502);
+
+            // Extra Large Full Centered 2D Icon (360px)
+            ctx.save();
+            ctx.fillStyle = '#ffffff';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+
+            // Subtle drop shadow under the icon for crisp contrast
+            ctx.shadowColor = 'rgba(0, 0, 0, 0.12)';
+            ctx.shadowBlur = 18;
+            ctx.shadowOffsetY = 6;
+
+            ctx.font = 'normal 360px "Material Symbols Outlined", sans-serif';
+
+            // Optical center adjustment (+6px on Y for perfect glyph center)
+            const glyphToDraw = unicodeGlyph || iconName;
+            ctx.fillText(glyphToDraw, 256, 262);
+            ctx.restore();
+
+            // Subtle top highlight sheen
+            const sheen = ctx.createLinearGradient(0, 0, 512, 512);
+            sheen.addColorStop(0, 'rgba(255, 255, 255, 0.22)');
+            sheen.addColorStop(0.4, 'rgba(255, 255, 255, 0.0)');
+            sheen.addColorStop(1, 'rgba(0, 0, 0, 0.08)');
+            ctx.fillStyle = sheen;
+            ctx.fillRect(0, 0, 512, 512);
+        }
+
+        renderCanvas();
+        const tex = new THREE.CanvasTexture(cvs);
+        tex.anisotropy = 4;
+
+        if (document.fonts) {
+            document.fonts.ready.then(() => {
+                renderCanvas();
+                tex.needsUpdate = true;
+            });
+        }
+
+        return tex;
+    }
+
     // --- Build 3x3 Grid of 3D Blocks ---
-    const blockSpacing = 3.65;
+    const blockSpacing = 4.45;     // Spacing proportional to 3.55 block size
     const blocks = [];
 
-    gridItems.forEach((item, index) => {
-        const topTexture = makeIconTexture(item.icon, item.color);
+    gridItems.forEach((item) => {
+        const topTexture = makeIconTexture(item.icon, item.unicode, item.color);
 
-        // Materials: Top face with icon texture, sides with smooth matching material
+        // Matching side material
         const sideMat = new THREE.MeshStandardMaterial({
             color: new THREE.Color(item.color),
             roughness: 0.35,
-            metalness: 0.12
+            metalness: 0.08
         });
 
         const topMat = new THREE.MeshStandardMaterial({
             map: topTexture,
-            roughness: 0.28,
-            metalness: 0.08
+            roughness: 0.25,
+            metalness: 0.05
         });
 
-        // In ExtrudeGeometry: index 0 is front/back faces, index 1 is bevel/sides
+        // Index 0: top/bottom cap faces, Index 1: beveled sides
         const blockMaterials = [topMat, sideMat];
         const mesh = new THREE.Mesh(blockGeo, blockMaterials);
 
-        // Grid Coordinates (-1, 0, 1 on X and Z)
+        // Coordinates (-1, 0, 1 on X and Z)
         const posX = (item.col - 1) * blockSpacing;
         const posZ = (item.row - 1) * blockSpacing;
 
@@ -230,7 +241,6 @@
             baseY: 0,
             targetY: 0,
             currentY: 0,
-            scaleY: 1.0,
             row: item.row,
             col: item.col,
             color: item.color,
@@ -260,7 +270,7 @@
         const cx = (e.clientX - (container.offsetLeft + container.clientWidth / 2)) / window.innerWidth;
         const cy = (e.clientY - (container.offsetTop + container.clientHeight / 2)) / window.innerHeight;
         targetRotY = -Math.PI / 8 + cx * 0.35;
-        targetRotX = Math.PI / 14 + cy * 0.25;
+        targetRotX = Math.PI / 14 + cy * 0.22;
     });
 
     container.addEventListener('mouseleave', () => {
@@ -277,7 +287,7 @@
         if (intersects.length > 0) {
             const hit = intersects[0].object;
             // Elastic click press bounce
-            hit.userData.currentY = -0.35;
+            hit.userData.currentY = -0.42;
         }
     });
 
@@ -329,10 +339,10 @@
         blocks.forEach((b) => {
             const u = b.userData;
             // 1. Organic wave floating: phase offset by row and col
-            const waveY = Math.sin(elapsedTime * 2.2 + (u.row + u.col) * 0.75) * 0.22;
+            const waveY = Math.sin(elapsedTime * 2.2 + (u.row + u.col) * 0.75) * 0.24;
 
             // 2. Hover elevation boost
-            const hoverTarget = u.isHovered ? 0.65 : 0;
+            const hoverTarget = u.isHovered ? 0.75 : 0;
             u.targetY = waveY + hoverTarget;
 
             // Smooth interpolation (lerp)
