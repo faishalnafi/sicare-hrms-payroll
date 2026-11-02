@@ -814,7 +814,7 @@ $pendingRequests = ViewHelper::getEmployeeCorrectionRequests($_SESSION['user_id'
                 formData.append('password', password);
                 formData.append('home_latitude', homeLat);
                 formData.append('home_longitude', homeLng);
-                formData.append('csrf_token', window.csrfToken);
+                formData.append('csrf_token', window.csrfToken || '<?= csrf_token() ?>');
 
                 fetch('/employee/profile/save', {
                     method: 'POST',
@@ -878,7 +878,7 @@ $pendingRequests = ViewHelper::getEmployeeCorrectionRequests($_SESSION['user_id'
         formData.append('new_value', newValue);
         formData.append('reason', reason);
         formData.append('file', fileInput.files[0]);
-        formData.append('csrf_token', window.csrfToken);
+        formData.append('csrf_token', window.csrfToken || '<?= csrf_token() ?>');
 
         fetch('/employee/profile/correction', {
             method: 'POST',

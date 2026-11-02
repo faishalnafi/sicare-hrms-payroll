@@ -443,6 +443,7 @@ for ($y = $year; $y >= $year - 1; $y--) {
         });
 
         const formData = new FormData(form);
+        formData.set('csrf_token', '<?= csrf_token() ?>');
         fetch('/employee/reflection/save', {
             method: 'POST',
             body: formData
@@ -513,6 +514,7 @@ for ($y = $year; $y >= $year - 1; $y--) {
 
                 const form = document.getElementById('reflectionForm');
                 const formData = new FormData(form);
+                formData.set('csrf_token', '<?= csrf_token() ?>');
 
                 fetch('/employee/reflection/save', {
                     method: 'POST',

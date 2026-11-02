@@ -403,25 +403,25 @@ if ($method === 'POST' && $path === 'auth/login') {
 } elseif ($method === 'POST' && ($path === 'admin/holidays/update' || $path === 'hrops/holidays/update' || $path === 'superadmin/system-settings/holidays/update')) {
     app(\App\Controllers\SettingsController::class)->updateHoliday();
     exit;
-} elseif ($method === 'GET' && $path === 'hrops/employees/list') {
+} elseif ($method === 'GET' && ($path === 'hrops/employees/list' || $path === 'superadmin/employees/list' || $path === 'admin/employees/list')) {
     app(\App\Controllers\EmployeeMasterController::class)->list();
     exit;
-} elseif ($method === 'POST' && $path === 'hrops/employees/save') {
+} elseif ($method === 'POST' && ($path === 'hrops/employees/save' || $path === 'superadmin/employees/save' || $path === 'admin/employees/save')) {
     app(\App\Controllers\EmployeeMasterController::class)->save();
     exit;
-} elseif ($method === 'POST' && $path === 'hrops/employees/delete') {
+} elseif ($method === 'POST' && ($path === 'hrops/employees/delete' || $path === 'superadmin/employees/delete' || $path === 'admin/employees/delete')) {
     app(\App\Controllers\EmployeeMasterController::class)->delete();
     exit;
-} elseif ($method === 'POST' && $path === 'hrops/employees/toggle-suspend') {
+} elseif ($method === 'POST' && ($path === 'hrops/employees/toggle-suspend' || $path === 'superadmin/employees/toggle-suspend' || $path === 'admin/employees/toggle-suspend')) {
     app(\App\Controllers\EmployeeMasterController::class)->toggleSuspend();
     exit;
-} elseif ($method === 'POST' && $path === 'hrops/employees/empty-trash') {
+} elseif ($method === 'POST' && ($path === 'hrops/employees/empty-trash' || $path === 'superadmin/employees/empty-trash' || $path === 'admin/employees/empty-trash')) {
     app(\App\Controllers\EmployeeMasterController::class)->emptyTrash();
     exit;
-} elseif ($method === 'POST' && $path === 'hrops/employees/delete-permanent') {
+} elseif ($method === 'POST' && ($path === 'hrops/employees/delete-permanent' || $path === 'superadmin/employees/delete-permanent' || $path === 'admin/employees/delete-permanent')) {
     app(\App\Controllers\EmployeeMasterController::class)->deletePermanent();
     exit;
-} elseif ($method === 'POST' && $path === 'hrops/employees/restore') {
+} elseif ($method === 'POST' && ($path === 'hrops/employees/restore' || $path === 'superadmin/employees/restore' || $path === 'admin/employees/restore')) {
     app(\App\Controllers\EmployeeMasterController::class)->restore();
     exit;
 } elseif ($method === 'POST' && $path === 'superadmin/users/reset-profile') {

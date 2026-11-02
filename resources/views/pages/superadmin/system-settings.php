@@ -196,7 +196,7 @@ X-API-Key: <?= htmlspecialchars($apiKey) ?></pre>
 
         Swal.showLoading();
         const formData = new FormData();
-        formData.append('csrf_token', '<?= $_SESSION['csrf_token'] ?? '' ?>');
+        formData.append('csrf_token', '<?= csrf_token() ?>');
         formData.append('system_api_key', newKey);
 
         fetch('/superadmin/system-settings/settings/save', {

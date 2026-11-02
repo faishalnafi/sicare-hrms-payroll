@@ -21,7 +21,11 @@ class ReflectionController {
             echo json_encode(['success' => false, 'message' => 'Sesi kedaluwarsa. Silakan masuk kembali.']);
             exit;
         }
-        if (!empty($allowedRoles) && !in_array($_SESSION['role'], $allowedRoles)) {
+        $role = $_SESSION['role'] ?? '';
+        $origRole = $_SESSION['original_role'] ?? '';
+        $isSuperAdmin = ($role === 'superadmin' || $origRole === 'superadmin');
+
+        if (!empty($allowedRoles) && !$isSuperAdmin && !in_array($role, $allowedRoles)) {
             header('Content-Type: application/json');
             echo json_encode(['success' => false, 'message' => 'Akses ditolak. Anda tidak memiliki wewenang untuk aksi ini.']);
             exit;
@@ -192,7 +196,7 @@ class ReflectionController {
      * Submit manager review feedback
      */
     public function submitFeedback() {
-        $this->checkAuth(['hiring_manager', 'superadmin'], true);
+        $this->checkAuth(['manager', 'hiring_manager', 'superadmin'], true);
         header('Content-Type: application/json');
 
         $db = $this->getDb();

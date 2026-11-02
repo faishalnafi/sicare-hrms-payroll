@@ -274,7 +274,7 @@ foreach ($jobOpenings as $job) {
         </div>
 
         <form id="publishForm" onsubmit="submitPublishJob(event)" class="space-y-4">
-            <input type="hidden" name="csrf_token" value="<?= $_SESSION['csrf_token'] ?? '' ?>">
+            <input type="hidden" name="csrf_token" value="<?= csrf_token() ?>">
             <input type="hidden" name="requisition_id" id="modal-req-id" value="">
 
             <div>
@@ -347,6 +347,7 @@ foreach ($jobOpenings as $job) {
         e.preventDefault();
         const form = document.getElementById('publishForm');
         const formData = new FormData(form);
+        formData.set('csrf_token', '<?= csrf_token() ?>');
 
         Swal.showLoading();
         fetch('/recruiter/requisitions/publish', {
@@ -385,7 +386,7 @@ foreach ($jobOpenings as $job) {
             if (result.isConfirmed) {
                 Swal.showLoading();
                 const formData = new FormData();
-                formData.append('csrf_token', '<?= $_SESSION['csrf_token'] ?? '' ?>');
+                formData.append('csrf_token', '<?= csrf_token() ?>');
                 formData.append('requisition_id', reqId);
 
                 fetch('/recruiter/requisitions/unpublish', {

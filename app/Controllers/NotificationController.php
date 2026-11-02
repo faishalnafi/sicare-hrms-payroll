@@ -22,6 +22,7 @@ class NotificationController {
         $userId = $_SESSION['user_id'] ?? null;
         $userRole = $_SESSION['role'] ?? '';
         $origRole = $_SESSION['original_role'] ?? '';
+        $userDeptId = $_SESSION['department_id'] ?? null;
         
         // Immediately close session to prevent blocking other concurrent AJAX requests for this user
         session_write_close();
@@ -149,33 +150,38 @@ class NotificationController {
 
         // --- 3. Business Event Notifications ---
         try {
-            $userDeptId = $_SESSION['department_id'] ?? null;
-
             // A. Manager Pending Approvals
-            if (in_array($userRole, ['hiring_manager', 'manager']) && !empty($userDeptId)) {
-                $stmtPendingLeaves = $db->prepare("
-                    SELECT COUNT(*) FROM employee_leave_requests elr
-                    JOIN users u ON elr.user_id = u.id
-                    WHERE u.department_id = ? AND elr.status = 'pending'
-                ");
-                $stmtPendingLeaves->execute([$userDeptId]);
-                $pendingLeaves = (int)$stmtPendingLeaves->fetchColumn();
+            if (in_array($userRole, ['hiring_manager', 'manager'])) {
+                if (empty($userDeptId) && !empty($userId)) {
+                    $stmtDept = $db->prepare("SELECT department_id FROM users WHERE id = ?");
+                    $stmtDept->execute([$userId]);
+                    $userDeptId = $stmtDept->fetchColumn() ?: null;
+                }
+                if (!empty($userDeptId)) {
+                    $stmtPendingLeaves = $db->prepare("
+                        SELECT COUNT(*) FROM employee_leave_requests elr
+                        JOIN users u ON elr.user_id = u.id
+                        WHERE u.department_id = ? AND elr.status = 'pending'
+                    ");
+                    $stmtPendingLeaves->execute([$userDeptId]);
+                    $pendingLeaves = (int)$stmtPendingLeaves->fetchColumn();
 
-                $stmtPendingClaims = $db->prepare("
-                    SELECT COUNT(*) FROM employee_reimbursement_claims erc
-                    JOIN users u ON erc.user_id = u.id
-                    WHERE u.department_id = ? AND erc.status = 'pending'
-                ");
-                $stmtPendingClaims->execute([$userDeptId]);
-                $pendingClaims = (int)$stmtPendingClaims->fetchColumn();
+                    $stmtPendingClaims = $db->prepare("
+                        SELECT COUNT(*) FROM employee_reimbursement_claims erc
+                        JOIN users u ON erc.user_id = u.id
+                        WHERE u.department_id = ? AND erc.status = 'pending'
+                    ");
+                    $stmtPendingClaims->execute([$userDeptId]);
+                    $pendingClaims = (int)$stmtPendingClaims->fetchColumn();
 
-                if ($pendingLeaves > 0 || $pendingClaims > 0) {
-                    $events[] = [
-                        'id' => 'manager_pending_' . ($pendingLeaves + $pendingClaims),
-                        'type' => 'approval',
-                        'title' => 'Persetujuan Tim Menunggu',
-                        'message' => "Terdapat " . ($pendingLeaves > 0 ? "$pendingLeaves cuti " : "") . ($pendingClaims > 0 ? "$pendingClaims klaim " : "") . "staf yang menunggu persetujuan Anda."
-                    ];
+                    if ($pendingLeaves > 0 || $pendingClaims > 0) {
+                        $events[] = [
+                            'id' => 'manager_pending_' . ($pendingLeaves + $pendingClaims),
+                            'type' => 'approval',
+                            'title' => 'Persetujuan Tim Menunggu',
+                            'message' => "Terdapat " . ($pendingLeaves > 0 ? "$pendingLeaves cuti " : "") . ($pendingClaims > 0 ? "$pendingClaims klaim " : "") . "staf yang menunggu persetujuan Anda."
+                        ];
+                    }
                 }
             }
 

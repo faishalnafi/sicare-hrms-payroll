@@ -365,6 +365,7 @@ function getMoodBadge($mood) {
 
                 const form = document.getElementById('feedbackForm');
                 const formData = new FormData(form);
+                formData.set('csrf_token', '<?= csrf_token() ?>');
 
                 fetch('/manager/reflection/feedback', {
                     method: 'POST',
