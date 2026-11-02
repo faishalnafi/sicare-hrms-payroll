@@ -1,6 +1,7 @@
 <?php
+use App\Services\ViewHelper;
+
 // Employee ESS Self-Reflection Dashboard
-$db = \App\Config\Database::getInstance()->getConnection();
 $userId = $_SESSION['user_id'] ?? '';
 
 if (empty($userId)) {
@@ -12,25 +13,12 @@ if (empty($userId)) {
 $currentPeriod = date('Y') . '-Q' . ceil(date('n') / 3);
 $selectedPeriod = $_GET['period'] ?? $currentPeriod;
 
-// Fetch employee's reflection for the selected period
-$stmt = $db->prepare("SELECT * FROM self_reflections WHERE user_id = :user_id AND period = :period");
-$stmt->execute(['user_id' => $userId, 'period' => $selectedPeriod]);
-$reflection = $stmt->fetch();
+// Fetch employee's reflection and manager details for the selected period
+[$reflection, $managerName] = ViewHelper::getEmployeeReflection($userId, $selectedPeriod);
 
 // Determine status
 $status = $reflection['status'] ?? 'none';
 $isLocked = ($status === 'submitted' || $status === 'completed');
-
-// Fetch manager details if feedback exists
-$managerName = '-';
-if (!empty($reflection['manager_feedback_by'])) {
-    $stmtMgr = $db->prepare("SELECT first_name, last_name FROM users WHERE id = :id");
-    $stmtMgr->execute(['id' => $reflection['manager_feedback_by']]);
-    $mgr = $stmtMgr->fetch();
-    if ($mgr) {
-        $managerName = $mgr['first_name'] . ' ' . $mgr['last_name'];
-    }
-}
 
 // Quarters selection list
 $availablePeriods = [];
@@ -56,7 +44,7 @@ for ($y = $year; $y >= $year - 1; $y--) {
                         <option value="<?= $ap ?>" <?= $ap === $selectedPeriod ? 'selected' : '' ?>><?= $ap ?></option>
                     <?php endforeach; ?>
                 </select>
-                <span class="material-symbols-outlined absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-on-surface-variant text-sm">arrow_drop_down</span>
+                
             </div>
         </div>
     </div>
@@ -153,6 +141,7 @@ for ($y = $year; $y >= $year - 1; $y--) {
 
         <!-- Form Body -->
         <form id="reflectionForm" onsubmit="submitReflectionForm(event)" class="p-6 space-y-6">
+            <?= csrfField() ?>
             <input type="hidden" name="period" value="<?= htmlspecialchars($selectedPeriod) ?>" />
             <input type="hidden" name="status" id="reflectionStatus" value="draft" />
 
@@ -266,9 +255,7 @@ for ($y = $year; $y >= $year - 1; $y--) {
                     
                     <?php
                     // Fetch personal journals
-                    $stmtJournals = $db->prepare("SELECT * FROM personal_journals WHERE user_id = :user_id ORDER BY created_at DESC");
-                    $stmtJournals->execute(['user_id' => $userId]);
-                    $journals = $stmtJournals->fetchAll();
+                    $journals = ViewHelper::getPersonalJournals($userId);
                     ?>
 
                     <div id="journalsHistoryList" class="space-y-3.5">
@@ -385,6 +372,7 @@ for ($y = $year; $y >= $year - 1; $y--) {
         const formData = new FormData();
         formData.append('title', title);
         formData.append('notes', notes);
+        formData.append('csrf_token', '<?= csrf_token() ?>');
 
         fetch('/employee/reflection/save-journal', {
             method: 'POST',
@@ -455,6 +443,7 @@ for ($y = $year; $y >= $year - 1; $y--) {
         });
 
         const formData = new FormData(form);
+        formData.set('csrf_token', '<?= csrf_token() ?>');
         fetch('/employee/reflection/save', {
             method: 'POST',
             body: formData
@@ -525,6 +514,7 @@ for ($y = $year; $y >= $year - 1; $y--) {
 
                 const form = document.getElementById('reflectionForm');
                 const formData = new FormData(form);
+                formData.set('csrf_token', '<?= csrf_token() ?>');
 
                 fetch('/employee/reflection/save', {
                     method: 'POST',
@@ -564,10 +554,11 @@ for ($y = $year; $y >= $year - 1; $y--) {
         });
     }
 
-    // Trigger compliance warning SweetAlert if ?warning=1 query param is set
+    // Trigger compliance warning SweetAlert if ?warning=1 query param is set (Excluded for Superadmin)
     (function() {
+        const isSuperAdmin = '<?= $sessRole ?>' === 'superadmin' || '<?= $_SESSION['original_role'] ?? '' ?>' === 'superadmin';
         const urlParams = new URLSearchParams(window.location.search);
-        if (urlParams.get('warning') === '1') {
+        if (urlParams.get('warning') === '1' && !isSuperAdmin) {
             setTimeout(() => {
                 Swal.fire({
                     title: 'Refleksi Kinerja Wajib Diisi!',

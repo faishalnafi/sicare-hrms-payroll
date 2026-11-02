@@ -1,6 +1,7 @@
 <?php
+use App\Services\ViewHelper;
+
 // HR Operations: Corporate Employee Self-Reflection & IDP Tracker (GDPR & UU PDP Masked)
-$db = \App\Config\Database::getInstance()->getConnection();
 if (session_status() === PHP_SESSION_NONE) session_start();
 $userId = $_SESSION['user_id'] ?? '';
 
@@ -13,33 +14,7 @@ $parts = explode('-Q', $selectedPeriod);
 $year = isset($parts[0]) ? (int)$parts[0] : (int)date('Y');
 $quarter = isset($parts[1]) ? (int)$parts[1] : (int)ceil(date('n') / 3);
 
-// Fetch all reflections in the company for the selected period
-$stmtRef = $db->prepare("
-    SELECT r.*, u.first_name, u.last_name, u.email, u.employee_id, u.job_title, u.profile_picture, d.name AS department_name,
-           COALESCE(latest_mood.mood_rating, 'neutral') AS mood_rating,
-           COALESCE(latest_mood.workload_rating, 3) AS workload_rating
-    FROM self_reflections r
-    JOIN users u ON r.user_id = u.id
-    LEFT JOIN departments d ON u.department_id = d.id
-    LEFT JOIN (
-        SELECT mp1.*
-        FROM mood_pulses mp1
-        INNER JOIN (
-            SELECT user_id, MAX(created_at) as max_created
-            FROM mood_pulses
-            WHERE YEAR(created_at) = :year AND QUARTER(created_at) = :quarter
-            GROUP BY user_id
-        ) mp2 ON mp1.user_id = mp2.user_id AND mp1.created_at = mp2.max_created
-    ) latest_mood ON r.user_id = latest_mood.user_id
-    WHERE r.period = :period AND r.status IN ('submitted', 'completed')
-    ORDER BY r.status DESC, r.updated_at DESC
-");
-$stmtRef->execute([
-    'period' => $selectedPeriod,
-    'year' => $year,
-    'quarter' => $quarter
-]);
-$reflections = $stmtRef->fetchAll(PDO::FETCH_ASSOC);
+$reflections = ViewHelper::getReflectionDashboardData('hrops', $selectedPeriod);
 
 // Calculate Aggregates for HR Ops Dashboard
 $moodCounts = ['excellent' => 0, 'good' => 0, 'neutral' => 0, 'tired' => 0, 'stressed' => 0];
@@ -87,7 +62,7 @@ for ($y = $year; $y >= $year - 1; $y--) {
                         <option value="<?= $ap ?>" <?= $ap === $selectedPeriod ? 'selected' : '' ?>><?= $ap ?></option>
                     <?php endforeach; ?>
                 </select>
-                <span class="material-symbols-outlined absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-on-surface-variant text-sm">arrow_drop_down</span>
+                
             </div>
         </div>
     </div>
@@ -104,7 +79,7 @@ for ($y = $year; $y >= $year - 1; $y--) {
     <!-- Aggregate Analytics Dashboard Grid -->
     <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
         <!-- Average Workload Card -->
-        <div class="bg-surface-container-lowest rounded-2xl p-5 border border-outline-variant/15 shadow-sm space-y-3">
+        <div class="stat-card-scale bg-surface-container-lowest rounded-2xl p-5 border border-outline-variant/15 shadow-sm space-y-3">
             <div class="flex items-center justify-between">
                 <span class="text-[10px] font-bold text-on-surface-variant uppercase tracking-wider">Beban Kerja Rata-Rata</span>
                 <span class="material-symbols-outlined text-primary bg-primary/5 p-2 rounded-lg text-sm">speed</span>
@@ -119,7 +94,7 @@ for ($y = $year; $y >= $year - 1; $y--) {
         </div>
 
         <!-- Average Core Values Card -->
-        <div class="bg-surface-container-lowest rounded-2xl p-5 border border-outline-variant/15 shadow-sm space-y-3">
+        <div class="stat-card-scale bg-surface-container-lowest rounded-2xl p-5 border border-outline-variant/15 shadow-sm space-y-3">
             <div class="flex items-center justify-between">
                 <span class="text-[10px] font-bold text-on-surface-variant uppercase tracking-wider">Implementasi Budaya (Values)</span>
                 <span class="material-symbols-outlined text-amber-500 bg-amber-50 p-2 rounded-lg text-sm">stars</span>
@@ -134,7 +109,7 @@ for ($y = $year; $y >= $year - 1; $y--) {
         </div>
 
         <!-- Submission Status Card -->
-        <div class="bg-surface-container-lowest rounded-2xl p-5 border border-outline-variant/15 shadow-sm space-y-3">
+        <div class="stat-card-scale bg-surface-container-lowest rounded-2xl p-5 border border-outline-variant/15 shadow-sm space-y-3">
             <div class="flex items-center justify-between">
                 <span class="text-[10px] font-bold text-on-surface-variant uppercase tracking-wider">Status Partisipasi</span>
                 <span class="material-symbols-outlined text-blue-600 bg-blue-50 p-2 rounded-lg text-sm">assignment_turned_in</span>
@@ -152,7 +127,7 @@ for ($y = $year; $y >= $year - 1; $y--) {
         </div>
 
         <!-- Mood / Sentimen Indeks -->
-        <div class="bg-surface-container-lowest rounded-2xl p-5 border border-outline-variant/15 shadow-sm space-y-3">
+        <div class="stat-card-scale bg-surface-container-lowest rounded-2xl p-5 border border-outline-variant/15 shadow-sm space-y-3">
             <div class="flex items-center justify-between">
                 <span class="text-[10px] font-bold text-on-surface-variant uppercase tracking-wider">Indeks Mood Dominan</span>
                 <span class="material-symbols-outlined text-green-600 bg-green-50 p-2 rounded-lg text-sm">mood</span>
@@ -218,7 +193,7 @@ for ($y = $year; $y >= $year - 1; $y--) {
                                     <div class="flex items-center gap-3">
                                         <?php 
                                         $hash = md5(strtolower(trim($ref['email'])));
-                                        $avatar = !empty($ref['profile_picture']) ? $ref['profile_picture'] : "https://www.gravatar.com/avatar/{$hash}?d=404&s=150";
+                                        $avatar = !empty($ref['profile_picture']) ? $ref['profile_picture'] : "https://www.gravatar.com/avatar/{$hash}?d=identicon&s=150";
                                         ?>
                                         <img src="<?= htmlspecialchars($avatar) ?>" alt="Avatar" class="w-10 h-10 rounded-full object-cover border" onerror="window.handleAvatarError(this, '<?= $hash ?>')" />
                                         <div>

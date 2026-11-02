@@ -7,7 +7,7 @@ use PDO;
 
 class ApprovalController {
     
-    private function checkAccess() {
+    private function checkAccess(bool $requireCsrf = false) {
         if (session_status() === PHP_SESSION_NONE) {
             session_start();
         }
@@ -18,13 +18,24 @@ class ApprovalController {
             exit;
         }
         $role = $_SESSION['role'] ?? '';
-        // Only executive and superadmin can approve/reject
-        $allowed = in_array($role, ['executive', 'superadmin']);
+        $origRole = $_SESSION['original_role'] ?? '';
+        $isSuperAdmin = ($role === 'superadmin' || $origRole === 'superadmin');
+        
+        // Executive, Superadmin, and Admin
+        $allowed = ($isSuperAdmin || in_array($role, ['executive', 'admin']));
         if (!$allowed) {
             header('Content-Type: application/json');
             http_response_code(403);
-            echo json_encode(['success' => false, 'message' => 'Access denied: Executive or Superadmin role required.']);
+            echo json_encode(['success' => false, 'message' => 'Akses ditolak: Wewenang Eksekutif, Admin, atau Superadmin diperlukan.']);
             exit;
+        }
+        if ($requireCsrf) {
+            $token = $_POST['csrf_token'] ?? $_SERVER['HTTP_X_CSRF_TOKEN'] ?? '';
+            if (empty($token) || !hash_equals($_SESSION['csrf_token'] ?? '', $token)) {
+                header('Content-Type: application/json');
+                echo json_encode(['success' => false, 'message' => 'Token CSRF tidak valid atau kedaluwarsa. Silakan muat ulang halaman.']);
+                exit;
+            }
         }
     }
 
@@ -66,7 +77,7 @@ class ApprovalController {
     }
 
     public function approve() {
-        $this->checkAccess();
+        $this->checkAccess(true);
         header('Content-Type: application/json');
 
         if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
@@ -176,7 +187,7 @@ class ApprovalController {
     }
 
     public function reject() {
-        $this->checkAccess();
+        $this->checkAccess(true);
         header('Content-Type: application/json');
 
         if ($_SERVER['REQUEST_METHOD'] !== 'POST') {

@@ -13,8 +13,17 @@ class SettingsController {
 
     private $db;
 
-    public function __construct() {
-        $this->db = Database::getInstance()->getConnection();
+    public function __construct(PDO $db) {
+        $this->db = $db;
+    }
+
+    /**
+     * Validate CSRF token from POST body, HTTP header, or JSON payload.
+     */
+    private function validateCsrf(?array $jsonInput = null): bool {
+        if (session_status() === PHP_SESSION_NONE) session_start();
+        $token = $_POST['csrf_token'] ?? $_SERVER['HTTP_X_CSRF_TOKEN'] ?? ($jsonInput['csrf_token'] ?? '');
+        return !empty($token) && hash_equals($_SESSION['csrf_token'] ?? '', $token);
     }
 
     /**
@@ -63,10 +72,16 @@ class SettingsController {
      */
     public function save() {
         header('Content-Type: application/json');
-        session_start();
+        if (session_status() === PHP_SESSION_NONE) session_start();
 
         if (!isset($_SESSION['user_id']) || !in_array($_SESSION['role'], ['superadmin', 'admin', 'hr_ops'])) {
             echo json_encode(['success' => false, 'message' => 'Akses ditolak.']);
+            return;
+        }
+
+        // CSRF Token Validation
+        if (!$this->validateCsrf()) {
+            echo json_encode(['success' => false, 'message' => 'Token CSRF tidak valid atau kedaluwarsa. Silakan muat ulang halaman.']);
             return;
         }
 
@@ -89,6 +104,7 @@ class SettingsController {
             'app_idle_timeout_sec',
             'app_idle_countdown_sec',
             'google_maps_api_key',
+            'system_api_key',
         ];
 
         try {
@@ -203,7 +219,8 @@ class SettingsController {
                     'app_logo_type' => $this->get('app_logo_type', 'icon'),
                     'app_logo_icon' => $this->get('app_logo_icon', 'local_police'),
                     'app_logo_image' => $this->get('app_logo_image', ''),
-                    'google_maps_api_key' => $this->get('google_maps_api_key', ''),
+                    'google_maps_api_key' => $this->get('google_maps_api_key',
+            'system_api_key', ''),
                 ]
             ]);
         } catch (Exception $e) {
@@ -216,10 +233,16 @@ class SettingsController {
      */
     public function addHoliday() {
         header('Content-Type: application/json');
-        session_start();
+        if (session_status() === PHP_SESSION_NONE) session_start();
 
         if (!isset($_SESSION['user_id']) || !in_array($_SESSION['role'], ['superadmin', 'admin', 'hr_ops'])) {
             echo json_encode(['success' => false, 'message' => 'Akses ditolak.']);
+            return;
+        }
+
+        // CSRF Token Validation
+        if (!$this->validateCsrf()) {
+            echo json_encode(['success' => false, 'message' => 'Token CSRF tidak valid atau kedaluwarsa. Silakan muat ulang halaman.']);
             return;
         }
 
@@ -255,10 +278,16 @@ class SettingsController {
      */
     public function deleteHoliday() {
         header('Content-Type: application/json');
-        session_start();
+        if (session_status() === PHP_SESSION_NONE) session_start();
 
         if (!isset($_SESSION['user_id']) || !in_array($_SESSION['role'], ['superadmin', 'admin', 'hr_ops'])) {
             echo json_encode(['success' => false, 'message' => 'Akses ditolak.']);
+            return;
+        }
+
+        // CSRF Token Validation
+        if (!$this->validateCsrf()) {
+            echo json_encode(['success' => false, 'message' => 'Token CSRF tidak valid atau kedaluwarsa. Silakan muat ulang halaman.']);
             return;
         }
 
@@ -284,10 +313,16 @@ class SettingsController {
      */
     public function updateHoliday() {
         header('Content-Type: application/json');
-        session_start();
+        if (session_status() === PHP_SESSION_NONE) session_start();
 
         if (!isset($_SESSION['user_id']) || !in_array($_SESSION['role'], ['superadmin', 'admin', 'hr_ops'])) {
             echo json_encode(['success' => false, 'message' => 'Akses ditolak.']);
+            return;
+        }
+
+        // CSRF Token Validation
+        if (!$this->validateCsrf()) {
+            echo json_encode(['success' => false, 'message' => 'Token CSRF tidak valid atau kedaluwarsa. Silakan muat ulang halaman.']);
             return;
         }
 
@@ -323,7 +358,8 @@ class SettingsController {
      */
     public function fetchGoogleHolidays() {
         header('Content-Type: application/json');
-        session_start();
+        if (session_status() === PHP_SESSION_NONE) session_start();
+
         if (!isset($_SESSION['user_id']) || !in_array($_SESSION['role'], ['superadmin', 'admin', 'hr_ops'])) {
             echo json_encode(['success' => false, 'message' => 'Akses ditolak.']);
             return;
@@ -418,7 +454,7 @@ class SettingsController {
      */
     public function importGoogleHolidays() {
         header('Content-Type: application/json');
-        session_start();
+        if (session_status() === PHP_SESSION_NONE) session_start();
 
         if (!isset($_SESSION['user_id']) || !in_array($_SESSION['role'], ['superadmin', 'admin', 'hr_ops'])) {
             echo json_encode(['success' => false, 'message' => 'Akses ditolak.']);
@@ -426,6 +462,12 @@ class SettingsController {
         }
 
         $input = json_decode(file_get_contents('php://input'), true);
+
+        // CSRF Token Validation
+        if (!$this->validateCsrf($input)) {
+            echo json_encode(['success' => false, 'message' => 'Token CSRF tidak valid atau kedaluwarsa. Silakan muat ulang halaman.']);
+            return;
+        }
         $holidays = $input['holidays'] ?? [];
 
         if (!is_array($holidays)) {

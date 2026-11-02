@@ -108,6 +108,24 @@ $pathLabels = [
     ],
     'superadmin/audit' => [
         'title' => 'Security Audit Logs & Aktivitas Sistem',
+    ],
+    'superadmin/apps' => [
+        'title' => 'Aplikasi & Ekosistem Modul',
+    ],
+    'superadmin/api' => [
+        'title' => 'Manajemen API & Integrasi Sistem',
+    ],
+    'superadmin/approvals/executive' => [
+        'title' => 'Persetujuan Level Eksekutif',
+    ],
+    'superadmin/approvals/manager' => [
+        'title' => 'Persetujuan Level Manager',
+    ],
+    'superadmin/approvals/hrops' => [
+        'title' => 'Persetujuan Level HR Ops',
+    ],
+    'superadmin/approvals/recruiter' => [
+        'title' => 'Persetujuan Level Recruiter',
     ]
 ];
 
@@ -124,14 +142,11 @@ $pageInfo = $pathLabels[$requestedPath] ?? [
     </div>
 
     <!-- Center Card -->
-    <div class="bg-surface-container-lowest border border-outline-variant/15 rounded-3xl p-16 shadow-[0_8px_30px_rgba(0,6,102,0.015)] flex flex-col items-center justify-center text-center min-h-[340px]">
-        <!-- Floating glassmorphic circle -->
-        <div class="w-32 h-32 rounded-full bg-gradient-to-tr from-primary/5 to-primary/15 flex items-center justify-center animate-float shadow-inner border border-white/20 mb-6">
-            <span class="material-symbols-outlined text-[48px] text-primary/70 select-none animate-pulse" style="font-size: 48px;">construction</span>
-        </div>
+    <div class="bg-surface-container-lowest border border-outline-variant/15 rounded-3xl p-12 sm:p-16 shadow-sm flex flex-col items-center justify-center text-center min-h-[320px]">
+        <span class="material-symbols-outlined mb-4 text-on-surface-variant opacity-40 font-normal select-none" style="font-size: 52px; font-variation-settings: 'FILL' 0, 'wght' 300;">construction</span>
         
-        <h3 class="text-xl font-bold text-on-surface font-headline mb-3">Sedang Dibangun</h3>
-        <p class="text-on-surface-variant text-sm leading-relaxed max-w-xl">
+        <h3 class="text-xl font-bold text-on-surface font-headline mb-2">Sedang Dibangun</h3>
+        <p class="text-on-surface-variant text-sm leading-relaxed max-w-md">
             Halaman <strong><?= htmlspecialchars($pageInfo['title']) ?></strong> ini merupakan bagian dari arsitektur peran spesifik, sesuai alur kerja. Akan segera diimplementasikan fitur fungsionalnya.
         </p>
     </div>

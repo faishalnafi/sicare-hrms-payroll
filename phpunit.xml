@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<phpunit
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:noNamespaceSchemaLocation="https://schema.phpunit.de/11.0/phpunit.xsd"
+    bootstrap="vendor/autoload.php"
+    colors="true"
+    failOnWarning="true"
+    failOnRisky="true"
+>
+    <testsuites>
+        <testsuite name="Unit">
+            <directory>tests/Unit</directory>
+        </testsuite>
+        <testsuite name="Feature">
+            <directory>tests/Feature</directory>
+        </testsuite>
+    </testsuites>
+
+    <source>
+        <include>
+            <directory suffix=".php">app/Services</directory>
+            <directory suffix=".php">app/Models</directory>
+            <file>app/helpers.php</file>
+        </include>
+        <exclude>
+            <directory>vendor</directory>
+            <directory>app/Config</directory>
+        </exclude>
+    </source>
+
+    <php>
+        <ini name="date.timezone" value="Asia/Jakarta"/>
+        <ini name="error_reporting" value="E_ALL"/>
+        <env name="APP_ENV" value="testing"/>
+        <env name="DB_CONNECTION" value="sqlite"/>
+    </php>
+</phpunit>

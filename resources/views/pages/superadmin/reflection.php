@@ -1,6 +1,7 @@
 <?php
+use App\Services\ViewHelper;
+
 // Superadmin: Corporate Employee Self-Reflection Reviews (Unrestricted Access)
-$db = \App\Config\Database::getInstance()->getConnection();
 if (session_status() === PHP_SESSION_NONE) session_start();
 $userId = $_SESSION['user_id'] ?? '';
 
@@ -8,44 +9,11 @@ $userId = $_SESSION['user_id'] ?? '';
 $currentPeriod = date('Y') . '-Q' . ceil(date('n') / 3);
 $selectedPeriod = $_GET['period'] ?? $currentPeriod;
 
-// Parse year and quarter for mood pulses filter
-$parts = explode('-Q', $selectedPeriod);
-$year = isset($parts[0]) ? (int)$parts[0] : (int)date('Y');
-$quarter = isset($parts[1]) ? (int)$parts[1] : (int)ceil(date('n') / 3);
-
-// Fetch all reflections in the company for the selected period (NO ANONYMITY, superadmin can see names of everyone)
-$stmtRef = $db->prepare("
-    SELECT r.*, u.first_name, u.last_name, u.email, u.employee_id, u.job_title, u.profile_picture, d.name AS department_name,
-           COALESCE(latest_mood.mood_rating, 'neutral') AS mood_rating,
-           COALESCE(latest_mood.workload_rating, 3) AS workload_rating
-    FROM self_reflections r
-    JOIN users u ON r.user_id = u.id
-    LEFT JOIN departments d ON u.department_id = d.id
-    LEFT JOIN (
-        SELECT mp1.*
-        FROM mood_pulses mp1
-        INNER JOIN (
-            SELECT user_id, MAX(created_at) as max_created
-            FROM mood_pulses
-            WHERE YEAR(created_at) = :year AND QUARTER(created_at) = :quarter
-            GROUP BY user_id
-        ) mp2 ON mp1.user_id = mp2.user_id AND mp1.created_at = mp2.max_created
-    ) latest_mood ON r.user_id = latest_mood.user_id
-    WHERE r.period = :period
-    ORDER BY r.status DESC, r.updated_at DESC
-");
-$stmtRef->execute([
-    'period' => $selectedPeriod,
-    'year' => $year,
-    'quarter' => $quarter
-]);
-$reflections = $stmtRef->fetchAll(PDO::FETCH_ASSOC);
+$reflections = ViewHelper::getReflectionDashboardData('superadmin', $selectedPeriod);
 
 // Fetch personal journals (only available to Employee and Superadmin)
 foreach ($reflections as &$ref) {
-    $stmtJournals = $db->prepare("SELECT * FROM personal_journals WHERE user_id = :user_id ORDER BY created_at DESC");
-    $stmtJournals->execute(['user_id' => $ref['user_id']]);
-    $ref['journals'] = $stmtJournals->fetchAll(PDO::FETCH_ASSOC);
+    $ref['journals'] = ViewHelper::getPersonalJournals($ref['user_id']);
 }
 unset($ref);
 
@@ -108,7 +76,7 @@ function getMoodBadgeSA($mood) {
                         <option value="<?= $ap ?>" <?= $ap === $selectedPeriod ? 'selected' : '' ?>><?= $ap ?></option>
                     <?php endforeach; ?>
                 </select>
-                <span class="material-symbols-outlined absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-on-surface-variant text-sm">arrow_drop_down</span>
+                
             </div>
         </div>
     </div>
@@ -116,7 +84,7 @@ function getMoodBadgeSA($mood) {
     <!-- Aggregate Analytics Dashboard Grid -->
     <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
         <!-- Average Workload Card -->
-        <div class="bg-surface-container-lowest rounded-2xl p-5 border border-outline-variant/15 shadow-sm space-y-3">
+        <div class="stat-card-scale bg-surface-container-lowest rounded-2xl p-5 border border-outline-variant/15 shadow-sm space-y-3">
             <div class="flex items-center justify-between">
                 <span class="text-[10px] font-bold text-on-surface-variant uppercase tracking-wider">Beban Kerja Rata-Rata</span>
                 <span class="material-symbols-outlined text-primary bg-primary/5 p-2 rounded-lg text-sm">speed</span>
@@ -131,7 +99,7 @@ function getMoodBadgeSA($mood) {
         </div>
 
         <!-- Average Core Values Card -->
-        <div class="bg-surface-container-lowest rounded-2xl p-5 border border-outline-variant/15 shadow-sm space-y-3">
+        <div class="stat-card-scale bg-surface-container-lowest rounded-2xl p-5 border border-outline-variant/15 shadow-sm space-y-3">
             <div class="flex items-center justify-between">
                 <span class="text-[10px] font-bold text-on-surface-variant uppercase tracking-wider">Implementasi Budaya (Values)</span>
                 <span class="material-symbols-outlined text-amber-500 bg-amber-50 p-2 rounded-lg text-sm">stars</span>
@@ -146,7 +114,7 @@ function getMoodBadgeSA($mood) {
         </div>
 
         <!-- Submission Status Card -->
-        <div class="bg-surface-container-lowest rounded-2xl p-5 border border-outline-variant/15 shadow-sm space-y-3">
+        <div class="stat-card-scale bg-surface-container-lowest rounded-2xl p-5 border border-outline-variant/15 shadow-sm space-y-3">
             <div class="flex items-center justify-between">
                 <span class="text-[10px] font-bold text-on-surface-variant uppercase tracking-wider">Status Partisipasi</span>
                 <span class="material-symbols-outlined text-blue-600 bg-blue-50 p-2 rounded-lg text-sm">assignment_turned_in</span>
@@ -168,7 +136,7 @@ function getMoodBadgeSA($mood) {
         </div>
 
         <!-- Mood / Sentimen Indeks -->
-        <div class="bg-surface-container-lowest rounded-2xl p-5 border border-outline-variant/15 shadow-sm space-y-3">
+        <div class="stat-card-scale bg-surface-container-lowest rounded-2xl p-5 border border-outline-variant/15 shadow-sm space-y-3">
             <div class="flex items-center justify-between">
                 <span class="text-[10px] font-bold text-on-surface-variant uppercase tracking-wider">Indeks Mood Dominan</span>
                 <span class="material-symbols-outlined text-green-600 bg-green-50 p-2 rounded-lg text-sm">mood</span>
@@ -229,14 +197,14 @@ function getMoodBadgeSA($mood) {
                     <?php else: ?>
                         <?php foreach ($reflections as $ref): 
                             $mood = getMoodBadgeSA($ref['mood_rating']);
-                            $searchStr = strtolower($ref['first_name'] . ' ' . $ref['last_name'] . ' ' . ($ref['employee_id'] ?? '') . ' ' . ($ref['job_title'] ?? '') . ' ' . ($ref['department_name'] ?? '') . ' ' . $ref['status']);
+                            $searchStr = strtolower($ref['first_name'] . ' ' . $ref['last_name'] . ' ' . ($ref['employee_id'] ?? '') . ' ' . ($ref['job_title'] ?? '') . ' ' . ($ref['department_name'] ?? '') . ' ' . ($ref['status']));
                         ?>
                             <tr class="reflection-row hover:bg-surface-container-low/30 transition-colors" data-search="<?= htmlspecialchars($searchStr) ?>">
                                 <td class="py-4 px-6">
                                     <div class="flex items-center gap-3">
                                         <?php 
                                         $hash = md5(strtolower(trim($ref['email'])));
-                                        $avatar = !empty($ref['profile_picture']) ? $ref['profile_picture'] : "https://www.gravatar.com/avatar/{$hash}?d=404&s=150";
+                                        $avatar = !empty($ref['profile_picture']) ? $ref['profile_picture'] : "https://www.gravatar.com/avatar/{$hash}?d=identicon&s=150";
                                         ?>
                                         <img src="<?= htmlspecialchars($avatar) ?>" alt="Avatar" class="w-10 h-10 rounded-full object-cover border" onerror="window.handleAvatarError(this, '<?= $hash ?>')" />
                                         <div>

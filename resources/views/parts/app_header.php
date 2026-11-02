@@ -1,27 +1,26 @@
 <?php
+use App\Services\ViewHelper;
+
 $sessName  = $_SESSION['name'] ?? 'User';
 $sessEmail = $_SESSION['email'] ?? '';
 $sessRole  = $_SESSION['role'] ?? 'Employee';
 $profilePic = $_SESSION['profile_picture'] ?? null;
 
-$db = \App\Config\Database::getInstance()->getConnection();
-$appName = $db->query("SELECT `value` FROM global_settings WHERE `key` = 'app_name' LIMIT 1")->fetchColumn() ?: 'siCare';
-$appLogoIcon = $db->query("SELECT `value` FROM global_settings WHERE `key` = 'app_logo_icon' LIMIT 1")->fetchColumn() ?: 'local_police';
-$appLogoType = $db->query("SELECT `value` FROM global_settings WHERE `key` = 'app_logo_type' LIMIT 1")->fetchColumn() ?: 'icon';
-$appLogoImage = $db->query("SELECT `value` FROM global_settings WHERE `key` = 'app_logo_image' LIMIT 1")->fetchColumn() ?: '';
+$appName      = ViewHelper::getSetting('app_name', 'siCare');
+$appLogoIcon  = ViewHelper::getSetting('app_logo_icon', 'local_police');
+$appLogoType  = ViewHelper::getSetting('app_logo_type', 'icon');
+$appLogoImage = ViewHelper::getSetting('app_logo_image', '');
 
 if (isset($_SESSION['user_id'])) {
-    $userQuery = $db->prepare("SELECT profile_picture FROM users WHERE id = :id");
-    $userQuery->execute(['id' => $_SESSION['user_id']]);
-    $dbUser = $userQuery->fetch();
-    if ($dbUser && !empty($dbUser['profile_picture'])) {
-        $profilePic = $dbUser['profile_picture'];
+    $userProf = ViewHelper::getUserProfile($_SESSION['user_id']);
+    if ($userProf && !empty($userProf['profile_picture'])) {
+        $profilePic = $userProf['profile_picture'];
     }
 }
 
 if (empty($profilePic)) {
     $hash = md5(strtolower(trim($sessEmail)));
-    $profilePic = "https://www.gravatar.com/avatar/{$hash}?d=404&s=200";
+    $profilePic = "https://www.gravatar.com/avatar/{$hash}?d=identicon&s=200";
 }
 ?>
 <header class="w-full top-0 sticky z-30 bg-[#f8f9fa]/95 backdrop-blur-sm border-b border-outline-variant/20 shadow-sm">
@@ -60,7 +59,7 @@ if (empty($profilePic)) {
                     <p class="text-sm font-semibold text-on-surface"><?php echo htmlspecialchars($sessName); ?></p>
                 </div>
                 <?php $sessEmailHash = md5(strtolower(trim($sessEmail))); ?>
-                <img alt="User Avatar" class="w-10 h-10 rounded-full border-2 border-primary/20 shadow-sm object-cover bg-white" src="<?php echo htmlspecialchars($profilePic); ?>" onerror="window.handleAvatarError(this, '<?= $sessEmailHash ?>')" />
+                <img referrerpolicy="no-referrer" alt="User Avatar" class="w-10 h-10 rounded-full border-2 border-primary/20 shadow-sm object-cover bg-white" src="<?php echo htmlspecialchars($profilePic); ?>" onerror="window.handleAvatarError(this, '<?= $sessEmailHash ?>')" />
             </div>
         </div>
     </div>

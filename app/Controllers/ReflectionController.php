@@ -12,7 +12,7 @@ class ReflectionController {
         return Database::getInstance()->getConnection();
     }
 
-    private function checkAuth($allowedRoles = []) {
+    private function checkAuth($allowedRoles = [], bool $requireCsrf = false) {
         if (session_status() === PHP_SESSION_NONE) {
             session_start();
         }
@@ -21,10 +21,22 @@ class ReflectionController {
             echo json_encode(['success' => false, 'message' => 'Sesi kedaluwarsa. Silakan masuk kembali.']);
             exit;
         }
-        if (!empty($allowedRoles) && !in_array($_SESSION['role'], $allowedRoles)) {
+        $role = $_SESSION['role'] ?? '';
+        $origRole = $_SESSION['original_role'] ?? '';
+        $isSuperAdmin = ($role === 'superadmin' || $origRole === 'superadmin');
+
+        if (!empty($allowedRoles) && !$isSuperAdmin && !in_array($role, $allowedRoles)) {
             header('Content-Type: application/json');
             echo json_encode(['success' => false, 'message' => 'Akses ditolak. Anda tidak memiliki wewenang untuk aksi ini.']);
             exit;
+        }
+        if ($requireCsrf) {
+            $token = $_POST['csrf_token'] ?? $_SERVER['HTTP_X_CSRF_TOKEN'] ?? '';
+            if (empty($token) || !hash_equals($_SESSION['csrf_token'] ?? '', $token)) {
+                header('Content-Type: application/json');
+                echo json_encode(['success' => false, 'message' => 'Token CSRF tidak valid atau kedaluwarsa. Silakan muat ulang halaman.']);
+                exit;
+            }
         }
     }
 
@@ -32,7 +44,7 @@ class ReflectionController {
      * Save or Submit employee self-reflection
      */
     public function save() {
-        $this->checkAuth(['employee']);
+        $this->checkAuth(['employee'], true);
         header('Content-Type: application/json');
 
         $db = $this->getDb();
@@ -184,7 +196,7 @@ class ReflectionController {
      * Submit manager review feedback
      */
     public function submitFeedback() {
-        $this->checkAuth(['hiring_manager', 'superadmin']);
+        $this->checkAuth(['manager', 'hiring_manager', 'superadmin'], true);
         header('Content-Type: application/json');
 
         $db = $this->getDb();
@@ -265,7 +277,7 @@ class ReflectionController {
      * Get aggregate statistics for HR Ops, Executive, and Superadmin
      */
     public function getAnalytics() {
-        $this->checkAuth(['superadmin', 'hr_ops', 'executive']);
+        $this->checkAuth(['superadmin', 'hr_ops', 'executive', 'admin', 'hiring_manager', 'manager', 'employee']);
         header('Content-Type: application/json');
 
         $db = $this->getDb();
@@ -345,7 +357,7 @@ class ReflectionController {
      * Save or update employee mood pulse (bi-weekly)
      */
     public function saveMoodPulse() {
-        $this->checkAuth(['employee']);
+        $this->checkAuth(['employee'], true);
         header('Content-Type: application/json');
 
         $db = $this->getDb();
@@ -431,7 +443,7 @@ class ReflectionController {
      * Save employee personal journal entry (optional & private)
      */
     public function saveJournal() {
-        $this->checkAuth(['employee']);
+        $this->checkAuth(['employee'], true);
         header('Content-Type: application/json');
 
         $db = $this->getDb();

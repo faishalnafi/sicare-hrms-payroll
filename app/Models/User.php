@@ -23,16 +23,41 @@ class User {
     }
 
     public function findByEmail($email) {
+        if (empty(trim($email)) || !filter_var($email, FILTER_VALIDATE_EMAIL)) {
+            return false;
+        }
         $stmt = $this->db->prepare("SELECT * FROM users WHERE email = :email");
         $stmt->execute(['email' => $email]);
         return $stmt->fetch();
     }
 
     public function create($firstName, $lastName, $email, $password, $profilePicture = null) {
+        if (empty(trim($firstName)) || empty(trim($email)) || empty($password)) {
+            return false;
+        }
         $id = $this->generateUuid();
         $hash = password_hash($password, PASSWORD_BCRYPT);
         
-        $stmt = $this->db->prepare("INSERT INTO users (id, first_name, last_name, email, profile_picture, password_hash, role) VALUES (:id, :first_name, :last_name, :email, :profile_picture, :password_hash, 'candidate')");
+        if (empty($profilePicture)) {
+            if (!function_exists('resolveProfilePicture')) {
+                require_once __DIR__ . '/../helpers.php';
+            }
+            $profilePicture = resolveProfilePicture($email);
+        }
+        
+        // Resolve default candidate role_id from roles table
+        $candRoleId = '4b5c6d7e-8f9a-0b1c-2d3e-4f5a6b7c8d9e';
+        try {
+            $stmtRole = $this->db->query("SELECT id FROM roles WHERE name = 'candidate' LIMIT 1");
+            if ($stmtRole) {
+                $rId = $stmtRole->fetchColumn();
+                if (!empty($rId)) {
+                    $candRoleId = $rId;
+                }
+            }
+        } catch (\Exception $e) {}
+
+        $stmt = $this->db->prepare("INSERT INTO users (id, first_name, last_name, email, profile_picture, password_hash, role, role_id) VALUES (:id, :first_name, :last_name, :email, :profile_picture, :password_hash, 'candidate', :role_id)");
         
         $success = $stmt->execute([
             'id' => $id,
@@ -40,7 +65,8 @@ class User {
             'last_name' => $lastName,
             'email' => $email,
             'profile_picture' => $profilePicture,
-            'password_hash' => $hash
+            'password_hash' => $hash,
+            'role_id' => $candRoleId
         ]);
 
         if ($success) {
@@ -50,6 +76,9 @@ class User {
     }
 
     public function updateProfilePicture($id, $url) {
+        if (empty(trim($id)) || empty(trim($url))) {
+            return false;
+        }
         $stmt = $this->db->prepare("UPDATE users SET profile_picture = :url WHERE id = :id");
         return $stmt->execute(['url' => $url, 'id' => $id]);
     }

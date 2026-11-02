@@ -1,9 +1,10 @@
 <?php
-$db = \App\Config\Database::getInstance()->getConnection();
-$appName = $db->query("SELECT `value` FROM global_settings WHERE `key` = 'app_name' LIMIT 1")->fetchColumn() ?: 'siCare';
-$appLogoIcon = $db->query("SELECT `value` FROM global_settings WHERE `key` = 'app_logo_icon' LIMIT 1")->fetchColumn() ?: 'local_police';
-$appLogoType = $db->query("SELECT `value` FROM global_settings WHERE `key` = 'app_logo_type' LIMIT 1")->fetchColumn() ?: 'icon';
-$appLogoImage = $db->query("SELECT `value` FROM global_settings WHERE `key` = 'app_logo_image' LIMIT 1")->fetchColumn() ?: '';
+use App\Services\ViewHelper;
+
+$appName      = ViewHelper::getSetting('app_name', 'siCare');
+$appLogoIcon  = ViewHelper::getSetting('app_logo_icon', 'local_police');
+$appLogoType  = ViewHelper::getSetting('app_logo_type', 'icon');
+$appLogoImage = ViewHelper::getSetting('app_logo_image', '');
 ?>
 <!-- TopNavBar -->
 <nav class="w-full top-0 sticky z-50 frosted-nav px-8 py-4 border-b border-white/20">

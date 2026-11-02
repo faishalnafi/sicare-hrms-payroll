@@ -1,31 +1,10 @@
 <?php
+use App\Services\ViewHelper;
+
 // HR Ops — Presensi Karyawan (Live DB)
-$db = \App\Config\Database::getInstance()->getConnection();
 $today = (isset($_GET['date']) && preg_match('/^\d{4}-\d{2}-\d{2}$/', $_GET['date'])) ? $_GET['date'] : date('Y-m-d');
 
-// Load global settings
-$stmtSettings = $db->query("SELECT `key`, `value` FROM global_settings");
-$cfg = [];
-while ($gsRow = $stmtSettings->fetch()) {
-    $cfg[$gsRow['key']] = $gsRow['value'];
-}
-
-// ── Stats for today ──
-$stmtHadir = $db->prepare("
-    SELECT
-        COUNT(*) AS hadir,
-        SUM(CASE WHEN status = 'terlambat' THEN 1 ELSE 0 END) AS terlambat,
-        SUM(CASE WHEN status IN ('sakit/izin') THEN 1 ELSE 0 END) AS sakit,
-        SUM(CASE WHEN status = 'alpa' THEN 1 ELSE 0 END) AS alpa
-    FROM employee_attendance
-    WHERE attendance_date = :date
-");
-$stmtHadir->execute(['date' => $today]);
-$todayStats = $stmtHadir->fetch() ?: ['hadir' => 0, 'terlambat' => 0, 'sakit' => 0, 'alpa' => 0];
-
-// Total employees
-$stmtTotal = $db->query("SELECT COUNT(*) FROM users WHERE role = 'employee'");
-$totalEmp  = (int)$stmtTotal->fetchColumn();
+[$cfg, $todayStats, $totalEmp, $attendanceRows] = ViewHelper::getHropsAttendanceData($today);
 
 // Number actually present (tepat waktu + terlambat)
 $hadirCount    = (int)$todayStats['hadir'];
@@ -33,23 +12,6 @@ $terlambatCount = (int)$todayStats['terlambat'];
 $sakitCount    = (int)$todayStats['sakit'];
 $alpaCount     = (int)$todayStats['alpa'];
 $hadirHariIni  = $hadirCount; // includes terlambat
-
-// ── Attendance rows for today ──
-$stmtRows = $db->prepare("
-    SELECT
-        a.id, a.user_id, a.attendance_date, a.clock_in, a.clock_out, a.status,
-        a.clock_in_latitude, a.clock_in_longitude, a.clock_out_latitude, a.clock_out_longitude,
-        a.location_method, a.ip_address, a.correction_reason, a.work_mode, a.work_mode_out,
-        u.first_name, u.last_name, u.employee_id, u.profile_picture, u.email,
-        u.home_latitude, u.home_longitude,
-        COALESCE(u.job_title, '') AS job_title
-    FROM employee_attendance a
-    JOIN users u ON a.user_id = u.id
-    WHERE a.attendance_date = :date
-    ORDER BY a.clock_in ASC
-");
-$stmtRows->execute(['date' => $today]);
-$attendanceRows = $stmtRows->fetchAll();
 
 // ── Employees with no record today (auto-alpa) removed as per user request ──
 $mergedRows = $attendanceRows;
@@ -119,7 +81,7 @@ function initials($fn, $ln) {
 
     <!-- ── KPI Cards ── -->
     <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <div class="bg-surface-container-lowest rounded-xl p-5 border border-outline-variant/15 shadow-sm hover:shadow-md transition-shadow">
+        <div class="stat-card-scale bg-surface-container-lowest rounded-xl p-5 border border-outline-variant/15 shadow-sm">
             <div class="flex items-center justify-between">
                 <span class="text-[10px] font-bold text-on-surface-variant uppercase tracking-wider">Karyawan Aktif</span>
                 <span class="material-symbols-outlined text-primary bg-primary/5 p-2 rounded-lg">groups</span>
@@ -129,7 +91,7 @@ function initials($fn, $ln) {
                 <p class="text-[11px] text-emerald-600 font-semibold mt-1 flex items-center gap-1"><span class="material-symbols-outlined text-xs">verified</span> Data terintegrasi</p>
             </div>
         </div>
-        <div class="bg-surface-container-lowest rounded-xl p-5 border border-outline-variant/15 shadow-sm hover:shadow-md transition-shadow">
+        <div class="stat-card-scale bg-surface-container-lowest rounded-xl p-5 border border-outline-variant/15 shadow-sm">
             <div class="flex items-center justify-between">
                 <span class="text-[10px] font-bold text-on-surface-variant uppercase tracking-wider">Hadir Hari Ini</span>
                 <span class="material-symbols-outlined text-emerald-600 bg-emerald-50 p-2 rounded-lg">check_circle</span>
@@ -142,7 +104,7 @@ function initials($fn, $ln) {
                 </p>
             </div>
         </div>
-        <div class="bg-surface-container-lowest rounded-xl p-5 border border-outline-variant/15 shadow-sm hover:shadow-md transition-shadow">
+        <div class="stat-card-scale bg-surface-container-lowest rounded-xl p-5 border border-outline-variant/15 shadow-sm">
             <div class="flex items-center justify-between">
                 <span class="text-[10px] font-bold text-on-surface-variant uppercase tracking-wider">Terlambat</span>
                 <span class="material-symbols-outlined text-amber-600 bg-amber-50 p-2 rounded-lg">schedule</span>
@@ -152,7 +114,7 @@ function initials($fn, $ln) {
                 <p class="text-[11px] text-amber-600 font-semibold mt-1 flex items-center gap-1"><span class="material-symbols-outlined text-xs">error</span> Perlu monitoring</p>
             </div>
         </div>
-        <div class="bg-surface-container-lowest rounded-xl p-5 border border-outline-variant/15 shadow-sm hover:shadow-md transition-shadow">
+        <div class="stat-card-scale bg-surface-container-lowest rounded-xl p-5 border border-outline-variant/15 shadow-sm">
             <div class="flex items-center justify-between">
                 <span class="text-[10px] font-bold text-on-surface-variant uppercase tracking-wider">Absen / Cuti / Izin</span>
                 <span class="material-symbols-outlined text-red-600 bg-red-50 p-2 rounded-lg">logout</span>
@@ -246,7 +208,7 @@ function initials($fn, $ln) {
                                     $profPic = $row['profile_picture'];
                                     $hash = md5(strtolower(trim($row['email'])));
                                     if (empty($profPic)) {
-                                        $profPic = "https://www.gravatar.com/avatar/{$hash}?d=404&s=150";
+                                        $profPic = "https://www.gravatar.com/avatar/{$hash}?d=identicon&s=150";
                                     }
                                 ?>
                                 <img src="<?= htmlspecialchars($profPic) ?>" onerror="window.handleAvatarError(this, '<?= $hash ?>')" alt="<?= $empName ?>" class="w-10 h-10 rounded-full object-cover shadow-sm flex-shrink-0 bg-white border border-outline-variant/10" />
@@ -351,8 +313,8 @@ function initials($fn, $ln) {
                             </div>
                             <?php if ($row['location_method']): ?>
                             <div class="text-xs font-semibold text-on-surface-variant flex items-center gap-1">
-                                <span class="material-symbols-outlined text-sm <?= $row['location_method'] === 'WIFI' ? 'text-primary' : 'text-amber-600' ?>">
-                                    <?= $row['location_method'] === 'WIFI' ? 'wifi' : 'location_on' ?>
+                                <span class="material-symbols-outlined text-sm <?= $row['location_method'] === 'WIFI' ? 'text-primary' : ($row['location_method'] === 'POP' ? 'text-blue-600' : 'text-amber-600') ?>">
+                                    <?= $row['location_method'] === 'WIFI' ? 'wifi' : ($row['location_method'] === 'POP' ? 'laptop' : 'location_on') ?>
                                 </span>
                                 <?= htmlspecialchars($row['location_method']) ?>
                             </div>

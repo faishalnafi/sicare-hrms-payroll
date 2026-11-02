@@ -1,14 +1,8 @@
 <?php
 // HR Ops — Pengaturan Presensi & Lokasi
-$cfg = [];
-$holidays = [];
-try {
-    $db = \App\Config\Database::getInstance()->getConnection();
-    $rows = $db->query("SELECT `key`, `value` FROM global_settings")->fetchAll();
-    foreach ($rows as $r) { $cfg[$r['key']] = $r['value']; }
-    
-    $holidays = $db->query("SELECT * FROM company_holidays ORDER BY holiday_date ASC")->fetchAll();
-} catch (Exception $e) { /* table may not exist yet */ }
+use App\Services\ViewHelper;
+
+[$cfg, $holidays] = ViewHelper::getGlobalSettingsAndHolidays();
 
 // Fallback defaults
 $cfg = array_merge([
@@ -150,7 +144,7 @@ $allDays = ['Mon' => 'Senin', 'Tue' => 'Selasa', 'Wed' => 'Rabu', 'Thu' => 'Kami
     transform: translateY(-1px);
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.03);
 }
-.settings-section-title { font-family:'Manrope',sans-serif; font-weight:800; font-size:.875rem; color:#000666; letter-spacing:.02em; }
+.settings-section-title { font-family:'Ubuntu',sans-serif; font-weight:800; font-size:.875rem; color:#000666; letter-spacing:.02em; }
 .settings-input {
     width:100%; padding:.6rem .9rem; font-size:.8rem; font-weight:600; color:#1a1c2d;
     background:#f8f9fa; border:1.5px solid #dde0f0; border-radius:.75rem;
@@ -1587,7 +1581,12 @@ function editHoliday(id, currentDate, currentDesc) {
 }
 
 function getRoutePrefix() {
-    return '/hrops';
+    const p = window.location.pathname;
+    let base = '';
+    if (p.includes('/hrops')) {
+        base = p.split('/hrops')[0];
+    }
+    return base + '/hrops';
 }
 
 // ── Tarik Libur Nasional dari Google Calendar ────────────────
