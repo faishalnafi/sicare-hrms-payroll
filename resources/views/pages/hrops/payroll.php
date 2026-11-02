@@ -2,31 +2,23 @@
 // HR Operations — Pemrosesan Penggajian (Payroll Portal)
 if (session_status() === PHP_SESSION_NONE) session_start();
 
-$db = \App\Config\Database::getInstance()->getConnection();
-$companyName = $db->query("SELECT `value` FROM global_settings WHERE `key` = 'app_company_name' LIMIT 1")->fetchColumn() ?: 'PT SI CARE ENTERPRISE';
+use App\Services\ViewHelper;
+
+$companyName = ViewHelper::getSetting('app_company_name', 'PT SI CARE ENTERPRISE');
 $companyNameForStamp = $companyName;
 if (stripos($companyName, 'Mango') !== false) {
     $companyNameForStamp = 'PT. MANGO TEKNUSA INOVASI';
 }
-$appName = $db->query("SELECT `value` FROM global_settings WHERE `key` = 'app_name' LIMIT 1")->fetchColumn() ?: 'siCare';
-$appLogoIcon = $db->query("SELECT `value` FROM global_settings WHERE `key` = 'app_logo_icon' LIMIT 1")->fetchColumn() ?: 'local_police';
-$appLogoType = $db->query("SELECT `value` FROM global_settings WHERE `key` = 'app_logo_type' LIMIT 1")->fetchColumn() ?: 'icon';
-$appLogoImage = $db->query("SELECT `value` FROM global_settings WHERE `key` = 'app_logo_image' LIMIT 1")->fetchColumn() ?: '';
-$bpjsTkPct = (float)($db->query("SELECT `value` FROM global_settings WHERE `key` = 'payroll_bpjs_tk_pct' LIMIT 1")->fetchColumn() ?: 2);
-$bpjsKesPct = (float)($db->query("SELECT `value` FROM global_settings WHERE `key` = 'payroll_bpjs_kes_pct' LIMIT 1")->fetchColumn() ?: 1);
-$pph21Pct = (float)($db->query("SELECT `value` FROM global_settings WHERE `key` = 'payroll_pph21_pct' LIMIT 1")->fetchColumn() ?: 2.5);
+$appName      = ViewHelper::getSetting('app_name', 'siCare');
+$appLogoIcon  = ViewHelper::getSetting('app_logo_icon', 'local_police');
+$appLogoType  = ViewHelper::getSetting('app_logo_type', 'icon');
+$appLogoImage = ViewHelper::getSetting('app_logo_image', '');
 
-// Fetch HR Director (Hiring Manager of HR department) dynamically, fallback to Zanuba Arifatul Khafsoh
-$hrQuery = $db->query("
-    SELECT u.first_name, u.last_name, u.job_title 
-    FROM users u
-    JOIN departments d ON u.department_id = d.id
-    WHERE u.role = 'hiring_manager' AND (d.name LIKE '%Human Resources%' OR d.name LIKE '%HR%')
-    LIMIT 1
-");
-$hrDirectorData = $hrQuery->fetch();
-$hrDirectorName = $hrDirectorData ? trim($hrDirectorData['first_name'] . ' ' . ($hrDirectorData['last_name'] ?? '')) : 'Zanuba Arifatul Khafsoh';
-$hrDirectorTitle = $hrDirectorData ? ($hrDirectorData['job_title'] ?? 'HR Operations Director') : 'HR Operations Director';
+$bpjsTkPct  = (float)ViewHelper::getSetting('payroll_bpjs_tk_pct', 2);
+$bpjsKesPct = (float)ViewHelper::getSetting('payroll_bpjs_kes_pct', 1);
+$pph21Pct   = (float)ViewHelper::getSetting('payroll_pph21_pct', 2.5);
+
+[$hrDirectorName, $hrDirectorTitle] = ViewHelper::getHrDirectorData();
 ?>
 <style>
     .kpi-card {

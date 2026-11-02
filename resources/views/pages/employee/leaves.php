@@ -1,6 +1,7 @@
 <?php
+use App\Services\ViewHelper;
+
 // Employee ESS Leaves & Permits Dashboard
-$db = \App\Config\Database::getInstance()->getConnection();
 $userId = $_SESSION['user_id'] ?? '';
 
 if (empty($userId)) {
@@ -8,70 +9,17 @@ if (empty($userId)) {
     return;
 }
 
-// Fetch user leave quota
-$stmt = $db->prepare("SELECT annual_leave_quota, updated_at FROM users WHERE id = :id");
-$stmt->execute(['id' => $userId]);
-$userRow = $stmt->fetch(PDO::FETCH_ASSOC);
-$annualLeaveQuota = intval($userRow['annual_leave_quota'] ?? 12);
-$lastUpdateYear = !empty($userRow['updated_at']) ? date('Y', strtotime($userRow['updated_at'])) : date('Y');
-$currentYear = date('Y');
+[
+    $user,
+    $dropdownAnnualLeaveRemaining,
+    $dropdownMaternityLeaveRemaining,
+    $sickLeaveTaken,
+    $pendingCount,
+    $approvedCount,
+    $leaves
+] = ViewHelper::getEmployeeLeavesData($userId);
 
-if ($currentYear > $lastUpdateYear) {
-    // Reset annual leave quota to 12 in the new year
-    $stmtReset = $db->prepare("UPDATE users SET annual_leave_quota = 12, updated_at = NOW() WHERE id = :id");
-    $stmtReset->execute(['id' => $userId]);
-    $annualLeaveQuota = 12;
-}
-
-// Fetch approved cuti tahunan duration for the current month
-$stmt = $db->prepare("
-    SELECT SUM(duration) FROM employee_leave_requests 
-    WHERE user_id = :user_id 
-      AND leave_type = 'cuti tahunan' 
-      AND status = 'approved' 
-      AND MONTH(created_at) = MONTH(CURRENT_DATE) 
-      AND YEAR(created_at) = YEAR(CURRENT_DATE)
-");
-$stmt->execute(['user_id' => $userId]);
-$monthlyAnnualLeaveApproved = intval($stmt->fetchColumn() ?? 0);
-$dropdownAnnualLeaveRemaining = max(0, 12 - $monthlyAnnualLeaveApproved);
-
-// Fetch approved cuti melahirkan duration for the current month
-$stmt = $db->prepare("
-    SELECT SUM(duration) FROM employee_leave_requests 
-    WHERE user_id = :user_id 
-      AND leave_type = 'cuti melahirkan' 
-      AND status = 'approved' 
-      AND MONTH(created_at) = MONTH(CURRENT_DATE) 
-      AND YEAR(created_at) = YEAR(CURRENT_DATE)
-");
-$stmt->execute(['user_id' => $userId]);
-$monthlyMaternityLeaveApproved = intval($stmt->fetchColumn() ?? 0);
-$dropdownMaternityLeaveRemaining = max(0, 90 - $monthlyMaternityLeaveApproved);
-
-// Fetch total cuti sakit taken (approved)
-$stmt = $db->prepare("SELECT SUM(duration) FROM employee_leave_requests WHERE user_id = :user_id AND leave_type = 'cuti sakit' AND status = 'approved' AND YEAR(created_at) = YEAR(CURRENT_DATE)");
-$stmt->execute(['user_id' => $userId]);
-$sickLeaveTaken = intval($stmt->fetchColumn() ?? 0);
-
-// Fetch pending requests count
-$stmt = $db->prepare("SELECT COUNT(*) FROM employee_leave_requests WHERE user_id = :user_id AND status = 'pending'");
-$stmt->execute(['user_id' => $userId]);
-$pendingCount = intval($stmt->fetchColumn() ?? 0);
-
-// Fetch approved requests count (excluding sick leave)
-$stmt = $db->prepare("SELECT COUNT(*) FROM employee_leave_requests WHERE user_id = :user_id AND status = 'approved' AND YEAR(created_at) = YEAR(CURRENT_DATE)");
-$stmt->execute(['user_id' => $userId]);
-$approvedCount = intval($stmt->fetchColumn() ?? 0);
-
-// Fetch all leave requests for history table
-$stmt = $db->prepare("
-    SELECT * FROM employee_leave_requests 
-    WHERE user_id = :user_id 
-    ORDER BY created_at DESC
-");
-$stmt->execute(['user_id' => $userId]);
-$leaves = $stmt->fetchAll(PDO::FETCH_ASSOC);
+$annualLeaveQuota = intval($user['annual_leave_quota'] ?? 12);
 
 function getLeaveTypeColor($type) {
     $colors = [
@@ -111,8 +59,8 @@ function getLeaveTypeLabel($type) {
     <!-- Bento Grid KPI Summary -->
     <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
         <!-- Card 1: Annual Leave Quota -->
-        <div class="bg-gradient-to-br from-primary to-blue-900 text-white rounded-2xl p-5 shadow-md flex flex-col justify-between min-h-[140px] relative overflow-hidden">
-            <div class="absolute right-0 bottom-0 opacity-10 translate-x-2 translate-y-2">
+        <div class="bg-gradient-to-br from-primary to-blue-900 text-white rounded-2xl p-5 shadow-md flex flex-col justify-between min-h-[140px] relative overflow-hidden group">
+            <div class="absolute right-0 bottom-0 opacity-10 translate-x-2 translate-y-2 group-hover:scale-110 transition-transform duration-500">
                 <span class="material-symbols-outlined text-9xl">calendar_month</span>
             </div>
             <div class="flex items-center justify-between">
@@ -129,12 +77,15 @@ function getLeaveTypeLabel($type) {
         </div>
 
         <!-- Card 2: Sick Leaves Taken -->
-        <div class="bg-surface-container-lowest rounded-2xl p-5 border border-outline-variant/15 shadow-sm hover:shadow-md transition-shadow flex flex-col justify-between min-h-[140px]">
-            <div class="flex items-center justify-between">
+        <div class="bg-surface-container-lowest rounded-2xl p-5 border border-outline-variant/15 shadow-[0_20px_40px_rgba(0,6,102,0.03)] hover:shadow-[0_25px_50px_rgba(0,6,102,0.08)] hover:border-blue-500/20 transition-all duration-300 relative overflow-hidden group flex flex-col justify-between min-h-[140px]">
+            <div class="absolute -top-10 -right-10 w-36 h-36 bg-blue-600/15 rounded-full blur-2xl group-hover:bg-blue-600/30 group-hover:scale-125 transition-all duration-500 pointer-events-none"></div>
+            <div class="flex items-center justify-between relative z-10">
                 <span class="text-xs font-bold text-on-surface-variant uppercase tracking-wider">Cuti Sakit Diambil</span>
-                <span class="material-symbols-outlined text-blue-600 bg-blue-50 p-2 rounded-lg font-bold">medical_services</span>
+                <div class="w-10 h-10 flex items-center justify-center rounded-xl bg-blue-500/10 text-blue-600 group-hover:scale-110 group-hover:bg-blue-500/20 transition-all duration-300 shadow-sm">
+                    <span class="material-symbols-outlined text-xl font-bold">medical_services</span>
+                </div>
             </div>
-            <div class="mt-4">
+            <div class="mt-4 relative z-10">
                 <h3 class="text-3xl font-black text-blue-700"><?= $sickLeaveTaken ?> <span class="text-xs font-semibold text-blue-600">Hari</span></h3>
                 <p class="text-[10px] text-blue-600 font-semibold mt-1 flex items-center gap-1">
                     <span class="material-symbols-outlined text-xs">verified</span> Tercatat dengan surat sakit
@@ -143,12 +94,15 @@ function getLeaveTypeLabel($type) {
         </div>
 
         <!-- Card 3: Pending Review -->
-        <div class="bg-surface-container-lowest rounded-2xl p-5 border border-outline-variant/15 shadow-sm hover:shadow-md transition-shadow flex flex-col justify-between min-h-[140px]">
-            <div class="flex items-center justify-between">
+        <div class="bg-surface-container-lowest rounded-2xl p-5 border border-outline-variant/15 shadow-[0_20px_40px_rgba(0,6,102,0.03)] hover:shadow-[0_25px_50px_rgba(0,6,102,0.08)] hover:border-amber-500/20 transition-all duration-300 relative overflow-hidden group flex flex-col justify-between min-h-[140px]">
+            <div class="absolute -top-10 -right-10 w-36 h-36 bg-amber-600/15 rounded-full blur-2xl group-hover:bg-amber-600/30 group-hover:scale-125 transition-all duration-500 pointer-events-none"></div>
+            <div class="flex items-center justify-between relative z-10">
                 <span class="text-xs font-bold text-on-surface-variant uppercase tracking-wider">Menunggu Review</span>
-                <span class="material-symbols-outlined text-amber-600 bg-amber-50 p-2 rounded-lg font-bold">hourglass_empty</span>
+                <div class="w-10 h-10 flex items-center justify-center rounded-xl bg-amber-500/10 text-amber-600 group-hover:scale-110 group-hover:bg-amber-500/20 transition-all duration-300 shadow-sm">
+                    <span class="material-symbols-outlined text-xl font-bold">hourglass_empty</span>
+                </div>
             </div>
-            <div class="mt-4">
+            <div class="mt-4 relative z-10">
                 <h3 class="text-3xl font-black text-amber-700"><?= $pendingCount ?> <span class="text-xs font-semibold text-amber-600">Pengajuan</span></h3>
                 <p class="text-[10px] text-amber-600 font-semibold mt-1 flex items-center gap-1">
                     <span class="material-symbols-outlined text-xs">info</span> Sedang ditinjau HR Operations
@@ -157,12 +111,15 @@ function getLeaveTypeLabel($type) {
         </div>
 
         <!-- Card 4: Total Approved Requests -->
-        <div class="bg-surface-container-lowest rounded-2xl p-5 border border-outline-variant/15 shadow-sm hover:shadow-md transition-shadow flex flex-col justify-between min-h-[140px]">
-            <div class="flex items-center justify-between">
+        <div class="bg-surface-container-lowest rounded-2xl p-5 border border-outline-variant/15 shadow-[0_20px_40px_rgba(0,6,102,0.03)] hover:shadow-[0_25px_50px_rgba(0,6,102,0.08)] hover:border-green-500/20 transition-all duration-300 relative overflow-hidden group flex flex-col justify-between min-h-[140px]">
+            <div class="absolute -top-10 -right-10 w-36 h-36 bg-green-600/15 rounded-full blur-2xl group-hover:bg-green-600/30 group-hover:scale-125 transition-all duration-500 pointer-events-none"></div>
+            <div class="flex items-center justify-between relative z-10">
                 <span class="text-xs font-bold text-on-surface-variant uppercase tracking-wider">Disetujui</span>
-                <span class="material-symbols-outlined text-green-600 bg-green-50 p-2 rounded-lg font-bold">verified</span>
+                <div class="w-10 h-10 flex items-center justify-center rounded-xl bg-green-500/10 text-green-600 group-hover:scale-110 group-hover:bg-green-500/20 transition-all duration-300 shadow-sm">
+                    <span class="material-symbols-outlined text-xl font-bold">verified</span>
+                </div>
             </div>
-            <div class="mt-4">
+            <div class="mt-4 relative z-10">
                 <h3 class="text-3xl font-black text-green-700"><?= $approvedCount ?> <span class="text-xs font-semibold text-green-600">Pengajuan</span></h3>
                 <p class="text-[10px] text-green-600 font-semibold mt-1 flex items-center gap-1">
                     <span class="material-symbols-outlined text-xs">check_circle</span> Disetujui secara tertib
@@ -199,30 +156,96 @@ function getLeaveTypeLabel($type) {
 
         <!-- Table -->
         <div class="overflow-x-auto">
-            <table class="w-full text-left border-collapse">
+            <table class="w-full text-left border-collapse table-standardized" data-has-custom-pagination="true">
                 <thead>
                     <tr class="bg-surface text-on-surface-variant border-b border-outline-variant/15">
-                        <th class="py-4 px-6 text-[11px] font-bold uppercase tracking-wider">Tanggal Diajukan</th>
-                        <th class="py-4 px-6 text-[11px] font-bold uppercase tracking-wider">Jenis Cuti</th>
-                        <th class="py-4 px-6 text-[11px] font-bold uppercase tracking-wider">Durasi</th>
-                        <th class="py-4 px-6 text-[11px] font-bold uppercase tracking-wider">Periode</th>
-                        <th class="py-4 px-6 text-[11px] font-bold uppercase tracking-wider">Alasan</th>
-                        <th class="py-4 px-6 text-[11px] font-bold uppercase tracking-wider">Berkas Bukti</th>
-                        <th class="py-4 px-6 text-[11px] font-bold uppercase tracking-wider">Status</th>
-                        <th class="py-4 px-6 text-right text-[11px] font-bold uppercase tracking-wider">Aksi</th>
+                        <th class="no-col w-12 text-center py-4 px-6 text-[10px] font-bold uppercase tracking-wider">No</th>
+                        <th onclick="window.sortDomTable(this, 1, 'date')" class="py-4 px-6 text-[11px] font-bold uppercase tracking-wider">
+                            <div class="flex items-center gap-1">
+                                Tanggal Diajukan
+                                <span class="sort-icon-container">
+                                    <span class="material-symbols-outlined sort-up">arrow_drop_up</span>
+                                    <span class="material-symbols-outlined sort-down">arrow_drop_down</span>
+                                </span>
+                            </div>
+                        </th>
+                        <th onclick="window.sortDomTable(this, 2, 'string')" class="py-4 px-6 text-[11px] font-bold uppercase tracking-wider">
+                            <div class="flex items-center gap-1">
+                                Jenis Cuti
+                                <span class="sort-icon-container">
+                                    <span class="material-symbols-outlined sort-up">arrow_drop_up</span>
+                                    <span class="material-symbols-outlined sort-down">arrow_drop_down</span>
+                                </span>
+                            </div>
+                        </th>
+                        <th onclick="window.sortDomTable(this, 3, 'number')" class="py-4 px-6 text-[11px] font-bold uppercase tracking-wider">
+                            <div class="flex items-center gap-1">
+                                Durasi
+                                <span class="sort-icon-container">
+                                    <span class="material-symbols-outlined sort-up">arrow_drop_up</span>
+                                    <span class="material-symbols-outlined sort-down">arrow_drop_down</span>
+                                </span>
+                            </div>
+                        </th>
+                        <th onclick="window.sortDomTable(this, 4, 'string')" class="py-4 px-6 text-[11px] font-bold uppercase tracking-wider">
+                            <div class="flex items-center gap-1">
+                                Periode
+                                <span class="sort-icon-container">
+                                    <span class="material-symbols-outlined sort-up">arrow_drop_up</span>
+                                    <span class="material-symbols-outlined sort-down">arrow_drop_down</span>
+                                </span>
+                            </div>
+                        </th>
+                        <th onclick="window.sortDomTable(this, 5, 'string')" class="py-4 px-6 text-[11px] font-bold uppercase tracking-wider">
+                            <div class="flex items-center gap-1">
+                                Alasan
+                                <span class="sort-icon-container">
+                                    <span class="material-symbols-outlined sort-up">arrow_drop_up</span>
+                                    <span class="material-symbols-outlined sort-down">arrow_drop_down</span>
+                                </span>
+                            </div>
+                        </th>
+                        <th onclick="window.sortDomTable(this, 6, 'string')" class="py-4 px-6 text-[11px] font-bold uppercase tracking-wider">
+                            <div class="flex items-center gap-1">
+                                Berkas Bukti
+                                <span class="sort-icon-container">
+                                    <span class="material-symbols-outlined sort-up">arrow_drop_up</span>
+                                    <span class="material-symbols-outlined sort-down">arrow_drop_down</span>
+                                </span>
+                            </div>
+                        </th>
+                        <th onclick="window.sortDomTable(this, 7, 'string')" class="py-4 px-6 text-[11px] font-bold uppercase tracking-wider">
+                            <div class="flex items-center gap-1">
+                                Status
+                                <span class="sort-icon-container">
+                                    <span class="material-symbols-outlined sort-up">arrow_drop_up</span>
+                                    <span class="material-symbols-outlined sort-down">arrow_drop_down</span>
+                                </span>
+                            </div>
+                        </th>
+                        <th onclick="window.sortDomTable(this, 8, 'string')" class="py-4 px-6 text-right text-[11px] font-bold uppercase tracking-wider">
+                            <div class="flex items-center justify-end gap-1">
+                                Aksi
+                                <span class="sort-icon-container">
+                                    <span class="material-symbols-outlined sort-up">arrow_drop_up</span>
+                                    <span class="material-symbols-outlined sort-down">arrow_drop_down</span>
+                                </span>
+                            </div>
+                        </th>
                     </tr>
                 </thead>
                 <tbody id="employeeLeavesTableBody" class="divide-y divide-outline-variant/10">
                     <?php if (empty($leaves)): ?>
                     <tr>
-                        <td colspan="8" class="py-8 text-center text-on-surface-variant font-medium text-xs">
+                        <td colspan="9" class="py-8 text-center text-on-surface-variant font-medium text-xs">
                             <span class="material-symbols-outlined text-4xl text-outline-variant mb-2">inbox</span>
                             <p>Belum ada riwayat pengajuan cuti atau izin.</p>
                         </td>
                     </tr>
                     <?php else: ?>
-                    <?php foreach ($leaves as $leave): ?>
+                    <?php $rowNo = 1; foreach ($leaves as $leave): ?>
                     <tr class="leave-table-row hover:bg-surface-container-low/30 transition-colors" data-status="<?= htmlspecialchars($leave['status']) ?>" data-type="<?= htmlspecialchars($leave['leave_type']) ?>">
+                        <td class="py-4 px-6 text-center font-bold text-xs text-on-surface-variant"><?= $rowNo++ ?></td>
                         <td class="py-4 px-6 font-semibold text-xs text-on-surface">
                             <?= date('d M Y, H:i', strtotime($leave['created_at'])) ?>
                         </td>
@@ -288,10 +311,29 @@ function getLeaveTypeLabel($type) {
         </div>
         
         <!-- Pagination Controls -->
-        <div id="leavePaginationControls" class="px-6 py-4 border-t border-outline-variant/15 flex items-center justify-end bg-surface-container-low/30 hidden">
-            <div class="flex items-center gap-2">
-                <button id="btnLeavePrevPage" class="p-1.5 rounded-lg border border-outline-variant/20 text-on-surface hover:bg-surface-container-high transition-colors disabled:opacity-30 disabled:cursor-not-allowed"><span class="material-symbols-outlined text-sm">chevron_left</span></button>
-                <button id="btnLeaveNextPage" class="p-1.5 rounded-lg border border-outline-variant/20 text-on-surface hover:bg-surface-container-high transition-colors disabled:opacity-30 disabled:cursor-not-allowed"><span class="material-symbols-outlined text-sm">chevron_right</span></button>
+        <div id="leavePaginationControls" class="px-6 py-4 border-t border-outline-variant/15 flex items-center justify-between bg-surface-container-low/30 hidden">
+            <div id="leavePaginationInfo" class="table-pagination-info text-sm text-on-surface-variant font-medium"></div>
+            <div class="flex items-center gap-1.5">
+                <!-- First Page -->
+                <button id="btnLeaveFirstPage" onclick="window.firstLeavePage()" class="p-2 flex items-center justify-center rounded-full hover:bg-surface-container-high text-on-surface-variant disabled:opacity-30 disabled:cursor-not-allowed transition-colors border border-transparent disabled:hover:bg-transparent" title="Halaman Pertama">
+                    <span class="material-symbols-outlined text-sm">first_page</span>
+                </button>
+                <!-- Prev Page -->
+                <button id="btnLeavePrevPage" onclick="window.prevLeavePage()" class="p-2 flex items-center justify-center rounded-full hover:bg-surface-container-high text-on-surface-variant disabled:opacity-30 disabled:cursor-not-allowed transition-colors border border-transparent disabled:hover:bg-transparent" title="Halaman Sebelumnya">
+                    <span class="material-symbols-outlined text-sm">chevron_left</span>
+                </button>
+                
+                <!-- Page numbers container -->
+                <div id="leavePageNumbers" class="flex items-center gap-1"></div>
+
+                <!-- Next Page -->
+                <button id="btnLeaveNextPage" onclick="window.nextLeavePage()" class="p-2 flex items-center justify-center rounded-full hover:bg-surface-container-high text-on-surface-variant disabled:opacity-30 disabled:cursor-not-allowed transition-colors border border-transparent disabled:hover:bg-transparent" title="Halaman Berikutnya">
+                    <span class="material-symbols-outlined text-sm">chevron_right</span>
+                </button>
+                <!-- Last Page -->
+                <button id="btnLeaveLastPage" onclick="window.lastLeavePage()" class="p-2 flex items-center justify-center rounded-full hover:bg-surface-container-high text-on-surface-variant disabled:opacity-30 disabled:cursor-not-allowed transition-colors border border-transparent disabled:hover:bg-transparent" title="Halaman Terakhir">
+                    <span class="material-symbols-outlined text-sm">last_page</span>
+                </button>
             </div>
         </div>
     </div>
@@ -378,8 +420,10 @@ function getLeaveTypeLabel($type) {
 </div>
 
 <script>
-    // ── Table Pagination & Filter Logic ─────────    // Pagination state
+    // ── Table Pagination & Filter Logic ─────────
+    // Pagination state
     let leaveCurrentPage = 1;
+    let leaveTotalPages = 1;
     const leaveRowsPerPage = 10;
     
     function renderLeavePagination() {
@@ -402,11 +446,14 @@ function getLeaveTypeLabel($type) {
             }
         });
         
-        const totalPages = Math.ceil(visibleRows.length / leaveRowsPerPage);
+        const totalItems = visibleRows.length;
+        const totalPages = Math.ceil(totalItems / leaveRowsPerPage) || 1;
+        leaveTotalPages = totalPages;
         
         const paginationControls = document.getElementById('leavePaginationControls');
-        if (visibleRows.length === 0 || totalPages <= 1) {
+        if (totalItems === 0 || totalPages <= 1) {
             if (paginationControls) paginationControls.classList.add('hidden');
+            visibleRows.forEach(row => { row.style.display = ''; });
             return;
         }
         
@@ -426,39 +473,89 @@ function getLeaveTypeLabel($type) {
             }
         });
         
+        // Info text
+        const infoEl = document.getElementById('leavePaginationInfo');
+        if (infoEl) {
+            const startShow = totalItems === 0 ? 0 : start + 1;
+            const endShow = Math.min(end, totalItems);
+            infoEl.textContent = 'Menampilkan data ' + startShow + ' sampai ' + endShow + ' dari ' + totalItems;
+        }
+
+        // Disabled states
+        const firstBtn = document.getElementById('btnLeaveFirstPage');
         const prevBtn = document.getElementById('btnLeavePrevPage');
         const nextBtn = document.getElementById('btnLeaveNextPage');
+        const lastBtn = document.getElementById('btnLeaveLastPage');
+
+        if (firstBtn) firstBtn.disabled = leaveCurrentPage === 1;
         if (prevBtn) prevBtn.disabled = leaveCurrentPage === 1;
         if (nextBtn) nextBtn.disabled = leaveCurrentPage === totalPages;
+        if (lastBtn) lastBtn.disabled = leaveCurrentPage === totalPages;
+
+        // Page number buttons (max 3 centered)
+        const pageNumbersContainer = document.getElementById('leavePageNumbers');
+        if (pageNumbersContainer) {
+            pageNumbersContainer.innerHTML = '';
+
+            let startPage = leaveCurrentPage - 1;
+            let endPage = leaveCurrentPage + 1;
+            if (startPage < 1) {
+                startPage = 1;
+                endPage = Math.min(3, totalPages);
+            }
+            if (endPage > totalPages) {
+                endPage = totalPages;
+                startPage = Math.max(1, totalPages - 2);
+            }
+
+            for (let p = startPage; p <= endPage; p++) {
+                (function(pageNum) {
+                    const btn = document.createElement('button');
+                    btn.type = 'button';
+                    btn.className = 'w-8 h-8 flex items-center justify-center rounded-full text-xs font-semibold transition-all border ';
+                    if (pageNum === leaveCurrentPage) {
+                        btn.className += 'bg-primary text-white border-primary shadow-sm';
+                    } else {
+                        btn.className += 'hover:bg-surface-container-high text-on-surface border-transparent';
+                    }
+                    btn.textContent = pageNum;
+                    btn.onclick = function() {
+                        leaveCurrentPage = pageNum;
+                        renderLeavePagination();
+                    };
+                    pageNumbersContainer.appendChild(btn);
+                })(p);
+            }
+        }
     }
 
-    // Bind event listeners for leave pagination
-    document.addEventListener('DOMContentLoaded', () => {
-        const prevBtn = document.getElementById('btnLeavePrevPage');
-        const nextBtn = document.getElementById('btnLeaveNextPage');
-        
-        if (prevBtn) {
-            prevBtn.addEventListener('click', () => { 
-                if (leaveCurrentPage > 1) { 
-                    leaveCurrentPage--; 
-                    renderLeavePagination(); 
-                } 
-            });
+    window.firstLeavePage = function() {
+        if (leaveCurrentPage > 1) {
+            leaveCurrentPage = 1;
+            renderLeavePagination();
         }
-        if (nextBtn) {
-            nextBtn.addEventListener('click', () => { 
-                const allRows = Array.from(document.querySelectorAll('#employeeLeavesTableBody tr.leave-table-row'));
-                const type = document.getElementById('employeeLeaveTypeFilter').value;
-                const status = document.getElementById('employeeLeaveStatusFilter').value;
-                const visibleCount = allRows.filter(r => (!type || r.getAttribute('data-type') === type) && (!status || r.getAttribute('data-status') === status)).length;
-                
-                if (leaveCurrentPage < Math.ceil(visibleCount / leaveRowsPerPage)) { 
-                    leaveCurrentPage++; 
-                    renderLeavePagination(); 
-                } 
-            });
+    };
+
+    window.prevLeavePage = function() {
+        if (leaveCurrentPage > 1) {
+            leaveCurrentPage--;
+            renderLeavePagination();
         }
-    });
+    };
+
+    window.nextLeavePage = function() {
+        if (leaveCurrentPage < leaveTotalPages) {
+            leaveCurrentPage++;
+            renderLeavePagination();
+        }
+    };
+
+    window.lastLeavePage = function() {
+        if (leaveCurrentPage < leaveTotalPages) {
+            leaveCurrentPage = leaveTotalPages;
+            renderLeavePagination();
+        }
+    };
 
     function filterLeavesTable() {
         leaveCurrentPage = 1;
@@ -667,6 +764,7 @@ function getLeaveTypeLabel($type) {
                 Swal.showLoading();
             }
         });
+        formData.append('csrf_token', window.csrfToken);
 
         fetch('/employee/leaves/submit', {
             method: 'POST',
@@ -732,6 +830,7 @@ function getLeaveTypeLabel($type) {
 
                 const formData = new FormData();
                 formData.append('id', id);
+                formData.append('csrf_token', window.csrfToken);
 
                 fetch('/employee/leaves/cancel', {
                     method: 'POST',

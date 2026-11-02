@@ -15,7 +15,7 @@ try {
 }
 
 // Fallback to default PWA icon if no logo is uploaded
-$iconSrc = $appLogoImage ?: '/images/icons/icon-192x192.png';
+$iconSrc = $appLogoImage ?: 'https://support.nafii.my.id/icon/domains.png';
 
 // Detect mime type of the logo icon
 $iconType = 'image/png';

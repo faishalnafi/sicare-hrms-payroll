@@ -1,39 +1,9 @@
 <?php
+use App\Services\ViewHelper;
+
 // HR Operations Leaves Dynamic Dashboard
-$db = \App\Config\Database::getInstance()->getConnection();
-
-// Fetch counts and sums for KPIs
-// 1. Pending requests
-$stmt = $db->query("SELECT COUNT(*) FROM employee_leave_requests WHERE status = 'pending'");
-$pendingCount = intval($stmt->fetchColumn());
-
-// 2. Active out-of-office today (approved and today is between start_date and end_date)
-$today = date('Y-m-d');
-$stmt = $db->prepare("SELECT COUNT(*) FROM employee_leave_requests WHERE status = 'approved' AND :today BETWEEN start_date AND end_date");
-$stmt->execute(['today' => $today]);
-$activeToday = intval($stmt->fetchColumn());
-
-// 3. Approved this month
-$currentMonth = date('Y-m');
-$stmt = $db->prepare("SELECT COUNT(*) FROM employee_leave_requests WHERE status = 'approved' AND DATE_FORMAT(start_date, '%Y-%m') = :current_month");
-$stmt->execute(['current_month' => $currentMonth]);
-$approvedThisMonth = intval($stmt->fetchColumn());
-
-// 4. Company Leave Quota average & sum
-$stmt = $db->query("SELECT SUM(annual_leave_quota) FROM users WHERE role = 'employee'");
-$totalQuota = intval($stmt->fetchColumn());
-
-$stmt = $db->query("SELECT AVG(annual_leave_quota) FROM users WHERE role = 'employee'");
-$avgQuota = round(floatval($stmt->fetchColumn()), 1);
-
-// Fetch all leave requests
-$stmt = $db->query("
-    SELECT r.*, u.first_name, u.last_name, u.employee_id, u.role, u.email, u.profile_picture
-    FROM employee_leave_requests r
-    JOIN users u ON r.user_id = u.id
-    ORDER BY r.created_at DESC
-");
-$leaves = $stmt->fetchAll(PDO::FETCH_ASSOC);
+[$pendingCount, $activeToday, $approvedThisMonth, $totalQuota, $leaves] = ViewHelper::getHropsLeavesData();
+$avgQuota = round(floatval($totalQuota / 10), 1);
 
 function getLeaveTypeColor($type) {
     $colors = [
@@ -109,7 +79,7 @@ function formatIndonesianDate($dateStr) {
     <!-- KPI Summary Row -->
     <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
         <!-- Card 1 -->
-        <div class="bg-surface-container-lowest rounded-2xl p-5 border border-outline-variant/15 shadow-sm hover:shadow-md transition-shadow">
+        <div class="stat-card-scale bg-surface-container-lowest rounded-2xl p-5 border border-outline-variant/15 shadow-sm">
             <div class="flex items-center justify-between">
                 <span class="text-[10px] font-bold text-on-surface-variant uppercase tracking-wider">Menunggu Persetujuan</span>
                 <span class="material-symbols-outlined text-amber-600 bg-amber-50 p-2 rounded-xl text-sm font-bold <?= $pendingCount > 0 ? 'animate-pulse' : '' ?>">pending_actions</span>
@@ -122,7 +92,7 @@ function formatIndonesianDate($dateStr) {
             </div>
         </div>
         <!-- Card 2 -->
-        <div class="bg-surface-container-lowest rounded-2xl p-5 border border-outline-variant/15 shadow-sm hover:shadow-md transition-shadow">
+        <div class="stat-card-scale bg-surface-container-lowest rounded-2xl p-5 border border-outline-variant/15 shadow-sm">
             <div class="flex items-center justify-between">
                 <span class="text-[10px] font-bold text-on-surface-variant uppercase tracking-wider">Sedang Cuti Hari Ini</span>
                 <span class="material-symbols-outlined text-indigo-600 bg-indigo-50 p-2 rounded-xl text-sm font-bold">flight_takeoff</span>
@@ -135,7 +105,7 @@ function formatIndonesianDate($dateStr) {
             </div>
         </div>
         <!-- Card 3 -->
-        <div class="bg-surface-container-lowest rounded-2xl p-5 border border-outline-variant/15 shadow-sm hover:shadow-md transition-shadow">
+        <div class="stat-card-scale bg-surface-container-lowest rounded-2xl p-5 border border-outline-variant/15 shadow-sm">
             <div class="flex items-center justify-between">
                 <span class="text-[10px] font-bold text-on-surface-variant uppercase tracking-wider">Disetujui Bulan Ini</span>
                 <span class="material-symbols-outlined text-green-600 bg-green-50 p-2 rounded-xl text-sm font-bold">verified</span>
@@ -148,7 +118,7 @@ function formatIndonesianDate($dateStr) {
             </div>
         </div>
         <!-- Card 4 -->
-        <div class="bg-surface-container-lowest rounded-2xl p-5 border border-outline-variant/15 shadow-sm hover:shadow-md transition-shadow">
+        <div class="stat-card-scale bg-surface-container-lowest rounded-2xl p-5 border border-outline-variant/15 shadow-sm">
             <div class="flex items-center justify-between">
                 <span class="text-[10px] font-bold text-on-surface-variant uppercase tracking-wider">Kuota Cuti Perusahaan</span>
                 <span class="material-symbols-outlined text-primary bg-primary/5 p-2 rounded-xl text-sm font-bold">calendar_month</span>
@@ -239,7 +209,7 @@ function formatIndonesianDate($dateStr) {
                                     $profPic = $leave['profile_picture'];
                                     $hash = md5(strtolower(trim($leave['email'])));
                                     if (empty($profPic)) {
-                                        $profPic = "https://www.gravatar.com/avatar/{$hash}?d=404&s=150";
+                                        $profPic = "https://www.gravatar.com/avatar/{$hash}?d=identicon&s=150";
                                     }
                                 ?>
                                 <img src="<?= htmlspecialchars($profPic) ?>" onerror="window.handleAvatarError(this, '<?= $hash ?>')" alt="Avatar" class="w-10 h-10 rounded-full object-cover border border-outline-variant/15" />
@@ -313,17 +283,7 @@ function formatIndonesianDate($dateStr) {
             </table>
         </div>
 
-        <!-- Pagination / Footer Info -->
-        <div class="bg-surface-container-lowest p-6 border-t border-outline-variant/15 flex flex-col md:flex-row justify-between items-center gap-4 text-xs font-bold text-on-surface-variant">
-            <div>
-                Menampilkan <span id="displayedCount"><?= count($leaves) ?></span> dari <?= count($leaves) ?> data pengajuan cuti
-            </div>
-            <div class="flex items-center gap-1">
-                <button class="w-8 h-8 rounded-lg bg-surface border border-outline-variant/30 flex items-center justify-center hover:bg-surface-container-high transition-colors" disabled><span class="material-symbols-outlined text-sm">chevron_left</span></button>
-                <button class="w-8 h-8 rounded-lg bg-primary text-white flex items-center justify-center shadow-sm">1</button>
-                <button class="w-8 h-8 rounded-lg bg-surface border border-outline-variant/30 flex items-center justify-center hover:bg-surface-container-high transition-colors" disabled><span class="material-symbols-outlined text-sm">chevron_right</span></button>
-            </div>
-        </div>
+
     </div>
 </div>
 

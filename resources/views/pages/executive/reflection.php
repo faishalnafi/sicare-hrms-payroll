@@ -1,6 +1,7 @@
 <?php
+use App\Services\ViewHelper;
+
 // Executive / C-Level: Corporate Well-being & Performance Alignment Dashboard (Strictly Aggregate under UU PDP)
-$db = \App\Config\Database::getInstance()->getConnection();
 if (session_status() === PHP_SESSION_NONE) session_start();
 $userId = $_SESSION['user_id'] ?? '';
 
@@ -13,31 +14,7 @@ $parts = explode('-Q', $selectedPeriod);
 $year = isset($parts[0]) ? (int)$parts[0] : (int)date('Y');
 $quarter = isset($parts[1]) ? (int)$parts[1] : (int)ceil(date('n') / 3);
 
-// Fetch all reflections in the company for the selected period to calculate global averages
-$stmtRef = $db->prepare("
-    SELECT r.*, u.department_id,
-           COALESCE(latest_mood.mood_rating, 'neutral') AS mood_rating,
-           COALESCE(latest_mood.workload_rating, 3) AS workload_rating
-    FROM self_reflections r
-    JOIN users u ON r.user_id = u.id
-    LEFT JOIN (
-        SELECT mp1.*
-        FROM mood_pulses mp1
-        INNER JOIN (
-            SELECT user_id, MAX(created_at) as max_created
-            FROM mood_pulses
-            WHERE YEAR(created_at) = :year AND QUARTER(created_at) = :quarter
-            GROUP BY user_id
-        ) mp2 ON mp1.user_id = mp2.user_id AND mp1.created_at = mp2.max_created
-    ) latest_mood ON r.user_id = latest_mood.user_id
-    WHERE r.period = :period AND r.status IN ('submitted', 'completed')
-");
-$stmtRef->execute([
-    'period' => $selectedPeriod,
-    'year' => $year,
-    'quarter' => $quarter
-]);
-$reflections = $stmtRef->fetchAll(PDO::FETCH_ASSOC);
+$reflections = ViewHelper::getReflectionDashboardData('executive', $selectedPeriod);
 
 // Calculate Global Aggregates
 $moodCounts = ['excellent' => 0, 'good' => 0, 'neutral' => 0, 'tired' => 0, 'stressed' => 0];
@@ -61,38 +38,8 @@ foreach ($reflections as $r) {
 $avgWorkload = $countedForAvg > 0 ? round($workloadTotal / $countedForAvg, 1) : 0.0;
 $avgValues = $countedForAvg > 0 ? round($valuesTotal / $countedForAvg, 1) : 0.0;
 
-// Fetch department-level aggregates
-$stmtDept = $db->prepare("
-    SELECT 
-        d.name AS department_name,
-        COUNT(r.id) AS total_reflections,
-        AVG(COALESCE(latest_mood.workload_rating, 3)) AS avg_workload,
-        AVG(r.core_values_rating) AS avg_values,
-        -- Calculate percentage of employees with positive mood (excellent or good)
-        ROUND(SUM(CASE WHEN COALESCE(latest_mood.mood_rating, 'neutral') IN ('excellent', 'good') THEN 1 ELSE 0 END) / COUNT(r.id) * 100, 1) AS happiness_index
-    FROM self_reflections r
-    JOIN users u ON r.user_id = u.id
-    JOIN departments d ON u.department_id = d.id
-    LEFT JOIN (
-        SELECT mp1.*
-        FROM mood_pulses mp1
-        INNER JOIN (
-            SELECT user_id, MAX(created_at) as max_created
-            FROM mood_pulses
-            WHERE YEAR(created_at) = :year AND QUARTER(created_at) = :quarter
-            GROUP BY user_id
-        ) mp2 ON mp1.user_id = mp2.user_id AND mp1.created_at = mp2.max_created
-    ) latest_mood ON r.user_id = latest_mood.user_id
-    WHERE r.period = :period AND r.status IN ('submitted', 'completed')
-    GROUP BY d.id, d.name
-    ORDER BY happiness_index DESC
-");
-$stmtDept->execute([
-    'period' => $selectedPeriod,
-    'year' => $year,
-    'quarter' => $quarter
-]);
-$deptStats = $stmtDept->fetchAll(PDO::FETCH_ASSOC);
+// Fetch department-level aggregates via Business Layer API
+$deptStats = ViewHelper::getExecutiveReflectionDeptStats($selectedPeriod, $year, $quarter);
 
 // Quarters selection list
 $availablePeriods = [];
@@ -118,7 +65,7 @@ for ($y = $year; $y >= $year - 1; $y--) {
                         <option value="<?= $ap ?>" <?= $ap === $selectedPeriod ? 'selected' : '' ?>><?= $ap ?></option>
                     <?php endforeach; ?>
                 </select>
-                <span class="material-symbols-outlined absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-on-surface-variant text-sm">arrow_drop_down</span>
+                
             </div>
         </div>
     </div>
@@ -135,7 +82,7 @@ for ($y = $year; $y >= $year - 1; $y--) {
     <!-- Aggregate Analytics Dashboard Grid -->
     <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
         <!-- Average Workload Card -->
-        <div class="bg-surface-container-lowest rounded-2xl p-5 border border-outline-variant/15 shadow-sm space-y-3">
+        <div class="stat-card-scale bg-surface-container-lowest rounded-2xl p-5 border border-outline-variant/15 shadow-sm space-y-3">
             <div class="flex items-center justify-between">
                 <span class="text-[10px] font-bold text-on-surface-variant uppercase tracking-wider">Beban Kerja Rata-Rata</span>
                 <span class="material-symbols-outlined text-primary bg-primary/5 p-2 rounded-lg text-sm">speed</span>
@@ -150,7 +97,7 @@ for ($y = $year; $y >= $year - 1; $y--) {
         </div>
 
         <!-- Average Core Values Card -->
-        <div class="bg-surface-container-lowest rounded-2xl p-5 border border-outline-variant/15 shadow-sm space-y-3">
+        <div class="stat-card-scale bg-surface-container-lowest rounded-2xl p-5 border border-outline-variant/15 shadow-sm space-y-3">
             <div class="flex items-center justify-between">
                 <span class="text-[10px] font-bold text-on-surface-variant uppercase tracking-wider">Nilai Budaya Organisasi</span>
                 <span class="material-symbols-outlined text-amber-500 bg-amber-50 p-2 rounded-lg text-sm">stars</span>
@@ -165,7 +112,7 @@ for ($y = $year; $y >= $year - 1; $y--) {
         </div>
 
         <!-- Total Submissions Card -->
-        <div class="bg-surface-container-lowest rounded-2xl p-5 border border-outline-variant/15 shadow-sm space-y-3">
+        <div class="stat-card-scale bg-surface-container-lowest rounded-2xl p-5 border border-outline-variant/15 shadow-sm space-y-3">
             <div class="flex items-center justify-between">
                 <span class="text-[10px] font-bold text-on-surface-variant uppercase tracking-wider">Total Partisipasi Aktif</span>
                 <span class="material-symbols-outlined text-blue-600 bg-blue-50 p-2 rounded-lg text-sm">group</span>
@@ -177,7 +124,7 @@ for ($y = $year; $y >= $year - 1; $y--) {
         </div>
 
         <!-- Indeks Kebahagiaan Makro -->
-        <div class="bg-surface-container-lowest rounded-2xl p-5 border border-outline-variant/15 shadow-sm space-y-3">
+        <div class="stat-card-scale bg-surface-container-lowest rounded-2xl p-5 border border-outline-variant/15 shadow-sm space-y-3">
             <div class="flex items-center justify-between">
                 <span class="text-[10px] font-bold text-on-surface-variant uppercase tracking-wider">Indeks Kepuasan Kerja Global</span>
                 <span class="material-symbols-outlined text-green-600 bg-green-50 p-2 rounded-lg text-sm">sentiment_very_satisfied</span>

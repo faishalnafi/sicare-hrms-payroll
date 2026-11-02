@@ -1,0 +1,242 @@
+<?php
+
+namespace App\Controllers;
+
+use App\Config\Database;
+use Exception;
+use PDO;
+
+class NotificationController {
+
+    /**
+     * SSE Endpoint for Real-time Notifications.
+     * Uses Smart Polling: sends one event and closes connection, letting client EventSource auto-reconnect.
+     */
+    public function stream() {
+        // Start session if none exists
+        if (session_status() === PHP_SESSION_NONE) {
+            session_start();
+        }
+
+        // Get user_id and roles before closing session
+        $userId = $_SESSION['user_id'] ?? null;
+        $userRole = $_SESSION['role'] ?? '';
+        $origRole = $_SESSION['original_role'] ?? '';
+        $userDeptId = $_SESSION['department_id'] ?? null;
+        
+        // Immediately close session to prevent blocking other concurrent AJAX requests for this user
+        session_write_close();
+
+        if (!$userId) {
+            header('HTTP/1.1 401 Unauthorized');
+            exit;
+        }
+
+        // Disable attendance SSE notifications for Superadmin role or when Superadmin is impersonating
+        if ($userRole === 'superadmin' || $origRole === 'superadmin') {
+            header('Content-Type: text/event-stream');
+            header('Cache-Control: no-cache');
+            header('Connection: keep-alive');
+            header('X-Accel-Buffering: no');
+            echo "data: {\"ping\": 1}\n\n";
+            ob_flush();
+            flush();
+            exit;
+        }
+
+        // Set SSE Headers
+        header('Content-Type: text/event-stream');
+        header('Cache-Control: no-cache');
+        header('Connection: keep-alive');
+        // Prevent buffering on some web servers
+        header('X-Accel-Buffering: no'); 
+
+        $db = Database::getInstance()->getConnection();
+
+        // 1. Fetch Global Settings for time bounds
+        $stmt = $db->query("SELECT `key`, `value` FROM global_settings WHERE `key` IN ('work_start_time', 'work_min_start_time', 'work_min_start_time_enabled', 'work_end_time', 'work_min_end_time', 'work_min_end_time_enabled')");
+        $settings = [];
+        while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
+            $settings[$row['key']] = $row['value'];
+        }
+
+        $workStartTime = $settings['work_start_time'] ?? '07:00';
+        $workMinStartTime = $settings['work_min_start_time'] ?? '06:00';
+        $minStartEnabled = ($settings['work_min_start_time_enabled'] ?? 'true') === 'true';
+
+        $workEndTime = $settings['work_end_time'] ?? '21:00';
+        $workMinEndTime = $settings['work_min_end_time'] ?? '15:00';
+        $minEndEnabled = ($settings['work_min_end_time_enabled'] ?? 'false') === 'true';
+
+        // 2. Fetch today's attendance for the user
+        $today = date('Y-m-d');
+        $stmt = $db->prepare("SELECT clock_in, clock_out FROM employee_attendance WHERE user_id = ? AND attendance_date = ?");
+        $stmt->execute([$userId, $today]);
+        $attendance = $stmt->fetch(PDO::FETCH_ASSOC);
+
+        $hasClockedIn = false;
+        $hasClockedOut = false;
+
+        if ($attendance) {
+            $hasClockedIn = !empty($attendance['clock_in']);
+            $hasClockedOut = !empty($attendance['clock_out']);
+        }
+
+        $currentTime = date('H:i');
+        
+        $formatTimeDiff = function($time1, $time2) {
+            $diffSeconds = abs(strtotime($time2) - strtotime($time1));
+            $diffMinutes = round($diffSeconds / 60);
+            if ($diffMinutes < 60) {
+                return $diffMinutes . " menit";
+            } elseif ($diffMinutes % 60 === 0) {
+                return ($diffMinutes / 60) . " jam";
+            } else {
+                return floor($diffMinutes / 60) . " jam " . ($diffMinutes % 60) . " menit";
+            }
+        };
+
+        $events = [];
+
+        // --- Logic for Clock In Reminders ---
+        if (!$hasClockedIn) {
+            // A. Minimal Waktu Masuk Notification
+            if ($minStartEnabled && $currentTime >= $workMinStartTime && $currentTime < $workStartTime) {
+                $diffText = $formatTimeDiff($currentTime, $workStartTime);
+
+                $events[] = [
+                    'id' => 'clock_in_min',
+                    'type' => 'reminder',
+                    'title' => 'Waktunya Presensi!',
+                    'message' => "Presensi Masuk kurang $diffText lagi dan sudah dapat dilakukan mulai sekarang, jangan terlupa untuk melakukan presensi hari ini."
+                ];
+            }
+            // B. Waktu Standar Masuk Notification
+            else if ($currentTime >= $workStartTime) {
+                // If it's too late (e.g. standard is 07:00, maybe stop reminding at 12:00?)
+                // We'll just rely on the frontend localStorage to show it exactly once per day.
+                $events[] = [
+                    'id' => 'clock_in_std',
+                    'type' => 'reminder',
+                    'title' => 'Waktu Masuk Berjalan!',
+                    'message' => "Saat ini sudah memasuki waktu presensi masuk ($workStartTime). Segera lakukan presensi sebelum jam masuk ditutup."
+                ];
+            }
+        }
+
+        // --- Logic for Clock Out Reminders ---
+        if ($hasClockedIn && !$hasClockedOut) {
+            // C. Minimal Waktu Pulang Notification
+            if ($minEndEnabled && $currentTime >= $workMinEndTime && $currentTime < $workEndTime) {
+                $diffText = $formatTimeDiff($currentTime, $workEndTime);
+
+                $events[] = [
+                    'id' => 'clock_out_min',
+                    'type' => 'reminder',
+                    'title' => 'Peringatan Waktu Pulang!',
+                    'message' => "Presensi Pulang kurang $diffText lagi dan sudah dapat dilakukan mulai sekarang, jangan terlupa untuk melakukan presensi hari ini."
+                ];
+            }
+            // D. Waktu Standar Pulang Notification
+            else if ($currentTime >= $workEndTime) {
+                $events[] = [
+                    'id' => 'clock_out_std',
+                    'type' => 'reminder',
+                    'title' => 'Waktunya Pulang!',
+                    'message' => "Jam kerja telah berakhir ($workEndTime). Silakan melakukan presensi pulang sebelum meninggalkan pekerjaan."
+                ];
+            }
+        }
+
+        // --- 3. Business Event Notifications ---
+        try {
+            // A. Manager Pending Approvals
+            if (in_array($userRole, ['hiring_manager', 'manager'])) {
+                if (empty($userDeptId) && !empty($userId)) {
+                    $stmtDept = $db->prepare("SELECT department_id FROM users WHERE id = ?");
+                    $stmtDept->execute([$userId]);
+                    $userDeptId = $stmtDept->fetchColumn() ?: null;
+                }
+                if (!empty($userDeptId)) {
+                    $stmtPendingLeaves = $db->prepare("
+                        SELECT COUNT(*) FROM employee_leave_requests elr
+                        JOIN users u ON elr.user_id = u.id
+                        WHERE u.department_id = ? AND elr.status = 'pending'
+                    ");
+                    $stmtPendingLeaves->execute([$userDeptId]);
+                    $pendingLeaves = (int)$stmtPendingLeaves->fetchColumn();
+
+                    $stmtPendingClaims = $db->prepare("
+                        SELECT COUNT(*) FROM employee_reimbursement_claims erc
+                        JOIN users u ON erc.user_id = u.id
+                        WHERE u.department_id = ? AND erc.status = 'pending'
+                    ");
+                    $stmtPendingClaims->execute([$userDeptId]);
+                    $pendingClaims = (int)$stmtPendingClaims->fetchColumn();
+
+                    if ($pendingLeaves > 0 || $pendingClaims > 0) {
+                        $events[] = [
+                            'id' => 'manager_pending_' . ($pendingLeaves + $pendingClaims),
+                            'type' => 'approval',
+                            'title' => 'Persetujuan Tim Menunggu',
+                            'message' => "Terdapat " . ($pendingLeaves > 0 ? "$pendingLeaves cuti " : "") . ($pendingClaims > 0 ? "$pendingClaims klaim " : "") . "staf yang menunggu persetujuan Anda."
+                        ];
+                    }
+                }
+            }
+
+            // B. Recruiter New Applicants
+            if ($userRole === 'recruiter') {
+                $stmtNewApps = $db->query("SELECT COUNT(*) FROM job_applications WHERE status = 'submitted' AND DATE(created_at) = CURRENT_DATE()");
+                $newApps = (int)$stmtNewApps->fetchColumn();
+                if ($newApps > 0) {
+                    $events[] = [
+                        'id' => 'recruiter_new_apps_' . date('Ymd') . '_' . $newApps,
+                        'type' => 'ats',
+                        'title' => 'Pelamar Baru di Portal Karir',
+                        'message' => "Ada $newApps berkas lamaran baru masuk hari ini yang siap untuk disaring di Pipeline ATS."
+                    ];
+                }
+            }
+
+            // C. Employee Status Update (Leaves & Reimbursements)
+            if ($userRole === 'employee') {
+                $stmtRecentLeave = $db->prepare("
+                    SELECT leave_type, status, updated_at 
+                    FROM employee_leave_requests 
+                    WHERE user_id = ? AND status IN ('approved', 'rejected') AND updated_at >= NOW() - INTERVAL 1 DAY
+                    ORDER BY updated_at DESC LIMIT 1
+                ");
+                $stmtRecentLeave->execute([$userId]);
+                $recentLeave = $stmtRecentLeave->fetch(PDO::FETCH_ASSOC);
+                if ($recentLeave) {
+                    $stLabel = ($recentLeave['status'] === 'approved') ? 'Disetujui' : 'Ditolak';
+                    $events[] = [
+                        'id' => 'emp_leave_' . md5($recentLeave['updated_at'] . $recentLeave['status']),
+                        'type' => 'status_update',
+                        'title' => "Pengajuan Cuti $stLabel",
+                        'message' => "Permohonan {$recentLeave['leave_type']} Anda telah resmi $stLabel oleh atasan."
+                    ];
+                }
+            }
+        } catch (\Exception $e) {
+            // Non-critical, continue output
+        }
+
+        // Output JSON as SSE data
+        if (!empty($events)) {
+            echo "data: " . json_encode(['notifications' => $events]) . "\n\n";
+        } else {
+            // Keep-alive heartbeat to prevent the connection from dying without output
+            echo "data: {\"ping\": 1}\n\n";
+        }
+        
+        ob_flush();
+        flush();
+        
+        // Smart polling: we exit immediately after sending one chunk of data.
+        // The browser's EventSource will automatically reconnect after ~3-5 seconds.
+        // This is much safer for standard PHP setups (Apache/PHP-FPM) than infinite while(true) loops.
+        exit;
+    }
+}

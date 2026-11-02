@@ -11,8 +11,8 @@ class CorrectionController {
     private $db;
     private $uploadDir;
 
-    public function __construct() {
-        $this->db = Database::getInstance()->getConnection();
+    public function __construct(PDO $db) {
+        $this->db = $db;
         $this->uploadDir = __DIR__ . '/../../storage/secured_storage/';
         if (!file_exists($this->uploadDir)) {
             mkdir($this->uploadDir, 0755, true);
@@ -20,14 +20,31 @@ class CorrectionController {
     }
 
     /**
+     * Validate CSRF token from POST body or HTTP header.
+     */
+    private function validateCsrf(): bool {
+        if (session_status() === PHP_SESSION_NONE) session_start();
+        $token = $_POST['csrf_token'] ?? $_SERVER['HTTP_X_CSRF_TOKEN'] ?? $_SERVER['HTTP_X_CSRF_TOKEN'] ?? '';
+        return !empty($token) && hash_equals($_SESSION['csrf_token'] ?? '', $token);
+    }
+
+    /**
      * Submit a correction request (Employee Portal)
      */
     public function submit() {
         header('Content-Type: application/json');
-        session_start();
+        if (session_status() === PHP_SESSION_NONE) {
+            session_start();
+        }
 
-        if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'employee') {
-            echo json_encode(['success' => false, 'message' => 'Akses ditolak. Anda harus login sebagai Karyawan.']);
+        if (!isset($_SESSION['user_id'])) {
+            echo json_encode(['success' => false, 'message' => 'Akses ditolak. Anda harus login terlebih dahulu.']);
+            return;
+        }
+
+        // CSRF Token Validation
+        if (!$this->validateCsrf()) {
+            echo json_encode(['success' => false, 'message' => 'Token CSRF tidak valid atau kedaluwarsa. Silakan muat ulang halaman.']);
             return;
         }
 
@@ -140,10 +157,21 @@ class CorrectionController {
      */
     public function approve() {
         header('Content-Type: application/json');
-        session_start();
+        if (session_status() === PHP_SESSION_NONE) {
+            session_start();
+        }
 
-        if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'hr_ops') {
+        $role = $_SESSION['role'] ?? '';
+        $origRole = $_SESSION['original_role'] ?? '';
+        $isSuperAdmin = ($role === 'superadmin' || $origRole === 'superadmin');
+        if (!isset($_SESSION['user_id']) || (!$isSuperAdmin && !in_array($role, ['hr_ops', 'admin']))) {
             echo json_encode(['success' => false, 'message' => 'Akses ditolak. Anda harus login sebagai HR Operations.']);
+            return;
+        }
+
+        // CSRF Token Validation
+        if (!$this->validateCsrf()) {
+            echo json_encode(['success' => false, 'message' => 'Token CSRF tidak valid atau kedaluwarsa. Silakan muat ulang halaman.']);
             return;
         }
 
@@ -233,10 +261,21 @@ class CorrectionController {
      */
     public function reject() {
         header('Content-Type: application/json');
-        session_start();
+        if (session_status() === PHP_SESSION_NONE) {
+            session_start();
+        }
 
-        if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'hr_ops') {
+        $role = $_SESSION['role'] ?? '';
+        $origRole = $_SESSION['original_role'] ?? '';
+        $isSuperAdmin = ($role === 'superadmin' || $origRole === 'superadmin');
+        if (!isset($_SESSION['user_id']) || (!$isSuperAdmin && !in_array($role, ['hr_ops', 'admin']))) {
             echo json_encode(['success' => false, 'message' => 'Akses ditolak. Anda harus login sebagai HR Operations.']);
+            return;
+        }
+
+        // CSRF Token Validation
+        if (!$this->validateCsrf()) {
+            echo json_encode(['success' => false, 'message' => 'Token CSRF tidak valid atau kedaluwarsa. Silakan muat ulang halaman.']);
             return;
         }
 
@@ -415,7 +454,10 @@ class CorrectionController {
         $stmt->execute(['file_path' => $fileName]);
         $ownerId = $stmt->fetchColumn();
 
-        if ($_SESSION['role'] !== 'hr_ops' && $_SESSION['user_id'] !== $ownerId) {
+        $role = $_SESSION['role'] ?? '';
+        $origRole = $_SESSION['original_role'] ?? '';
+        $isSuperAdmin = ($role === 'superadmin' || $origRole === 'superadmin');
+        if (!$isSuperAdmin && !in_array($role, ['hr_ops', 'admin']) && $_SESSION['user_id'] !== $ownerId) {
             // Fallback check: if the requested file doesn't have an owner in the table (could be static/dummy),
             // let employee see it for illustration, but restrict strict files
             if ($ownerId !== false) {

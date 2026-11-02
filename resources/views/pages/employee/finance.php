@@ -1,14 +1,11 @@
 <?php
+use App\Services\ViewHelper;
+
 // Check quarterly self-reflection compliance before letting them access finance page
-$db = \App\Config\Database::getInstance()->getConnection();
 $userId = $_SESSION['user_id'] ?? '';
-$currentPeriod = date('Y') . '-Q' . ceil(date('n') / 3);
+$isReflectionIncomplete = ViewHelper::isReflectionIncomplete($userId);
 
-$stmt = $db->prepare("SELECT COUNT(*) FROM self_reflections WHERE user_id = :user_id AND period = :period AND status IN ('submitted', 'completed')");
-$stmt->execute(['user_id' => $userId, 'period' => $currentPeriod]);
-$hasQuarterly = $stmt->fetchColumn() > 0;
-
-if (!$hasQuarterly) {
+if ($isReflectionIncomplete) {
     echo "<div class='p-6 text-red-650 font-bold bg-red-50 border border-red-200 rounded-2xl shadow-sm flex items-center gap-3'>
             <span class='material-symbols-outlined text-red-600'>lock</span>
             <div>
@@ -23,42 +20,25 @@ $sessName  = $_SESSION['name'] ?? 'Alex Rivera';
 $sessEmail = $_SESSION['email'] ?? 'alex.rivera@example.com';
 $sessRole  = $_SESSION['role'] ?? 'employee';
 
-// Fetch dynamic user data from DB
-$db = \App\Config\Database::getInstance()->getConnection();
-$companyName = $db->query("SELECT `value` FROM global_settings WHERE `key` = 'app_company_name' LIMIT 1")->fetchColumn() ?: 'PT SI CARE ENTERPRISE';
+// Fetch dynamic user data from ViewHelper
+$companyName = ViewHelper::getSetting('app_company_name', 'PT SI CARE ENTERPRISE');
 $companyNameForStamp = $companyName;
 if (stripos($companyName, 'Mango') !== false) {
     $companyNameForStamp = 'PT. MANGO TEKNUSA INOVASI';
 }
-$appName = $db->query("SELECT `value` FROM global_settings WHERE `key` = 'app_name' LIMIT 1")->fetchColumn() ?: 'siCare';
-$appLogoIcon = $db->query("SELECT `value` FROM global_settings WHERE `key` = 'app_logo_icon' LIMIT 1")->fetchColumn() ?: 'local_police';
-$appLogoType = $db->query("SELECT `value` FROM global_settings WHERE `key` = 'app_logo_type' LIMIT 1")->fetchColumn() ?: 'icon';
-$appLogoImage = $db->query("SELECT `value` FROM global_settings WHERE `key` = 'app_logo_image' LIMIT 1")->fetchColumn() ?: '';
+$appName      = ViewHelper::getSetting('app_name', 'siCare');
+$appLogoIcon  = ViewHelper::getSetting('app_logo_icon', 'local_police');
+$appLogoType  = ViewHelper::getSetting('app_logo_type', 'icon');
+$appLogoImage = ViewHelper::getSetting('app_logo_image', '');
 
-$bpjsTkPct = (float)($db->query("SELECT `value` FROM global_settings WHERE `key` = 'payroll_bpjs_tk_pct' LIMIT 1")->fetchColumn() ?: 2);
-$bpjsKesPct = (float)($db->query("SELECT `value` FROM global_settings WHERE `key` = 'payroll_bpjs_kes_pct' LIMIT 1")->fetchColumn() ?: 1);
-$pph21Pct = (float)($db->query("SELECT `value` FROM global_settings WHERE `key` = 'payroll_pph21_pct' LIMIT 1")->fetchColumn() ?: 2.5);
+$bpjsTkPct  = (float)ViewHelper::getSetting('payroll_bpjs_tk_pct', 2);
+$bpjsKesPct = (float)ViewHelper::getSetting('payroll_bpjs_kes_pct', 1);
+$pph21Pct   = (float)ViewHelper::getSetting('payroll_pph21_pct', 2.5);
 
 // Fetch HR Director (Hiring Manager of HR department) dynamically, fallback to Zanuba Arifatul Khafsoh
-$hrQuery = $db->query("
-    SELECT u.first_name, u.last_name, u.job_title 
-    FROM users u
-    JOIN departments d ON u.department_id = d.id
-    WHERE u.role = 'hiring_manager' AND (d.name LIKE '%Human Resources%' OR d.name LIKE '%HR%')
-    LIMIT 1
-");
-$hrDirectorData = $hrQuery->fetch();
-$hrDirectorName = $hrDirectorData ? trim($hrDirectorData['first_name'] . ' ' . ($hrDirectorData['last_name'] ?? '')) : 'Zanuba Arifatul Khafsoh';
-$hrDirectorTitle = $hrDirectorData ? ($hrDirectorData['job_title'] ?? 'HR Operations Director') : 'HR Operations Director';
+[$hrDirectorName, $hrDirectorTitle] = ViewHelper::getHrDirectorData();
 
-$userQuery = $db->prepare("
-    SELECT u.*, d.name AS department_name
-    FROM users u
-    LEFT JOIN departments d ON u.department_id = d.id
-    WHERE u.id = :id
-");
-$userQuery->execute(['id' => $_SESSION['user_id']]);
-$dbUser = $userQuery->fetch();
+$dbUser = ViewHelper::getFullUserProfile($_SESSION['user_id'] ?? null);
 
 $jobTitle = $dbUser['job_title'] ?? 'Karyawan';
 $deptName = $dbUser['department_name'] ?? '';
@@ -88,211 +68,13 @@ $baseSalary = !empty($dbUser['base_salary']) ? (float)$dbUser['base_salary'] : 0
 // ======================================================
 $currentYear = date('Y');
 
-// Fetch all approved payroll records for this user in the current year
-$payrollStmt = $db->prepare("
-    SELECT ep.*
-    FROM employee_payroll ep
-    WHERE ep.user_id = :user_id
-      AND ep.status IN ('Approved', 'Paid')
-      AND ep.month_year LIKE :year_pattern
-    ORDER BY ep.month_year DESC
-");
-$payrollStmt->execute([
-    'user_id'      => $_SESSION['user_id'],
-    'year_pattern' => '%-' . $currentYear,
-]);
-$approvedPayrolls = $payrollStmt->fetchAll(\PDO::FETCH_ASSOC);
-
-// Build months array from DB records
-$months = [];
-$monthNames = [
-    '01' => 'Januari', '02' => 'Februari', '03' => 'Maret',
-    '04' => 'April',   '05' => 'Mei',       '06' => 'Juni',
-    '07' => 'Juli',    '08' => 'Agustus',   '09' => 'September',
-    '10' => 'Oktober', '11' => 'November',  '12' => 'Desember'
-];
-
-foreach ($approvedPayrolls as $record) {
-    // month_year format: MM-YYYY
-    $parts = explode('-', $record['month_year']);
-    $mm = $parts[0] ?? '01';
-    $yyyy = $parts[1] ?? $currentYear;
-    $monthName = ($monthNames[$mm] ?? $mm) . ' ' . $yyyy;
-
-    // Format payment_date (approved/transfer date)
-    $paymentDateRaw = $record['payment_date'] ?? null;
-    $paymentDateFormatted = '';
-    if ($paymentDateRaw) {
-        $ts = strtotime($paymentDateRaw);
-        $bulan = ['','Januari','Februari','Maret','April','Mei','Juni','Juli','Agustus','September','Oktober','November','Desember'];
-        $paymentDateFormatted = date('j', $ts) . ' ' . $bulan[(int)date('n', $ts)] . ' ' . date('Y', $ts);
-    }
-
-    // Calculate dynamic working days count
-    $workingDaysCount = 22; // default
-    $weeklyHolidays = ['Sat', 'Sun'];
-    $val = $db->query("SELECT `value` FROM global_settings WHERE `key` = 'weekly_holidays' LIMIT 1")->fetchColumn();
-    if (!empty($val)) {
-        $weeklyHolidays = array_filter(array_map('trim', explode(',', $val)));
-    }
-    $stmtHolidays = $db->prepare("
-        SELECT holiday_date 
-        FROM company_holidays 
-        WHERE MONTH(holiday_date) = ? AND YEAR(holiday_date) = ?
-    ");
-    $stmtHolidays->execute([intval($mm), intval($yyyy)]);
-    $companyHolidays = $stmtHolidays->fetchAll(\PDO::FETCH_COLUMN) ?: [];
-
-    $daysInMonth = (int)date('t', strtotime(sprintf('%04d-%02d-01', intval($yyyy), intval($mm))));
-    $workingDays = 0;
-    for ($day = 1; $day <= $daysInMonth; $day++) {
-        $dateStr = sprintf('%04d-%02d-%02d', intval($yyyy), intval($mm), $day);
-        $ts = strtotime($dateStr);
-        $dayName = date('D', $ts);
-        if (!in_array($dayName, $weeklyHolidays) && !in_array($dateStr, $companyHolidays)) {
-            $workingDays++;
-        }
-    }
-    $workingDaysCount = $workingDays > 0 ? $workingDays : 22;
-
-    // Calculate present days (clock-in)
-    $stmtPresent = $db->prepare("
-        SELECT COUNT(*) 
-        FROM employee_attendance 
-        WHERE user_id = :user_id 
-          AND status IN ('tepat waktu', 'awal', 'terlambat')
-          AND MONTH(attendance_date) = :month 
-          AND YEAR(attendance_date) = :year
-    ");
-    $stmtPresent->execute([
-        'user_id' => $_SESSION['user_id'],
-        'month'   => intval($mm),
-        'year'    => intval($yyyy)
-    ]);
-    $presentDaysCount = (int)$stmtPresent->fetchColumn();
-
-    // Calculate unpaid leave days
-    $stmtLeaves = $db->prepare("
-        SELECT start_date, end_date 
-        FROM employee_leave_requests
-        WHERE user_id = :user_id
-          AND status = 'approved'
-          AND LOWER(leave_type) = 'cuti tidak dibayar'
-          AND start_date <= :last_day
-          AND end_date >= :first_day
-    ");
-    $firstDay = sprintf('%04d-%02d-01', intval($yyyy), intval($mm));
-    $lastDay = date('Y-m-t', strtotime($firstDay));
-    $stmtLeaves->execute([
-        'user_id' => $_SESSION['user_id'],
-        'first_day' => $firstDay,
-        'last_day' => $lastDay
-    ]);
-    $leaves = $stmtLeaves->fetchAll(\PDO::FETCH_ASSOC);
-    $unpaidDays = 0;
-    foreach ($leaves as $l) {
-        $start = max(strtotime($firstDay), strtotime($l['start_date']));
-        $end = min(strtotime($lastDay), strtotime($l['end_date']));
-        for ($curr = $start; $curr <= $end; $curr = strtotime('+1 day', $curr)) {
-            $currDateStr = date('Y-m-d', $curr);
-            $dayName = date('D', $curr);
-            if (!in_array($dayName, $weeklyHolidays) && !in_array($currDateStr, $companyHolidays)) {
-                $unpaidDays++;
-            }
-        }
-    }
-
-    // Calculate alpa days
-    $stmtAlpa = $db->prepare("
-        SELECT COUNT(*) 
-        FROM employee_attendance
-        WHERE user_id = :user_id
-          AND status = 'alpa'
-          AND MONTH(attendance_date) = :month
-          AND YEAR(attendance_date) = :year
-    ");
-    $stmtAlpa->execute([
-        'user_id' => $_SESSION['user_id'],
-        'month' => intval($mm),
-        'year' => intval($yyyy)
-    ]);
-    $alpaDays = (int)$stmtAlpa->fetchColumn();
-
-    // Calculate late days
-    $stmtLate = $db->prepare("
-        SELECT COUNT(*) 
-        FROM employee_attendance
-        WHERE user_id = :user_id
-          AND status = 'terlambat'
-          AND MONTH(attendance_date) = :month
-          AND YEAR(attendance_date) = :year
-    ");
-    $stmtLate->execute([
-        'user_id' => $_SESSION['user_id'],
-        'month' => intval($mm),
-        'year' => intval($yyyy)
-    ]);
-    $lateDays = (int)$stmtLate->fetchColumn();
-
-    // Calculate deductions
-    $unpaidDeduction = 0.0;
-    if ($workingDaysCount > 0 && $unpaidDays > 0) {
-        $unpaidDeduction = ($record['base_salary'] / $workingDaysCount) * $unpaidDays;
-    }
-    $alpaDeduction = 0.0;
-    if ($workingDaysCount > 0 && $alpaDays > 0) {
-        $alpaDeduction = ($record['base_salary'] / $workingDaysCount) * $alpaDays;
-    }
-    $latePenalty = 50000.0;
-    $latePenaltyVal = $db->query("SELECT `value` FROM global_settings WHERE `key` = 'payroll_late_deduction' LIMIT 1")->fetchColumn();
-    if ($latePenaltyVal !== false && $latePenaltyVal !== null) {
-        $latePenalty = (float)$latePenaltyVal;
-    }
-    $lateDeduction = $lateDays * $latePenalty;
-
-    $tunjanganTotal = (float)$record['tunj_jabatan'] + (float)$record['tunj_transport_makan'] + (float)$record['tunj_komunikasi'] + (float)$record['bonus'] + (float)$record['reimbursement'];
-    $totDed = (float)$record['bpjs_tk'] + (float)$record['bpjs_kes'] + (float)$record['pph21'] + (float)$record['other_deduction'];
-    $grossEarning = (float)$record['base_salary'] + $tunjanganTotal + (float)$record['overtime'];
-    $netPay = (float)$record['net_salary'];
-
-    $months[] = [
-        'id'                     => $record['id'],
-        'code'                   => $record['month_year'],
-        'month_name'             => $monthName,
-        'date'                   => $paymentDateFormatted,
-        'status'                 => $record['status'],
-        'base_salary'            => (float)$record['base_salary'],
-        'tunj_jabatan'           => (float)$record['tunj_jabatan'],
-        'tunj_transport_makan'   => (float)$record['tunj_transport_makan'],
-        'tunj_komunikasi'        => (float)$record['tunj_komunikasi'],
-        'bonus'                  => (float)$record['bonus'],
-        'thr'                    => 0,
-        'overtime'               => (float)$record['overtime'],
-        'reimbursement'          => (float)$record['reimbursement'],
-        'other_deduction'        => (float)$record['other_deduction'],
-        'unpaid_leave_days'      => $unpaidDays,
-        'unpaid_leave_deduction' => $unpaidDeduction,
-        'alpa_days'              => $alpaDays,
-        'alpa_deduction'         => $alpaDeduction,
-        'late_days'              => $lateDays,
-        'late_deduction'         => $lateDeduction,
-        'bpjs_tk'                => (float)$record['bpjs_tk'],
-        'bpjs_kes'               => (float)$record['bpjs_kes'],
-        'pph21'                  => (float)$record['pph21'],
-        'tunjangan_total'        => $tunjanganTotal,
-        'total_deductions'       => $totDed + $unpaidDeduction + $alpaDeduction + $lateDeduction,
-        'gross_earning'          => $grossEarning - $unpaidDeduction - $alpaDeduction - $lateDeduction,
-        'net_pay'                => $netPay,
-        'working_days'           => $workingDaysCount,
-        'present_days'           => $presentDaysCount,
-    ];
-}
+$months = ViewHelper::getEmployeeFinanceData($_SESSION['user_id'] ?? '', $currentYear);
 
 // Latest month (most recent approved payroll)
 $hasApprovedPayroll = !empty($months);
 $latest = $hasApprovedPayroll ? $months[0] : null;
-$latestNetPay = $latest ? $latest['net_pay'] : 0;
-$latestDate = $latest ? $latest['date'] : '';
+$latestNetPay = $latest ? ($latest['net_salary'] ?? $latest['net_pay'] ?? 0) : 0;
+$latestDate = $latest ? ($latest['payment_date'] ?? $latest['date'] ?? '') : '';
 $latestBaseSalary = $latest ? $latest['base_salary'] : $baseSalary;
 ?>
 
@@ -369,11 +151,13 @@ $latestBaseSalary = $latest ? $latest['base_salary'] : $baseSalary;
     <!-- Bento Grid Metrik Keuangan -->
     <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
         <!-- Bento Card 1: Last Salary Received -->
-        <div class="bg-surface-container-lowest rounded-2xl p-6 border border-outline-variant/15 shadow-[0_20px_40px_rgba(0,6,102,0.03)] relative overflow-hidden group">
-            <div class="absolute -top-12 -right-12 w-32 h-32 bg-primary/5 rounded-full blur-xl group-hover:bg-primary/10 transition-colors duration-300"></div>
+        <div class="bg-surface-container-lowest rounded-2xl p-6 border border-outline-variant/15 shadow-[0_20px_40px_rgba(0,6,102,0.03)] hover:shadow-[0_25px_50px_rgba(0,6,102,0.08)] hover:border-emerald-500/20 transition-all duration-300 relative overflow-hidden group">
+            <div class="absolute -top-12 -right-12 w-40 h-40 bg-emerald-600/20 rounded-full blur-2xl group-hover:bg-emerald-600/40 group-hover:scale-125 transition-all duration-500 pointer-events-none"></div>
             <div class="flex items-center justify-between">
                 <span class="text-xs font-bold text-on-surface-variant uppercase tracking-wider">Gaji Bersih Bulan Ini</span>
-                <span class="material-symbols-outlined text-primary text-2xl bg-primary/5 p-2 rounded-xl">payments</span>
+                <div class="w-12 h-12 flex items-center justify-center rounded-2xl bg-emerald-500/10 text-emerald-700 group-hover:scale-110 group-hover:bg-emerald-500/20 transition-all duration-300 shadow-sm">
+                    <span class="material-symbols-outlined text-2xl">payments</span>
+                </div>
             </div>
             <div class="mt-4">
                 <?php if ($hasApprovedPayroll): ?>
@@ -401,11 +185,13 @@ $latestBaseSalary = $latest ? $latest['base_salary'] : $baseSalary;
         </div>
 
         <!-- Bento Card 2: Payroll Bank Account -->
-        <div class="bg-surface-container-lowest rounded-2xl p-6 border border-outline-variant/15 shadow-[0_20px_40px_rgba(0,6,102,0.03)] relative overflow-hidden group">
-            <div class="absolute -top-12 -right-12 w-32 h-32 bg-blue-600/5 rounded-full blur-xl group-hover:bg-blue-600/10 transition-colors duration-300"></div>
+        <div class="bg-surface-container-lowest rounded-2xl p-6 border border-outline-variant/15 shadow-[0_20px_40px_rgba(0,6,102,0.03)] hover:shadow-[0_25px_50px_rgba(0,6,102,0.08)] hover:border-blue-500/20 transition-all duration-300 relative overflow-hidden group">
+            <div class="absolute -top-12 -right-12 w-40 h-40 bg-blue-600/15 rounded-full blur-2xl group-hover:bg-blue-600/30 group-hover:scale-125 transition-all duration-500 pointer-events-none"></div>
             <div class="flex items-center justify-between">
                 <span class="text-xs font-bold text-on-surface-variant uppercase tracking-wider">Rekening Penerima Payroll</span>
-                <span class="material-symbols-outlined text-blue-700 text-2xl bg-blue-500/5 p-2 rounded-xl">account_balance</span>
+                <div class="w-12 h-12 flex items-center justify-center rounded-2xl bg-blue-500/10 text-blue-700 group-hover:scale-110 group-hover:bg-blue-500/20 transition-all duration-300 shadow-sm">
+                    <span class="material-symbols-outlined text-2xl">account_balance</span>
+                </div>
             </div>
             <div class="mt-4">
                 <?php if (!$isBankEmpty): ?>
@@ -432,11 +218,13 @@ $latestBaseSalary = $latest ? $latest['base_salary'] : $baseSalary;
         </div>
 
         <!-- Bento Card 3: Social & Tax Membership -->
-        <div class="bg-surface-container-lowest rounded-2xl p-6 border border-outline-variant/15 shadow-[0_20px_40px_rgba(0,6,102,0.03)] relative overflow-hidden group">
-            <div class="absolute -top-12 -right-12 w-32 h-32 bg-indigo-600/5 rounded-full blur-xl group-hover:bg-indigo-600/10 transition-colors duration-300"></div>
+        <div class="bg-surface-container-lowest rounded-2xl p-6 border border-outline-variant/15 shadow-[0_20px_40px_rgba(0,6,102,0.03)] hover:shadow-[0_25px_50px_rgba(0,6,102,0.08)] hover:border-indigo-500/20 transition-all duration-300 relative overflow-hidden group">
+            <div class="absolute -top-12 -right-12 w-40 h-40 bg-indigo-600/15 rounded-full blur-2xl group-hover:bg-indigo-600/30 group-hover:scale-125 transition-all duration-500 pointer-events-none"></div>
             <div class="flex items-center justify-between">
                 <span class="text-xs font-bold text-on-surface-variant uppercase tracking-wider">Proteksi Sosial & Pajak</span>
-                <span class="material-symbols-outlined text-indigo-700 text-2xl bg-indigo-500/5 p-2 rounded-xl">verified_user</span>
+                <div class="w-12 h-12 flex items-center justify-center rounded-2xl bg-indigo-500/10 text-indigo-700 group-hover:scale-110 group-hover:bg-indigo-500/20 transition-all duration-300 shadow-sm">
+                    <span class="material-symbols-outlined text-2xl">verified_user</span>
+                </div>
             </div>
             <div class="mt-3 space-y-2">
                 <div class="flex justify-between items-center text-xs">
@@ -482,21 +270,70 @@ $latestBaseSalary = $latest ? $latest['base_salary'] : $baseSalary;
             </div>
 
             <div class="overflow-x-auto">
-                <table class="w-full text-left border-collapse">
+                <table class="w-full text-left border-collapse table-standardized">
                     <thead>
                         <tr class="bg-surface-container-low/50 border-b border-outline-variant/10">
-                            <th class="p-4 text-xs font-bold text-on-surface-variant uppercase tracking-wider">Periode</th>
-                            <th class="p-4 text-xs font-bold text-on-surface-variant uppercase tracking-wider">Gaji Pokok</th>
-                            <th class="p-4 text-xs font-bold text-on-surface-variant uppercase tracking-wider">Total Tunjangan</th>
-                            <th class="p-4 text-xs font-bold text-on-surface-variant uppercase tracking-wider">Potongan</th>
-                            <th class="p-4 text-xs font-bold text-on-surface-variant uppercase tracking-wider">Gaji Bersih (THP)</th>
-                            <th class="p-4 text-xs font-bold text-on-surface-variant uppercase tracking-wider text-center">Aksi</th>
+                            <th class="no-col w-12 text-center p-4 text-xs font-bold text-on-surface-variant uppercase tracking-wider">No</th>
+                            <th onclick="window.sortDomTable(this, 1, 'string')" class="p-4 text-xs font-bold text-on-surface-variant uppercase tracking-wider">
+                                <div class="flex items-center gap-1">
+                                    Periode
+                                    <span class="sort-icon-container">
+                                        <span class="material-symbols-outlined sort-up">arrow_drop_up</span>
+                                        <span class="material-symbols-outlined sort-down">arrow_drop_down</span>
+                                    </span>
+                                </div>
+                            </th>
+                            <th onclick="window.sortDomTable(this, 2, 'number')" class="p-4 text-xs font-bold text-on-surface-variant uppercase tracking-wider">
+                                <div class="flex items-center gap-1">
+                                    Gaji Pokok
+                                    <span class="sort-icon-container">
+                                        <span class="material-symbols-outlined sort-up">arrow_drop_up</span>
+                                        <span class="material-symbols-outlined sort-down">arrow_drop_down</span>
+                                    </span>
+                                </div>
+                            </th>
+                            <th onclick="window.sortDomTable(this, 3, 'number')" class="p-4 text-xs font-bold text-on-surface-variant uppercase tracking-wider">
+                                <div class="flex items-center gap-1">
+                                    Total Tunjangan
+                                    <span class="sort-icon-container">
+                                        <span class="material-symbols-outlined sort-up">arrow_drop_up</span>
+                                        <span class="material-symbols-outlined sort-down">arrow_drop_down</span>
+                                    </span>
+                                </div>
+                            </th>
+                            <th onclick="window.sortDomTable(this, 4, 'number')" class="p-4 text-xs font-bold text-on-surface-variant uppercase tracking-wider">
+                                <div class="flex items-center gap-1">
+                                    Potongan
+                                    <span class="sort-icon-container">
+                                        <span class="material-symbols-outlined sort-up">arrow_drop_up</span>
+                                        <span class="material-symbols-outlined sort-down">arrow_drop_down</span>
+                                    </span>
+                                </div>
+                            </th>
+                            <th onclick="window.sortDomTable(this, 5, 'number')" class="p-4 text-xs font-bold text-on-surface-variant uppercase tracking-wider">
+                                <div class="flex items-center gap-1">
+                                    Gaji Bersih (THP)
+                                    <span class="sort-icon-container">
+                                        <span class="material-symbols-outlined sort-up">arrow_drop_up</span>
+                                        <span class="material-symbols-outlined sort-down">arrow_drop_down</span>
+                                    </span>
+                                </div>
+                            </th>
+                            <th onclick="window.sortDomTable(this, 6, 'string')" class="p-4 text-xs font-bold text-on-surface-variant uppercase tracking-wider text-center">
+                                <div class="flex items-center justify-center gap-1">
+                                    Aksi
+                                    <span class="sort-icon-container">
+                                        <span class="material-symbols-outlined sort-up">arrow_drop_up</span>
+                                        <span class="material-symbols-outlined sort-down">arrow_drop_down</span>
+                                    </span>
+                                </div>
+                            </th>
                         </tr>
                     </thead>
                     <tbody class="divide-y divide-outline-variant/8">
                         <?php if (empty($months)): ?>
                         <tr>
-                            <td colspan="6" class="p-10 text-center">
+                            <td colspan="7" class="p-10 text-center">
                                 <div class="flex flex-col items-center gap-3 text-on-surface-variant">
                                     <span class="material-symbols-outlined text-4xl opacity-40">receipt_long</span>
                                     <p class="text-sm font-medium">Belum ada slip gaji yang disetujui untuk tahun <?= $currentYear ?>.</p>
@@ -505,8 +342,9 @@ $latestBaseSalary = $latest ? $latest['base_salary'] : $baseSalary;
                             </td>
                         </tr>
                         <?php else: ?>
-                        <?php foreach ($months as $m): ?>
+                        <?php $rowNo = 1; foreach ($months as $m): ?>
                         <tr class="hover:bg-surface-container-low/20 transition-colors">
+                            <td class="p-4 text-center font-bold text-xs text-on-surface-variant"><?= $rowNo++ ?></td>
                             <td class="p-4 font-bold text-xs text-on-surface"><?= htmlspecialchars($m['month_name']) ?></td>
                             <td class="p-4 text-xs font-mono font-medium text-on-surface-variant">Rp <?= number_format($m['base_salary'], 0, ',', '.') ?></td>
                             <td class="p-4 text-xs font-mono font-medium text-green-700 bg-green-50/40">Rp <?= number_format($m['tunjangan_total'], 0, ',', '.') ?></td>

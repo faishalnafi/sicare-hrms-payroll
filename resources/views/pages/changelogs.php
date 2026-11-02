@@ -6,44 +6,13 @@
 $changelogs = [];
 $errorMsg = null;
 $source = '';
-$appName = 'siCare';
+use App\Services\ViewHelper;
 
-try {
-    $db = \App\Config\Database::getInstance()->getConnection();
-    
-    // Fetch dynamic app name
-    $stmtName = $db->query("SELECT `value` FROM global_settings WHERE `key` = 'app_name' LIMIT 1");
-    if ($stmtName) {
-        $dbAppName = $stmtName->fetchColumn();
-        if ($dbAppName) {
-            $appName = $dbAppName;
-        }
-    }
-    
-    // Check if table exists
-    $tableCheck = $db->query("SHOW TABLES LIKE 'changelogs'")->fetch();
-    if ($tableCheck) {
-        $stmt = $db->query("SELECT * FROM changelogs ORDER BY compiled_date DESC, created_at DESC");
-        $dbData = $stmt->fetchAll(PDO::FETCH_ASSOC);
-        
-        if (!empty($dbData)) {
-            foreach ($dbData as $row) {
-                $changelogs[] = [
-                    'version' => $row['version'],
-                    'edition' => $row['edition'],
-                    'repo_type' => $row['repo_type'] ?? 'monorepo',
-                    'compiled_date' => $row['compiled_date'],
-                    'applied_date' => date('Y-m-d H:i:s', strtotime($row['created_at'])),
-                    'migration_level' => $row['migration_level'],
-                    'alias_name' => $row['alias_name'] ?? null,
-                    'summary' => json_decode($row['summary'], true) ?: []
-                ];
-            }
-            $source = 'Live Schema Connection';
-        }
-    }
-} catch (Exception $e) {
-    // Silent fail, fallback to JSON
+$appName = ViewHelper::getSetting('app_name', 'siCare');
+[$dbChangelogs, $dbSource] = ViewHelper::getChangelogs();
+if (!empty($dbChangelogs)) {
+    $changelogs = $dbChangelogs;
+    $source = $dbSource;
 }
 
 // Fallback to JSON file if database is empty/inaccessible

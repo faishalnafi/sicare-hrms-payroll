@@ -37,29 +37,71 @@ ini_set('session.cookie_lifetime', $sessionLifetime);
 $sessionHandler = new \App\Session\UnifiedSessionHandler();
 session_set_save_handler($sessionHandler, true);
 
-// CSRF Protection Helpers
-if (!function_exists('csrf_token')) {
-    function csrf_token() {
-        if (session_status() === PHP_SESSION_NONE) {
-            session_start();
-        }
-        if (empty($_SESSION['csrf_token'])) {
-            $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
-        }
-        return $_SESSION['csrf_token'];
-    }
+// Start session early to process remember-me
+if (session_status() === PHP_SESSION_NONE) {
+    session_start();
 }
 
-if (!function_exists('csrfField')) {
-    function csrfField() {
-        return '<input type="hidden" name="csrf_token" value="' . htmlspecialchars(csrf_token()) . '">';
-    }
+// Auto-login via remember_me_token cookie
+\App\Controllers\AuthController::processRememberMe();
+
+// Synchronize session role with database if user is logged in
+if (isset($_SESSION['user_id']) && empty($_SESSION['original_role'])) {
+    try {
+        $syncDb = \App\Config\Database::getInstance()->getConnection();
+        $syncStmt = $syncDb->prepare("SELECT role, role_id, department_id, is_suspended, is_deleted FROM users WHERE id = :uid LIMIT 1");
+        $syncStmt->execute(['uid' => $_SESSION['user_id']]);
+        $syncUser = $syncStmt->fetch(\PDO::FETCH_ASSOC);
+        if ($syncUser) {
+            if ((int)($syncUser['is_deleted'] ?? 0) === 1 || (int)($syncUser['is_suspended'] ?? 0) === 1) {
+                session_unset();
+                session_destroy();
+                header("Location: /signin?error=" . urlencode("Akun Anda telah dinonaktifkan atau ditangguhkan."));
+                exit;
+            }
+            if (($syncUser['role'] ?? '') !== ($_SESSION['role'] ?? '')) {
+                $_SESSION['role'] = $syncUser['role'];
+                $_SESSION['role_id'] = $syncUser['role_id'];
+                $_SESSION['department_id'] = $syncUser['department_id'];
+            }
+        }
+    } catch (\Exception $e) {}
 }
+
+// CSRF Protection Helpers are now loaded globally via app/helpers.php
 
 // Simple Router
 $requestUri = parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH);
 $path = trim($requestUri, '/');
 $method = $_SERVER['REQUEST_METHOD'];
+
+// Central JWT Token verification for all CRUD write operations (POST) when logged in
+if ($method === 'POST') {
+    $excludedRoutes = ['auth/login', 'auth/register', 'auth/record-login-location'];
+    if (session_status() === PHP_SESSION_NONE) {
+        session_start();
+    }
+    if (isset($_SESSION['user_id']) && !in_array($path, $excludedRoutes)) {
+        $token = '';
+        if (function_exists('getallheaders')) {
+            $headers = getallheaders();
+            $token = $headers['X-JWT-Token'] ?? $headers['x-jwt-token'] ?? '';
+        }
+        if (empty($token)) {
+            $token = $_SERVER['HTTP_X_JWT_TOKEN'] ?? $_POST['jwt_token'] ?? $_COOKIE['jwt_token'] ?? '';
+        }
+        
+        if (empty($token) || !\App\Config\JwtHelper::validateToken($token)) {
+            header('HTTP/1.1 401 Unauthorized');
+            header('Content-Type: application/json; charset=utf-8');
+            echo json_encode([
+                'success' => false,
+                'message' => 'Token JWT tidak valid atau kedaluwarsa. Silakan muat ulang halaman dan coba lagi.'
+            ]);
+            exit;
+        }
+    }
+}
 
 // Base helper to render views
 function renderView($viewPath, $data = []) {
@@ -215,37 +257,37 @@ if ($method === 'GET' && str_starts_with($path, 'storage/secured_storage/onboard
 }
 
 if ($method === 'POST' && $path === 'auth/login') {
-    (new \App\Controllers\AuthController())->login();
+    app(\App\Controllers\AuthController::class)->login();
     exit;
 } elseif ($method === 'POST' && $path === 'auth/record-login-location') {
-    (new \App\Controllers\AuthController())->recordLoginLocation();
+    app(\App\Controllers\AuthController::class)->recordLoginLocation();
     exit;
 } elseif ($method === 'POST' && $path === 'auth/register') {
-    (new \App\Controllers\AuthController())->register();
+    app(\App\Controllers\AuthController::class)->register();
     exit;
 } elseif ($method === 'GET' && $path === 'auth/logout') {
-    (new \App\Controllers\AuthController())->logout();
+    app(\App\Controllers\AuthController::class)->logout();
     exit;
 } elseif ($method === 'POST' && $path === 'auth/impersonate') {
-    (new \App\Controllers\AuthController())->impersonate();
+    app(\App\Controllers\AuthController::class)->impersonate();
     exit;
 } elseif ($method === 'GET' && $path === 'auth/stop-impersonating') {
-    (new \App\Controllers\AuthController())->stopImpersonating();
+    app(\App\Controllers\AuthController::class)->stopImpersonating();
     exit;
 } elseif ($method === 'GET' && $path === 'auth/google') {
-    (new \App\Controllers\AuthController())->googleRedirect();
+    app(\App\Controllers\AuthController::class)->googleRedirect();
     exit;
 } elseif ($method === 'GET' && str_starts_with($path, 'auth/google/callback')) {
-    (new \App\Controllers\AuthController())->googleCallback();
+    app(\App\Controllers\AuthController::class)->googleCallback();
     exit;
 } elseif ($method === 'GET' && ($path === 'dashboard' || preg_match('/^(candidate|employee|recruiter|manager|hiring_manager|hrops|hr_ops|admin|executive|superadmin)\/dashboard$/i', $path))) {
-    (new \App\Controllers\DashboardController())->index();
+    app(\App\Controllers\DashboardController::class)->index();
     exit;
 } elseif ($method === 'POST' && $path === 'employee/profile/correction') {
-    (new \App\Controllers\CorrectionController())->submit();
+    app(\App\Controllers\CorrectionController::class)->submit();
     exit;
 } elseif ($method === 'POST' && $path === 'employee/profile/save') {
-    (new \App\Controllers\AuthController())->saveProfile();
+    app(\App\Controllers\AuthController::class)->saveProfile();
     exit;
 } elseif ($method === 'GET' && $path === 'employee/profile/fill') {
     if (session_status() === PHP_SESSION_NONE) {
@@ -257,28 +299,9 @@ if ($method === 'POST' && $path === 'auth/login') {
         exit;
     }
     $token = $_GET['token'] ?? '';
-    try {
-        $db = \App\Config\Database::getInstance()->getConnection();
-        $stmt = $db->prepare("SELECT id FROM users WHERE profile_reset_token = :token LIMIT 1");
-        $stmt->execute(['token' => $token]);
-        $user = $stmt->fetch();
-        if (!$user) {
-            $error = "Tautan pengisian identitas tidak valid, sudah digunakan, atau kedaluwarsa.";
-            $content = renderView('pages/errors/invalid_token', ['message' => $error]);
-            $page = 'error_token';
-            require __DIR__ . '/../resources/views/layouts/app.php';
-            exit;
-        }
-        if ($user['id'] !== $_SESSION['user_id']) {
-            $error = "Tautan ini diperuntukkan bagi akun lain. Silakan keluar (logout) dan masuk dengan akun yang sesuai.";
-            $content = renderView('pages/errors/invalid_token', ['message' => $error]);
-            $page = 'error_token';
-            require __DIR__ . '/../resources/views/layouts/app.php';
-            exit;
-        }
-    } catch (\Exception $e) {
-        $error = "Terjadi kesalahan sistem: " . $e->getMessage();
-        $content = renderView('pages/errors/invalid_token', ['message' => $error]);
+    $valResult = \App\Controllers\AuthController::validateProfileResetToken($token);
+    if (!$valResult['valid']) {
+        $content = renderView('pages/errors/invalid_token', ['message' => $valResult['error']]);
         $page = 'error_token';
         require __DIR__ . '/../resources/views/layouts/app.php';
         exit;
@@ -288,146 +311,262 @@ if ($method === 'POST' && $path === 'auth/login') {
     require __DIR__ . '/../resources/views/layouts/app.php';
     exit;
 } elseif ($method === 'POST' && $path === 'employee/profile/save-fill') {
-    (new \App\Controllers\EmployeeMasterController())->saveProfileFill();
+    app(\App\Controllers\EmployeeMasterController::class)->saveProfileFill();
     exit;
-} elseif ($method === 'POST' && $path === 'hrops/verifications/approve') {
-    (new \App\Controllers\CorrectionController())->approve();
+} elseif ($method === 'POST' && ($path === 'hrops/verifications/approve' || $path === 'hrops/correction/approve')) {
+    app(\App\Controllers\CorrectionController::class)->approve();
     exit;
-} elseif ($method === 'POST' && $path === 'hrops/verifications/reject') {
-    (new \App\Controllers\CorrectionController())->reject();
+} elseif ($method === 'POST' && ($path === 'hrops/verifications/reject' || $path === 'hrops/correction/reject')) {
+    app(\App\Controllers\CorrectionController::class)->reject();
     exit;
-} elseif ($method === 'GET' && $path === 'hrops/verifications/view_file') {
-    (new \App\Controllers\CorrectionController())->viewFile();
+} elseif ($method === 'GET' && ($path === 'hrops/verifications/view_file' || $path === 'hrops/correction/view_file')) {
+    app(\App\Controllers\CorrectionController::class)->viewFile();
     exit;
 } elseif ($method === 'POST' && $path === 'employee/reimbursements/submit') {
-    (new \App\Controllers\ReimbursementController())->submit();
+    app(\App\Controllers\ReimbursementController::class)->submit();
     exit;
 } elseif ($method === 'POST' && $path === 'employee/reimbursements/cancel') {
-    (new \App\Controllers\ReimbursementController())->cancel();
+    app(\App\Controllers\ReimbursementController::class)->cancel();
     exit;
-} elseif ($method === 'POST' && $path === 'hrops/reimbursements/approve') {
-    (new \App\Controllers\ReimbursementController())->approve();
+} elseif ($method === 'POST' && ($path === 'hrops/reimbursements/approve' || $path === 'manager/reimbursements/approve')) {
+    app(\App\Controllers\ReimbursementController::class)->approve();
     exit;
-} elseif ($method === 'POST' && $path === 'hrops/reimbursements/reject') {
-    (new \App\Controllers\ReimbursementController())->reject();
+} elseif ($method === 'POST' && ($path === 'hrops/reimbursements/reject' || $path === 'manager/reimbursements/reject')) {
+    app(\App\Controllers\ReimbursementController::class)->reject();
     exit;
-} elseif ($method === 'GET' && $path === 'hrops/reimbursements/view_receipt') {
-    (new \App\Controllers\ReimbursementController())->viewReceipt();
+} elseif ($method === 'GET' && ($path === 'hrops/reimbursements/view_receipt' || $path === 'manager/reimbursements/view_receipt')) {
+    app(\App\Controllers\ReimbursementController::class)->viewReceipt();
     exit;
 } elseif ($method === 'POST' && $path === 'employee/leaves/submit') {
-    (new \App\Controllers\LeaveController())->submit();
+    app(\App\Controllers\LeaveController::class)->submit();
     exit;
 } elseif ($method === 'POST' && $path === 'employee/leaves/cancel') {
-    (new \App\Controllers\LeaveController())->cancel();
+    app(\App\Controllers\LeaveController::class)->cancel();
     exit;
-} elseif ($method === 'POST' && $path === 'hrops/leaves/approve') {
-    (new \App\Controllers\LeaveController())->approve();
+} elseif ($method === 'POST' && ($path === 'hrops/leaves/approve' || $path === 'manager/leaves/approve')) {
+    app(\App\Controllers\LeaveController::class)->approve();
     exit;
-} elseif ($method === 'POST' && $path === 'hrops/leaves/reject') {
-    (new \App\Controllers\LeaveController())->reject();
+} elseif ($method === 'POST' && ($path === 'hrops/leaves/reject' || $path === 'manager/leaves/reject')) {
+    app(\App\Controllers\LeaveController::class)->reject();
     exit;
-} elseif ($method === 'GET' && $path === 'hrops/leaves/view_attachment') {
-    (new \App\Controllers\LeaveController())->viewAttachment();
+} elseif ($method === 'GET' && ($path === 'hrops/leaves/view_attachment' || $path === 'manager/leaves/view_attachment')) {
+    app(\App\Controllers\LeaveController::class)->viewAttachment();
     exit;
 } elseif ($method === 'POST' && $path === 'employee/attendance/clockin') {
-    (new \App\Controllers\AttendanceController())->clockIn();
+    app(\App\Controllers\AttendanceController::class)->clockIn();
     exit;
 } elseif ($method === 'POST' && $path === 'employee/attendance/clockout') {
-    (new \App\Controllers\AttendanceController())->clockOut();
+    app(\App\Controllers\AttendanceController::class)->clockOut();
     exit;
 } elseif ($method === 'GET' && $path === 'hrops/attendance/logs') {
-    (new \App\Controllers\AttendanceController())->hrLogs();
+    app(\App\Controllers\AttendanceController::class)->hrLogs();
     exit;
 } elseif ($method === 'GET' && $path === 'manager/attendance/member_monthly') {
-    (new \App\Controllers\AttendanceController())->memberMonthly();
+    app(\App\Controllers\AttendanceController::class)->memberMonthly();
     exit;
 } elseif ($method === 'POST' && $path === 'hrops/attendance/correct') {
-    (new \App\Controllers\AttendanceController())->correct();
+    app(\App\Controllers\AttendanceController::class)->correct();
     exit;
 } elseif ($method === 'POST' && $path === 'employee/reflection/save') {
-    (new \App\Controllers\ReflectionController())->save();
+    app(\App\Controllers\ReflectionController::class)->save();
     exit;
 } elseif ($method === 'POST' && $path === 'employee/reflection/save-mood') {
-    (new \App\Controllers\ReflectionController())->saveMoodPulse();
+    app(\App\Controllers\ReflectionController::class)->saveMoodPulse();
     exit;
 } elseif ($method === 'POST' && $path === 'employee/reflection/save-journal') {
-    (new \App\Controllers\ReflectionController())->saveJournal();
+    app(\App\Controllers\ReflectionController::class)->saveJournal();
     exit;
 } elseif ($method === 'POST' && $path === 'manager/reflection/feedback') {
-    (new \App\Controllers\ReflectionController())->submitFeedback();
+    app(\App\Controllers\ReflectionController::class)->submitFeedback();
     exit;
-} elseif ($method === 'GET' && $path === 'reflection/analytics') {
-    (new \App\Controllers\ReflectionController())->getAnalytics();
+} elseif ($method === 'GET' && ($path === 'reflection/analytics' || $path === 'employee/reflection/analytics' || $path === 'executive/reflection/analytics' || $path === 'hrops/reflection/analytics')) {
+    app(\App\Controllers\ReflectionController::class)->getAnalytics();
+    exit;
+} elseif ($method === 'GET' && $path === 'sse/notifications') {
+    app(\App\Controllers\NotificationController::class)->stream();
     exit;
 } elseif ($method === 'GET' && ($path === 'admin/settings/fetch-google-holidays' || $path === 'hrops/settings/fetch-google-holidays' || $path === 'superadmin/system-settings/settings/fetch-google-holidays')) {
-    (new \App\Controllers\SettingsController())->fetchGoogleHolidays();
+    app(\App\Controllers\SettingsController::class)->fetchGoogleHolidays();
     exit;
 } elseif ($method === 'POST' && ($path === 'admin/settings/import-google-holidays' || $path === 'hrops/settings/import-google-holidays' || $path === 'superadmin/system-settings/settings/import-google-holidays')) {
-    (new \App\Controllers\SettingsController())->importGoogleHolidays();
+    app(\App\Controllers\SettingsController::class)->importGoogleHolidays();
     exit;
 } elseif ($method === 'POST' && ($path === 'admin/settings/save' || $path === 'hrops/settings/save' || $path === 'superadmin/system-settings/settings/save')) {
-    (new \App\Controllers\SettingsController())->save();
+    app(\App\Controllers\SettingsController::class)->save();
     exit;
 } elseif ($method === 'POST' && ($path === 'admin/holidays/add' || $path === 'hrops/holidays/add' || $path === 'superadmin/system-settings/holidays/add')) {
-    (new \App\Controllers\SettingsController())->addHoliday();
+    app(\App\Controllers\SettingsController::class)->addHoliday();
     exit;
 } elseif ($method === 'POST' && ($path === 'admin/holidays/delete' || $path === 'hrops/holidays/delete' || $path === 'superadmin/system-settings/holidays/delete')) {
-    (new \App\Controllers\SettingsController())->deleteHoliday();
+    app(\App\Controllers\SettingsController::class)->deleteHoliday();
     exit;
 } elseif ($method === 'POST' && ($path === 'admin/holidays/update' || $path === 'hrops/holidays/update' || $path === 'superadmin/system-settings/holidays/update')) {
-    (new \App\Controllers\SettingsController())->updateHoliday();
+    app(\App\Controllers\SettingsController::class)->updateHoliday();
     exit;
-} elseif ($method === 'GET' && $path === 'hrops/employees/list') {
-    (new \App\Controllers\EmployeeMasterController())->list();
+} elseif ($method === 'GET' && ($path === 'hrops/employees/list' || $path === 'superadmin/employees/list' || $path === 'admin/employees/list')) {
+    app(\App\Controllers\EmployeeMasterController::class)->list();
     exit;
-} elseif ($method === 'POST' && $path === 'hrops/employees/save') {
-    (new \App\Controllers\EmployeeMasterController())->save();
+} elseif ($method === 'POST' && ($path === 'hrops/employees/save' || $path === 'superadmin/employees/save' || $path === 'admin/employees/save')) {
+    app(\App\Controllers\EmployeeMasterController::class)->save();
     exit;
-} elseif ($method === 'POST' && $path === 'hrops/employees/delete') {
-    (new \App\Controllers\EmployeeMasterController())->delete();
+} elseif ($method === 'POST' && ($path === 'hrops/employees/delete' || $path === 'superadmin/employees/delete' || $path === 'admin/employees/delete')) {
+    app(\App\Controllers\EmployeeMasterController::class)->delete();
+    exit;
+} elseif ($method === 'POST' && ($path === 'hrops/employees/toggle-suspend' || $path === 'superadmin/employees/toggle-suspend' || $path === 'admin/employees/toggle-suspend')) {
+    app(\App\Controllers\EmployeeMasterController::class)->toggleSuspend();
+    exit;
+} elseif ($method === 'POST' && ($path === 'hrops/employees/empty-trash' || $path === 'superadmin/employees/empty-trash' || $path === 'admin/employees/empty-trash')) {
+    app(\App\Controllers\EmployeeMasterController::class)->emptyTrash();
+    exit;
+} elseif ($method === 'POST' && ($path === 'hrops/employees/delete-permanent' || $path === 'superadmin/employees/delete-permanent' || $path === 'admin/employees/delete-permanent')) {
+    app(\App\Controllers\EmployeeMasterController::class)->deletePermanent();
+    exit;
+} elseif ($method === 'POST' && ($path === 'hrops/employees/restore' || $path === 'superadmin/employees/restore' || $path === 'admin/employees/restore')) {
+    app(\App\Controllers\EmployeeMasterController::class)->restore();
     exit;
 } elseif ($method === 'POST' && $path === 'superadmin/users/reset-profile') {
-    (new \App\Controllers\EmployeeMasterController())->resetProfileToken();
+    app(\App\Controllers\EmployeeMasterController::class)->resetProfileToken();
+    exit;
+} elseif ($method === 'POST' && ($path === 'superadmin/users/reset-lockout' || $path === 'admin/users/reset-lockout')) {
+    app(\App\Controllers\EmployeeMasterController::class)->resetLockout();
     exit;
 } elseif ($method === 'POST' && $path === 'hrops/payroll/generate') {
-    (new \App\Controllers\PayrollController())->generate();
+    app(\App\Controllers\PayrollController::class)->generate();
     exit;
 } elseif ($method === 'GET' && $path === 'hrops/payroll/list') {
-    (new \App\Controllers\PayrollController())->list();
+    app(\App\Controllers\PayrollController::class)->list();
     exit;
 } elseif ($method === 'POST' && $path === 'hrops/payroll/update-status') {
-    (new \App\Controllers\PayrollController())->updateStatus();
+    app(\App\Controllers\PayrollController::class)->updateStatus();
     exit;
 } elseif ($method === 'POST' && $path === 'hrops/payroll/update-bonus') {
-    (new \App\Controllers\PayrollController())->updateBonus();
+    app(\App\Controllers\PayrollController::class)->updateBonus();
     exit;
 } elseif ($method === 'POST' && $path === 'hrops/payroll/update-overtime') {
-    (new \App\Controllers\PayrollController())->updateOvertime();
+    app(\App\Controllers\PayrollController::class)->updateOvertime();
     exit;
 } elseif ($method === 'POST' && $path === 'hrops/payroll/update-other-deduction') {
-    (new \App\Controllers\PayrollController())->updateOtherDeduction();
+    app(\App\Controllers\PayrollController::class)->updateOtherDeduction();
     exit;
 } elseif ($method === 'POST' && $path === 'hrops/payroll/delete') {
-    (new \App\Controllers\PayrollController())->delete();
+    app(\App\Controllers\PayrollController::class)->delete();
     exit;
 } elseif ($method === 'POST' && $path === 'admin/departments/save') {
-    (new \App\Controllers\DepartmentController())->save();
+    app(\App\Controllers\DepartmentController::class)->save();
+    exit;
+} elseif ($method === 'POST' && $path === 'admin/departments/move') {
+    app(\App\Controllers\DepartmentController::class)->move();
     exit;
 } elseif ($method === 'POST' && $path === 'admin/departments/delete') {
-    (new \App\Controllers\DepartmentController())->delete();
+    app(\App\Controllers\DepartmentController::class)->delete();
+    exit;
+} elseif ($method === 'POST' && ($path === 'admin/apps/save' || $path === 'superadmin/apps/save')) {
+    app(\App\Controllers\DashboardController::class)->saveApp();
+    exit;
+} elseif ($method === 'POST' && ($path === 'admin/apps/delete' || $path === 'superadmin/apps/delete')) {
+    app(\App\Controllers\DashboardController::class)->deleteApp();
     exit;
 } elseif ($method === 'GET' && $path === 'executive/approvals/list') {
-    (new \App\Controllers\ApprovalController())->list();
+    app(\App\Controllers\ApprovalController::class)->list();
     exit;
 } elseif ($method === 'POST' && $path === 'executive/approvals/approve') {
-    (new \App\Controllers\ApprovalController())->approve();
+    app(\App\Controllers\ApprovalController::class)->approve();
     exit;
 } elseif ($method === 'POST' && $path === 'executive/approvals/reject') {
-    (new \App\Controllers\ApprovalController())->reject();
+    app(\App\Controllers\ApprovalController::class)->reject();
     exit;
 } elseif ($method === 'POST' && $path === 'superadmin/update/execute') {
-    (new \App\Controllers\DashboardController())->executeUpdate();
+    app(\App\Controllers\DashboardController::class)->executeUpdate();
     exit;
+
+// --- Job Requisitions Routes ---
+} elseif ($method === 'POST' && ($path === 'requisitions/store' || $path === 'manager/requisitions/store')) {
+    app(\App\Controllers\RequisitionController::class)->store();
+    exit;
+} elseif ($method === 'POST' && ($path === 'requisitions/approve' || $path === 'executive/requisitions/approve')) {
+    app(\App\Controllers\RequisitionController::class)->approve();
+    exit;
+} elseif ($method === 'POST' && ($path === 'requisitions/reject' || $path === 'executive/requisitions/reject')) {
+    app(\App\Controllers\RequisitionController::class)->reject();
+    exit;
+} elseif ($method === 'POST' && ($path === 'requisitions/revoke' || $path === 'executive/requisitions/revoke')) {
+    app(\App\Controllers\RequisitionController::class)->revoke();
+    exit;
+} elseif ($method === 'POST' && ($path === 'requisitions/publish' || $path === 'recruiter/requisitions/publish')) {
+    app(\App\Controllers\RequisitionController::class)->publish();
+    exit;
+} elseif ($method === 'POST' && ($path === 'requisitions/unpublish' || $path === 'recruiter/requisitions/unpublish')) {
+    app(\App\Controllers\RequisitionController::class)->unpublishJob();
+    exit;
+} elseif ($method === 'POST' && ($path === 'candidate/apply' || $path === 'job/apply')) {
+    app(\App\Controllers\RequisitionController::class)->applyJob();
+    exit;
+} elseif ($method === 'POST' && ($path === 'recruiter/ats/delete-application' || $path === 'recruiter/requisitions/delete-application')) {
+    app(\App\Controllers\RequisitionController::class)->deleteApplication();
+    exit;
+} elseif ($method === 'POST' && ($path === 'recruiter/ats/update-status' || $path === 'recruiter/requisitions/update-status')) {
+    app(\App\Controllers\RequisitionController::class)->updateApplicationStatus();
+    exit;
+} elseif ($method === 'POST' && $path === 'recruiter/interviews/store') {
+    app(\App\Controllers\RecruitmentController::class)->storeInterview();
+    exit;
+} elseif ($method === 'POST' && $path === 'candidate/interviews/respond') {
+    app(\App\Controllers\RecruitmentController::class)->respondInterview();
+    exit;
+} elseif ($method === 'POST' && $path === 'manager/interviews/evaluate') {
+    app(\App\Controllers\RecruitmentController::class)->submitEvaluation();
+    exit;
+} elseif ($method === 'POST' && $path === 'recruiter/offerings/send') {
+    app(\App\Controllers\RecruitmentController::class)->sendOffer();
+    exit;
+} elseif ($method === 'POST' && $path === 'candidate/offerings/respond') {
+    app(\App\Controllers\RecruitmentController::class)->respondOffer();
+    exit;
+} elseif ($method === 'POST' && $path === 'candidate/onboarding/submit') {
+    app(\App\Controllers\RecruitmentController::class)->submitOnboardingWizard();
+    exit;
+} elseif ($method === 'POST' && $path === 'hrops/onboarding/approve') {
+    app(\App\Controllers\RecruitmentController::class)->approveOnboarding();
+    exit;
+} elseif ($method === 'POST' && $path === 'candidate/profile/update') {
+    app(\App\Controllers\AuthController::class)->updateCandidateProfile();
+    exit;
+} elseif ($method === 'GET' && $path === 'document/view') {
+    app(\App\Controllers\AuthController::class)->serveInlineDocument();
+    exit;
+} elseif ($method === 'POST' && $path === 'admin/import/employees') {
+    app(\App\Controllers\ImportExportController::class)->importEmployeesUPSERT();
+    exit;
+} elseif ($method === 'GET' && $path === 'admin/export/employees') {
+    app(\App\Controllers\ImportExportController::class)->exportEmployees();
+    exit;
+} elseif ($method === 'POST' && $path === 'api/v1/attendance') {
+    app(\App\Controllers\ApiController::class)->syncAttendance();
+    exit;
+
+// --- Audit Log Routes (Bab 2) ---
+} elseif ($method === 'GET' && $path === 'superadmin/audit/data') {
+    app(\App\Controllers\AuditLogController::class)->getData();
+    exit;
+} elseif ($method === 'GET' && $path === 'superadmin/audit/stats') {
+    app(\App\Controllers\AuditLogController::class)->getStats();
+    exit;
+} elseif ($method === 'POST' && $path === 'superadmin/audit/clear') {
+    app(\App\Controllers\AuditLogController::class)->clear();
+    exit;
+
+// --- Global Settings Routes (Bab 2) ---
+} elseif ($method === 'GET' && $path === 'superadmin/settings/global') {
+    app(\App\Controllers\AuditLogController::class)->getGlobalSettings();
+    exit;
+} elseif ($method === 'POST' && $path === 'superadmin/settings/global/save') {
+    app(\App\Controllers\AuditLogController::class)->saveGlobalSettings();
+    exit;
+} elseif ($method === 'POST' && $path === 'superadmin/settings/test-email') {
+    app(\App\Controllers\AuditLogController::class)->testEmail();
+    exit;
+
+
 } elseif ($method === 'GET' && (
     $path === 'changelogs' ||
     $path === 'changelogs/guide' ||
@@ -440,7 +579,7 @@ if ($method === 'POST' && $path === 'auth/login') {
     str_starts_with($path, 'superadmin/') ||
     str_starts_with($path, 'admin/')
 )) {
-    (new \App\Controllers\DashboardController())->genericPage($path);
+    app(\App\Controllers\DashboardController::class)->genericPage($path);
     exit;
 }
 
@@ -461,6 +600,10 @@ $content = '';
 switch ($page) {
     case 'landing':
         $content = renderView('pages/landing');
+        break;
+    case 'careers':
+    case 'jobs':
+        $content = renderView('pages/careers');
         break;
     case 'signin':
         $content = renderView('auth/signin', [

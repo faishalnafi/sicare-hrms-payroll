@@ -11,8 +11,8 @@ class ReimbursementController {
     private $db;
     private $uploadDir;
 
-    public function __construct() {
-        $this->db = Database::getInstance()->getConnection();
+    public function __construct(PDO $db) {
+        $this->db = $db;
         $this->uploadDir = __DIR__ . '/../../storage/secured_storage/receipts/';
         if (!file_exists($this->uploadDir)) {
             mkdir($this->uploadDir, 0755, true);
@@ -20,14 +20,31 @@ class ReimbursementController {
     }
 
     /**
+     * Validate CSRF token from POST body or HTTP header.
+     */
+    private function validateCsrf(): bool {
+        if (session_status() === PHP_SESSION_NONE) session_start();
+        $token = $_POST['csrf_token'] ?? $_SERVER['HTTP_X_CSRF_TOKEN'] ?? '';
+        return !empty($token) && hash_equals($_SESSION['csrf_token'] ?? '', $token);
+    }
+
+    /**
      * Submit a new reimbursement claim (Employee ESS Portal)
      */
     public function submit() {
         header('Content-Type: application/json');
-        session_start();
+        if (session_status() === PHP_SESSION_NONE) {
+            session_start();
+        }
 
         if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'employee') {
             echo json_encode(['success' => false, 'message' => 'Akses ditolak. Anda harus login sebagai Karyawan.']);
+            return;
+        }
+
+        // CSRF Token Validation
+        if (!$this->validateCsrf()) {
+            echo json_encode(['success' => false, 'message' => 'Token CSRF tidak valid atau kedaluwarsa. Silakan muat ulang halaman.']);
             return;
         }
 
@@ -252,10 +269,21 @@ class ReimbursementController {
      */
     public function approve() {
         header('Content-Type: application/json');
-        session_start();
+        if (session_status() === PHP_SESSION_NONE) {
+            session_start();
+        }
 
-        if (!isset($_SESSION['user_id']) || !in_array($_SESSION['role'], ['hr_ops', 'hiring_manager', 'admin', 'superadmin'])) {
+        $role = $_SESSION['role'] ?? '';
+        $origRole = $_SESSION['original_role'] ?? '';
+        $isSuperAdmin = ($role === 'superadmin' || $origRole === 'superadmin');
+        if (!isset($_SESSION['user_id']) || (!$isSuperAdmin && !in_array($role, ['hr_ops', 'hiring_manager', 'manager', 'admin']))) {
             echo json_encode(['success' => false, 'message' => 'Akses ditolak. Otoritas manajemen diperlukan.']);
+            return;
+        }
+
+        // CSRF Token Validation
+        if (!$this->validateCsrf()) {
+            echo json_encode(['success' => false, 'message' => 'Token CSRF tidak valid atau kedaluwarsa. Silakan muat ulang halaman.']);
             return;
         }
 
@@ -282,7 +310,7 @@ class ReimbursementController {
             }
 
             // Hierarchical validation for hiring_manager
-            if ($_SESSION['role'] === 'hiring_manager') {
+            if (!$isSuperAdmin && in_array($role, ['hiring_manager', 'manager'])) {
                 $stmtManager = $this->db->prepare("SELECT department_id FROM users WHERE id = :id");
                 $stmtManager->execute(['id' => $_SESSION['user_id']]);
                 $managerDeptId = $stmtManager->fetchColumn();
@@ -326,10 +354,21 @@ class ReimbursementController {
      */
     public function reject() {
         header('Content-Type: application/json');
-        session_start();
+        if (session_status() === PHP_SESSION_NONE) {
+            session_start();
+        }
 
-        if (!isset($_SESSION['user_id']) || !in_array($_SESSION['role'], ['hr_ops', 'hiring_manager', 'admin', 'superadmin'])) {
+        $role = $_SESSION['role'] ?? '';
+        $origRole = $_SESSION['original_role'] ?? '';
+        $isSuperAdmin = ($role === 'superadmin' || $origRole === 'superadmin');
+        if (!isset($_SESSION['user_id']) || (!$isSuperAdmin && !in_array($role, ['hr_ops', 'hiring_manager', 'manager', 'admin']))) {
             echo json_encode(['success' => false, 'message' => 'Akses ditolak. Otoritas manajemen diperlukan.']);
+            return;
+        }
+
+        // CSRF Token Validation
+        if (!$this->validateCsrf()) {
+            echo json_encode(['success' => false, 'message' => 'Token CSRF tidak valid atau kedaluwarsa. Silakan muat ulang halaman.']);
             return;
         }
 
@@ -362,7 +401,7 @@ class ReimbursementController {
             }
 
             // Hierarchical validation for hiring_manager
-            if ($_SESSION['role'] === 'hiring_manager') {
+            if (!$isSuperAdmin && in_array($role, ['hiring_manager', 'manager'])) {
                 $stmtManager = $this->db->prepare("SELECT department_id FROM users WHERE id = :id");
                 $stmtManager->execute(['id' => $_SESSION['user_id']]);
                 $managerDeptId = $stmtManager->fetchColumn();
@@ -413,10 +452,18 @@ class ReimbursementController {
      */
     public function cancel() {
         header('Content-Type: application/json');
-        session_start();
+        if (session_status() === PHP_SESSION_NONE) {
+            session_start();
+        }
 
         if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'employee') {
             echo json_encode(['success' => false, 'message' => 'Akses ditolak. Anda harus login sebagai Karyawan.']);
+            return;
+        }
+
+        // CSRF Token Validation
+        if (!$this->validateCsrf()) {
+            echo json_encode(['success' => false, 'message' => 'Token CSRF tidak valid atau kedaluwarsa. Silakan muat ulang halaman.']);
             return;
         }
 
@@ -608,9 +655,11 @@ class ReimbursementController {
 
             // Authorization: Only the owner employee OR hr_ops OR superadmin OR admin OR manager fungsional is allowed to view
             $userRole = $_SESSION['role'] ?? '';
-            $isAuthorized = ($userRole === 'hr_ops' || $userRole === 'superadmin' || $userRole === 'admin' || $_SESSION['user_id'] === $ownerId || $isSeeded);
+            $origRole = $_SESSION['original_role'] ?? '';
+            $isSuperAdmin = ($userRole === 'superadmin' || $origRole === 'superadmin');
+            $isAuthorized = ($userRole === 'hr_ops' || $isSuperAdmin || $userRole === 'admin' || $_SESSION['user_id'] === $ownerId || $isSeeded);
 
-            if (!$isAuthorized && $userRole === 'hiring_manager') {
+            if (!$isAuthorized && in_array($userRole, ['hiring_manager', 'manager'])) {
                 // Fetch manager's department_id
                 $stmtManager = $this->db->prepare("SELECT department_id FROM users WHERE id = :id");
                 $stmtManager->execute(['id' => $_SESSION['user_id']]);

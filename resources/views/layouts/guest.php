@@ -1,10 +1,12 @@
 <?php
+use App\Services\ViewHelper;
+
 if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
-$db = \App\Config\Database::getInstance()->getConnection();
-$appName = $db->query("SELECT `value` FROM global_settings WHERE `key` = 'app_name' LIMIT 1")->fetchColumn() ?: 'siCare';
-$appLogoImage = $db->query("SELECT `value` FROM global_settings WHERE `key` = 'app_logo_image' LIMIT 1")->fetchColumn() ?: '';
+$appName      = ViewHelper::getSetting('app_name', 'siCare');
+$appLogoImage = ViewHelper::getSetting('app_logo_image', '');
+
 
 // Determine dynamic guest page title
 $page = $page ?? '';
@@ -30,20 +32,21 @@ if (!empty($resolvedGuestPage)) {
     <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
     <title><?= htmlspecialchars($pageTitle) ?></title>
     <!-- Favicon from Uploaded Logo -->
-    <link rel="icon" type="image/x-icon" href="<?= htmlspecialchars($appLogoImage ?: '/favicon.ico') ?>"/>
+    <link rel="icon" type="image/png" href="<?= htmlspecialchars($appLogoImage ?: 'https://support.nafii.my.id/icon/domains.png') ?>"/>
+    <link rel="shortcut icon" href="<?= htmlspecialchars($appLogoImage ?: 'https://support.nafii.my.id/icon/domains.png') ?>"/>
     
     <!-- PWA Meta Tags & Manifest -->
     <meta name="theme-color" content="#000666"/>
     <meta name="apple-mobile-web-app-capable" content="yes"/>
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
     <meta name="apple-mobile-web-app-title" content="<?= htmlspecialchars($appName) ?>"/>
-    <link rel="apple-touch-icon" href="<?= htmlspecialchars($appLogoImage ?: '/images/icons/icon-192x192.png') ?>"/>
+    <link rel="apple-touch-icon" href="<?= htmlspecialchars($appLogoImage ?: 'https://support.nafii.my.id/icon/domains.png') ?>"/>
     <link rel="manifest" href="/manifest.php"/>
     
 
     
     <!-- Fonts -->
-    <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Inter:wght@400;500;600&display=swap" rel="stylesheet"/>
+    <link href="https://fonts.googleapis.com/css2?family=Ubuntu:wght@300;400;500;700&display=swap" rel="stylesheet"/>
     
     <!-- Icons (Material Symbols) -->
     <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
@@ -107,9 +110,9 @@ if (!empty($resolvedGuestPage)) {
               "outline": "#767683"
             },
             fontFamily: {
-              "headline": ["Manrope"],
-              "body": ["Inter"],
-              "label": ["Inter"]
+              "headline": ["Ubuntu", "sans-serif"],
+              "body": ["Ubuntu", "sans-serif"],
+              "label": ["Ubuntu", "sans-serif"]
             },
             borderRadius: {"DEFAULT": "0.125rem", "lg": "0.25rem", "xl": "0.5rem", "full": "0.75rem"},
           },
@@ -156,6 +159,50 @@ if (!empty($resolvedGuestPage)) {
         border: 1px solid rgba(255, 255, 255, 0.5);
         box-shadow: 0 4px 30px rgba(0, 0, 0, 0.05);
       }
+
+      /* Premium Custom Scrollbars */
+      ::-webkit-scrollbar {
+          width: 6px !important;
+          height: 6px !important;
+      }
+      ::-webkit-scrollbar-track {
+          background: transparent !important;
+      }
+      ::-webkit-scrollbar-thumb {
+          background-color: transparent !important;
+          border-radius: 10px !important;
+          border: 1px solid transparent !important;
+          background-clip: padding-box !important;
+          transition: background-color 0.3s ease !important;
+      }
+      /* Show on hover or scroll activity */
+      *:hover::-webkit-scrollbar-thumb,
+      html:hover::-webkit-scrollbar-thumb,
+      body:hover::-webkit-scrollbar-thumb,
+      .is-scrolling::-webkit-scrollbar-thumb,
+      html.is-scrolling::-webkit-scrollbar-thumb,
+      body.is-scrolling::-webkit-scrollbar-thumb {
+          background-color: rgba(0, 6, 102, 0.15) !important;
+      }
+      /* Darker on thumb hover */
+      ::-webkit-scrollbar-thumb:hover {
+          background-color: rgba(0, 6, 102, 0.45) !important;
+      }
+      ::-webkit-scrollbar-thumb:active {
+          background-color: rgba(0, 6, 102, 0.6) !important;
+      }
+
+      /* Firefox Support */
+      * {
+          scrollbar-width: thin;
+          scrollbar-color: transparent transparent;
+      }
+      *:hover,
+      .is-scrolling {
+          scrollbar-color: rgba(0, 6, 102, 0.15) transparent;
+      }
+      body { font-family: 'Ubuntu', sans-serif; }
+      h1, h2, h3 { font-family: 'Ubuntu', sans-serif; }
     </style>
 </head>
 <body class="bg-surface font-body text-on-surface antialiased flex flex-col min-h-screen">
@@ -234,6 +281,27 @@ if (!empty($resolvedGuestPage)) {
                 throw error;
             }
         };
+
+        // Dynamic scrolling indicator for premium scrollbar visibility
+        (function() {
+            var scrollTimeout;
+            window.addEventListener('scroll', function(e) {
+                var target = e.target;
+                if (target === document) {
+                    document.documentElement.classList.add('is-scrolling');
+                } else if (target && target.classList) {
+                    target.classList.add('is-scrolling');
+                }
+                
+                clearTimeout(scrollTimeout);
+                scrollTimeout = setTimeout(function() {
+                    document.documentElement.classList.remove('is-scrolling');
+                    document.querySelectorAll('.is-scrolling').forEach(function(el) {
+                        el.classList.remove('is-scrolling');
+                    });
+                }, 1000);
+            }, { capture: true, passive: true });
+        })();
     </script>
 </body>
 </html>
