@@ -423,6 +423,7 @@ function getCategoryColor($category) {
                 // Post real AJAX request to controller
                 const formData = new FormData();
                 formData.append('request_id', id);
+                formData.append('csrf_token', '<?= csrf_token() ?>');
 
                 fetch('/hrops/verifications/approve', {
                     method: 'POST',
@@ -505,6 +506,7 @@ function getCategoryColor($category) {
                 const formData = new FormData();
                 formData.append('request_id', id);
                 formData.append('rejection_reason', result.value);
+                formData.append('csrf_token', '<?= csrf_token() ?>');
 
                 fetch('/hrops/verifications/reject', {
                     method: 'POST',

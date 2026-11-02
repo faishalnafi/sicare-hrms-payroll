@@ -326,6 +326,7 @@ $interviewers = $stmtMgrs->fetchAll(PDO::FETCH_ASSOC);
         e.preventDefault();
         const form = document.getElementById('scheduleForm');
         const formData = new FormData(form);
+        formData.set('csrf_token', '<?= csrf_token() ?>');
 
         Swal.fire({ title: 'Mengirim Undangan...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
 

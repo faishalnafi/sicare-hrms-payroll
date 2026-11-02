@@ -273,6 +273,7 @@ document.getElementById('approve-onboarding-form')?.addEventListener('submit', f
     e.preventDefault();
 
     const formData = new FormData(this);
+    formData.set('csrf_token', '<?= csrf_token() ?>');
     const btn = document.getElementById('btn-submit-approve');
     btn.disabled = true;
     btn.innerHTML = `<span class="material-symbols-outlined text-base animate-spin">sync</span> Memproses...`;

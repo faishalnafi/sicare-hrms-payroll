@@ -467,6 +467,7 @@ function getGravatarIcon($email) {
         </div>
         <!-- Form Body -->
         <form id="attendanceForm" onsubmit="submitAttendanceCorrection(event)" class="p-6 space-y-4">
+            <?= csrfField() ?>
             <input type="hidden" id="form-att-id" name="attendance_id" />
             <input type="hidden" id="form-att-date" name="date" />
 
@@ -566,6 +567,7 @@ function getGravatarIcon($email) {
                     Swal.showLoading();
                     const formData = new FormData();
                     formData.append('id', id);
+                    formData.append('csrf_token', '<?= csrf_token() ?>');
                     fetch('/manager/leaves/approve', {
                         method: 'POST',
                         body: formData
@@ -608,6 +610,7 @@ function getGravatarIcon($email) {
                     const formData = new FormData();
                     formData.append('id', id);
                     formData.append('rejection_reason', result.value);
+                    formData.append('csrf_token', '<?= csrf_token() ?>');
                     fetch('/manager/leaves/reject', {
                         method: 'POST',
                         body: formData
@@ -647,6 +650,7 @@ function getGravatarIcon($email) {
                     Swal.showLoading();
                     const formData = new FormData();
                     formData.append('claim_id', id);
+                    formData.append('csrf_token', '<?= csrf_token() ?>');
                     fetch('/manager/reimbursements/approve', {
                         method: 'POST',
                         body: formData
@@ -689,6 +693,7 @@ function getGravatarIcon($email) {
                     const formData = new FormData();
                     formData.append('claim_id', id);
                     formData.append('rejection_reason', result.value);
+                    formData.append('csrf_token', '<?= csrf_token() ?>');
                     fetch('/manager/reimbursements/reject', {
                         method: 'POST',
                         body: formData
@@ -1218,6 +1223,7 @@ function getGravatarIcon($email) {
 
         Swal.showLoading();
         const formData = new FormData(form);
+        formData.set('csrf_token', '<?= csrf_token() ?>');
 
         fetch('/hrops/attendance/correct', {
             method: 'POST',

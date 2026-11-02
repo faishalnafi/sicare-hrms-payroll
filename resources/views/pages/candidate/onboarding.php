@@ -425,6 +425,7 @@ document.getElementById('onboarding-form')?.addEventListener('submit', function(
     e.preventDefault();
 
     const formData = new FormData(this);
+    formData.set('csrf_token', '<?= csrf_token() ?>');
     const submitBtn = document.getElementById('submit-btn');
     submitBtn.disabled = true;
     submitBtn.innerHTML = `<span class="material-symbols-outlined text-base animate-spin">sync</span> Memproses...`;

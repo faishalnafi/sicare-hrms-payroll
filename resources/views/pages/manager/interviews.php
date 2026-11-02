@@ -216,6 +216,7 @@ $myInterviews = $stmtInts->fetchAll(PDO::FETCH_ASSOC);
         e.preventDefault();
         const form = document.getElementById('evaluateForm');
         const formData = new FormData(form);
+        formData.set('csrf_token', '<?= csrf_token() ?>');
 
         Swal.fire({ title: 'Menyimpan Penilaian...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
 

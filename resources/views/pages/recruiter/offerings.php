@@ -252,6 +252,7 @@ $eligibleCandidates = $stmtEligible->fetchAll(PDO::FETCH_ASSOC);
         e.preventDefault();
         const form = document.getElementById('offerForm');
         const formData = new FormData(form);
+        formData.set('csrf_token', '<?= csrf_token() ?>');
 
         Swal.fire({ title: 'Menerbitkan Surat Penawaran...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
 

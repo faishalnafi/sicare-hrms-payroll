@@ -188,6 +188,7 @@ document.getElementById('apply-form')?.addEventListener('submit', function(e) {
     e.preventDefault();
 
     const formData = new FormData(this);
+    formData.set('csrf_token', '<?= csrf_token() ?>');
     const btn = document.getElementById('btn-submit-apply');
     btn.disabled = true;
     btn.innerHTML = `<span class="material-symbols-outlined text-base animate-spin">sync</span> Mengirim...`;
