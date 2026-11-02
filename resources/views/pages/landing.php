@@ -30,50 +30,13 @@
                 </a>
             </div>
         </div>
-        <div class="flex-1 relative pl-0 md:pl-10">
-            <div class="w-full aspect-square rounded-[2.5rem] bg-[#0c145e] p-8 flex flex-col justify-between shadow-2xl relative z-0">
-                <!-- 3x3 Grid -->
-                <div class="grid grid-cols-3 gap-4 flex-grow">
-                    <div class="bg-[#243b91] rounded-2xl flex items-center justify-center hover:bg-[#2d49b3] transition-colors cursor-pointer">
-                        <span class="material-symbols-outlined text-white/80 text-4xl">work</span>
-                    </div>
-                    <div class="bg-[#3e2f6b] rounded-2xl flex items-center justify-center hover:bg-[#4c3983] transition-colors cursor-pointer">
-                        <span class="material-symbols-outlined text-white/80 text-4xl">badge</span>
-                    </div>
-                    <div class="bg-[#322c7a] rounded-2xl flex items-center justify-center hover:bg-[#3d3694] transition-colors cursor-pointer">
-                        <span class="material-symbols-outlined text-white/80 text-4xl">groups</span>
-                    </div>
-                    
-                    <div class="bg-[#1f4277] rounded-2xl flex items-center justify-center hover:bg-[#265091] transition-colors cursor-pointer">
-                        <span class="material-symbols-outlined text-white/80 text-4xl">assignment</span>
-                    </div>
-                    <div class="bg-[#423d61] rounded-2xl flex items-center justify-center hover:bg-[#524c78] transition-colors cursor-pointer">
-                        <span class="material-symbols-outlined text-white/80 text-4xl">engineering</span>
-                    </div>
-                    <div class="bg-[#1e4682] rounded-2xl flex items-center justify-center hover:bg-[#25559c] transition-colors cursor-pointer">
-                        <span class="material-symbols-outlined text-white/80 text-4xl">corporate_fare</span>
-                    </div>
-                    
-                    <div class="bg-[#3c2a6d] rounded-2xl flex items-center justify-center hover:bg-[#4a3485] transition-colors cursor-pointer">
-                        <span class="material-symbols-outlined text-white/80 text-4xl">co_present</span>
-                    </div>
-                    <div class="bg-[#1c3f87] rounded-2xl flex items-center justify-center hover:bg-[#234da3] transition-colors cursor-pointer">
-                        <span class="material-symbols-outlined text-white/80 text-4xl">leaderboard</span>
-                    </div>
-                    <div class="bg-[#433660] rounded-2xl flex items-center justify-center hover:bg-[#544378] transition-colors cursor-pointer">
-                        <span class="material-symbols-outlined text-white/80 text-4xl">handshake</span>
-                    </div>
-                </div>
-                
-                <!-- Bottom Text inside dark box -->
-                <div class="mt-6 pr-4 text-right">
-                    <p class="text-[#a0a5db] text-sm font-medium">Akses Semua Layanan Dalam Satu Portal</p>
-                </div>
-            </div>
+        <div class="flex-1 relative pl-0 md:pl-6 flex items-center justify-center">
+            <!-- 3D Floating 3x3 Isometric Blocks Canvas (Enlarged Size & Google Pastel) -->
+            <div id="sicare-3d-container" class="w-full aspect-square max-w-[580px] relative z-0"></div>
             
-            <!-- Identity Chip Overlapping - Floating Animation -->
-            <div class="absolute -bottom-8 -left-8 p-5 bg-white rounded-xl shadow-[0_20px_40px_rgba(0,0,0,0.15)] border border-gray-100 flex items-center gap-4 animate-float z-10 w-[280px]">
-                <div class="w-12 h-12 bg-[#8efb8b] rounded-full flex items-center justify-center shrink-0">
+            <!-- Identity Chip Overlapping - Floating Animation (Exact design from Gambar 1) -->
+            <div class="absolute -bottom-6 left-0 md:left-4 p-5 bg-white rounded-xl shadow-[0_20px_40px_rgba(0,0,0,0.12)] border border-gray-100 flex items-center gap-4 animate-float z-10 w-[280px]">
+                <div class="w-12 h-12 bg-[#8efb8b] rounded-full flex items-center justify-center shrink-0 shadow-sm">
                     <span class="material-symbols-outlined text-black text-xl" style="font-variation-settings: 'FILL' 1;">local_police</span>
                 </div>
                 <div class="flex flex-col justify-center">
@@ -234,6 +197,10 @@ try {
         </div>
     </div>
 </section>
+
+<!-- Three.js Core CDN & Interactive 3D Floating Grid -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="/js/landing-3d.js?v=<?= time() ?>"></script>
 
 <script>
 document.addEventListener('DOMContentLoaded', function() {

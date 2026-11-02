@@ -32,7 +32,18 @@ $appliedReqIds = [];
 $candProfile = null;
 if ($userId) {
     try {
-        $stmtApp = $db->prepare("SELECT * FROM job_applications WHERE candidate_id = :uid OR candidate_email = :email");
+        $stmtApp = $db->prepare("
+            SELECT ja.*, r.title AS job_title, r.req_number, d.name AS dept_name,
+                   jo.id AS offer_id, jo.status AS offer_status,
+                   ji.id AS interview_id, ji.candidate_status AS interview_status, ji.interview_date, ji.interview_time
+            FROM job_applications ja
+            LEFT JOIN job_requisitions r ON ja.requisition_id = r.id
+            LEFT JOIN departments d ON r.department_id = d.id
+            LEFT JOIN job_offers jo ON ja.id = jo.application_id
+            LEFT JOIN job_interviews ji ON ja.id = ji.application_id
+            WHERE ja.candidate_id = :uid OR ja.candidate_email = :email
+            ORDER BY ja.created_at DESC
+        ");
         $stmtApp->execute(['uid' => $userId, 'email' => $userEmail]);
         $myApplications = $stmtApp->fetchAll(PDO::FETCH_ASSOC);
         foreach ($myApplications as $app) {
@@ -75,6 +86,139 @@ if ($userId) {
             </div>
         </div>
     </div>
+
+    <?php if (!empty($myApplications)): ?>
+    <!-- Application Status Tracker Widget -->
+    <div class="bg-surface-container-lowest border border-outline-variant/15 p-6 rounded-3xl shadow-sm space-y-4">
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-3 border-b border-outline-variant/15">
+            <div class="flex items-center gap-2.5">
+                <div class="w-9 h-9 rounded-xl bg-primary/10 text-primary flex items-center justify-center shrink-0">
+                    <span class="material-symbols-outlined text-lg">timeline</span>
+                </div>
+                <div>
+                    <h3 class="font-headline font-extrabold text-base text-on-surface">Pelacak Status Lamaran Saya</h3>
+                    <p class="text-[11px] text-on-surface-variant font-medium">Pantau tahapan seleksi rekrutmen secara transparan untuk setiap posisi yang Anda lamar.</p>
+                </div>
+            </div>
+            <span class="text-xs font-bold px-3 py-1 bg-blue-50 text-blue-700 rounded-full border border-blue-200 self-start sm:self-auto">
+                <?= count($myApplications) ?> Posisi Dilamar
+            </span>
+        </div>
+
+        <div class="space-y-4">
+            <?php foreach ($myApplications as $app): ?>
+                <?php
+                    $curStatus = $app['status'] ?? 'submitted';
+                    $statusSteps = [
+                        'submitted' => ['label' => 'Terkirim', 'icon' => 'outgoing_mail'],
+                        'screening' => ['label' => 'Screening HR', 'icon' => 'find_in_page'],
+                        'shortlisted' => ['label' => 'Shortlist', 'icon' => 'thumb_up'],
+                        'interview' => ['label' => 'Wawancara', 'icon' => 'forum'],
+                        'offering' => ['label' => 'Penawaran', 'icon' => 'history_edu'],
+                        'hired' => ['label' => 'Diterima', 'icon' => 'verified']
+                    ];
+
+                    $stepKeys = array_keys($statusSteps);
+                    $currentIndex = array_search($curStatus, $stepKeys);
+                    if ($currentIndex === false) {
+                        $currentIndex = ($curStatus === 'rejected') ? -1 : 0;
+                    }
+
+                    $badgeColor = 'bg-blue-100 text-blue-800 border-blue-200';
+                    $statusLabel = 'Lamaran Terkirim';
+                    if ($curStatus === 'screening') {
+                        $badgeColor = 'bg-amber-100 text-amber-800 border-amber-200';
+                        $statusLabel = 'Screening Berkas';
+                    } elseif ($curStatus === 'shortlisted') {
+                        $badgeColor = 'bg-indigo-100 text-indigo-800 border-indigo-200';
+                        $statusLabel = 'Lolos Saringan Berkas';
+                    } elseif ($curStatus === 'interview') {
+                        $badgeColor = 'bg-purple-100 text-purple-800 border-purple-200';
+                        $statusLabel = 'Tahap Wawancara';
+                    } elseif ($curStatus === 'offering') {
+                        $badgeColor = 'bg-orange-100 text-orange-800 border-orange-200';
+                        $statusLabel = 'Tahap Penawaran (Offering)';
+                    } elseif ($curStatus === 'hired') {
+                        $badgeColor = 'bg-emerald-100 text-emerald-800 border-emerald-200';
+                        $statusLabel = 'Selamat! Diterima Kerja';
+                    } elseif ($curStatus === 'rejected') {
+                        $badgeColor = 'bg-rose-100 text-rose-800 border-rose-200';
+                        $statusLabel = 'Belum Lolos Seleksi';
+                    }
+                ?>
+                <div class="p-4 sm:p-5 rounded-2xl border border-outline-variant/20 bg-surface flex flex-col gap-4">
+                    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                        <div>
+                            <span class="text-[10px] font-bold text-primary uppercase bg-blue-50 px-2 py-0.5 rounded border border-blue-100"><?= htmlspecialchars($app['req_number'] ?? 'REQ') ?></span>
+                            <h4 class="text-sm font-bold text-on-surface mt-1"><?= htmlspecialchars($app['job_title'] ?? 'Posisi Pekerjaan') ?></h4>
+                            <p class="text-[11px] text-on-surface-variant font-medium"><?= htmlspecialchars($app['dept_name'] ?? 'Departemen') ?> • Dilamar pada: <?= date('d M Y', strtotime($app['created_at'])) ?></p>
+                        </div>
+
+                        <div class="flex items-center gap-2.5">
+                            <span class="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-bold border <?= $badgeColor ?>">
+                                <?= $statusLabel ?>
+                            </span>
+
+                            <?php if ($curStatus === 'interview'): ?>
+                                <a href="/candidate/interviews" class="px-3.5 py-1.5 bg-purple-600 hover:bg-purple-700 text-white font-bold rounded-xl text-xs flex items-center gap-1 shadow-xs transition-all">
+                                    <span class="material-symbols-outlined text-sm">calendar_month</span> Jadwal Wawancara
+                                </a>
+                            <?php elseif ($curStatus === 'offering'): ?>
+                                <a href="/candidate/offerings" class="px-3.5 py-1.5 bg-amber-600 hover:bg-amber-700 text-white font-bold rounded-xl text-xs flex items-center gap-1 shadow-xs transition-all">
+                                    <span class="material-symbols-outlined text-sm">history_edu</span> Tinjau Kontrak
+                                </a>
+                            <?php elseif ($curStatus === 'hired'): ?>
+                                <a href="/candidate/onboarding" class="px-3.5 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl text-xs flex items-center gap-1 shadow-xs transition-all">
+                                    <span class="material-symbols-outlined text-sm">rocket_launch</span> Wizard Onboarding
+                                </a>
+                            <?php endif; ?>
+                        </div>
+                    </div>
+
+                    <?php if ($curStatus !== 'rejected'): ?>
+                    <!-- Stepper Visual -->
+                    <div class="pt-2 border-t border-outline-variant/10 overflow-x-auto">
+                        <div class="flex items-center justify-between min-w-[500px] text-center">
+                            <?php foreach ($stepKeys as $idx => $sKey): ?>
+                                <?php
+                                    $sInfo = $statusSteps[$sKey];
+                                    $isPassed = $idx <= $currentIndex;
+                                    $isCurrent = $idx === $currentIndex;
+                                    
+                                    $circleClass = 'bg-surface-container-high text-on-surface-variant/50 border-outline-variant/30';
+                                    $textClass = 'text-on-surface-variant/60 font-medium';
+                                    if ($isPassed) {
+                                        $circleClass = 'bg-emerald-600 text-white border-emerald-600';
+                                        $textClass = 'text-emerald-700 font-bold';
+                                    }
+                                    if ($isCurrent) {
+                                        $circleClass = 'bg-primary text-white border-primary ring-4 ring-primary/20';
+                                        $textClass = 'text-primary font-extrabold';
+                                    }
+                                ?>
+                                <div class="flex-1 flex flex-col items-center relative">
+                                    <?php if ($idx > 0): ?>
+                                        <div class="absolute right-1/2 top-4 w-full h-0.5 -translate-y-1/2 -z-0 <?= ($idx <= $currentIndex) ? 'bg-emerald-500' : 'bg-outline-variant/20' ?>"></div>
+                                    <?php endif; ?>
+                                    <div class="w-8 h-8 rounded-full border-2 flex items-center justify-center text-xs z-10 transition-all <?= $circleClass ?>">
+                                        <span class="material-symbols-outlined text-sm"><?= $isPassed && !$isCurrent ? 'check' : $sInfo['icon'] ?></span>
+                                    </div>
+                                    <span class="text-[10px] mt-1 <?= $textClass ?>"><?= $sInfo['label'] ?></span>
+                                </div>
+                            <?php endforeach; ?>
+                        </div>
+                    </div>
+                    <?php else: ?>
+                    <div class="p-3 bg-rose-50 rounded-xl border border-rose-100 text-xs text-rose-700 flex items-center gap-2">
+                        <span class="material-symbols-outlined text-base">info</span>
+                        <span>Terima kasih atas partisipasi Anda. Saat ini kualifikasi Anda belum sesuai dengan kebutuhan posisi ini. Anda dipersilakan melamar untuk posisi lowongan lainnya.</span>
+                    </div>
+                    <?php endif; ?>
+                </div>
+            <?php endforeach; ?>
+        </div>
+    </div>
+    <?php endif; ?>
 
     <!-- Search Bar & Filters -->
     <div class="bg-surface-container-lowest border border-outline-variant/15 p-4 rounded-2xl shadow-2xs flex flex-col sm:flex-row items-center justify-between gap-4">
@@ -465,6 +609,15 @@ if ($userId) {
     document.addEventListener('DOMContentLoaded', function() {
         const searchInput = document.getElementById('candJobSearch');
         const cards = document.querySelectorAll('.cand-card-item');
+
+        // Auto-open job application modal if open_req parameter is passed in URL
+        const urlParams = new URLSearchParams(window.location.search);
+        const autoReqId = urlParams.get('open_req');
+        if (autoReqId) {
+            setTimeout(() => {
+                openFptkDetailModal(autoReqId);
+            }, 300);
+        }
 
         if (searchInput && cards.length > 0) {
             searchInput.addEventListener('input', function(e) {

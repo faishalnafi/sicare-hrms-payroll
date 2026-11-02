@@ -73,7 +73,7 @@ class Database {
             <meta name="viewport" content="width=device-width, initial-scale=1.0">
             <title>Gangguan Database | siCare</title>
             <!-- Fonts & Icons -->
-            <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Manrope:wght@800&display=swap" rel="stylesheet"/>
+            <link href="https://fonts.googleapis.com/css2?family=Ubuntu:wght@300;400;500;700&display=swap" rel="stylesheet"/>
             <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
             <!-- Tailwind CDN -->
             <script src="https://cdn.tailwindcss.com"></script>
@@ -94,10 +94,10 @@ class Database {
             </script>
             <style>
                 body {
-                    font-family: 'Inter', sans-serif;
+                    font-family: 'Ubuntu', sans-serif;
                 }
                 h1, h2 {
-                    font-family: 'Manrope', sans-serif;
+                    font-family: 'Ubuntu', sans-serif;
                 }
             </style>
         </head>

@@ -415,7 +415,7 @@ foreach ($requisitions as $r) {
 
         Swal.fire({ title: 'Mempublikasikan Lowongan...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
 
-        fetch('/requisitions/publish', {
+        fetch('/recruiter/requisitions/publish', {
             method: 'POST',
             body: formData
         })
@@ -452,7 +452,7 @@ foreach ($requisitions as $r) {
 
                 Swal.fire({ title: 'Menyimpan...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
 
-                fetch('/requisitions/unpublish', {
+                fetch('/recruiter/requisitions/unpublish', {
                     method: 'POST',
                     body: formData
                 })

@@ -154,7 +154,7 @@ $user = ViewHelper::getUserProfile();
 
             <div>
                 <label class="block font-bold text-on-surface mb-1">Unggah Resume / CV (PDF, Max 10MB) <span class="text-red-500">*</span></label>
-                <input type="file" name="resume" accept=".pdf" required class="block w-full text-xs text-on-surface-variant file:mr-4 file:py-2.5 file:px-4 file:rounded-lg file:border-0 file:text-xs file:font-bold file:bg-primary file:text-white hover:file:bg-primary/90">
+                <input type="file" name="resume_file" accept=".pdf" required class="block w-full text-xs text-on-surface-variant file:mr-4 file:py-2.5 file:px-4 file:rounded-lg file:border-0 file:text-xs file:font-bold file:bg-primary file:text-white hover:file:bg-primary/90">
             </div>
 
             <div>
@@ -188,11 +188,12 @@ document.getElementById('apply-form')?.addEventListener('submit', function(e) {
     e.preventDefault();
 
     const formData = new FormData(this);
+    formData.set('csrf_token', '<?= csrf_token() ?>');
     const btn = document.getElementById('btn-submit-apply');
     btn.disabled = true;
     btn.innerHTML = `<span class="material-symbols-outlined text-base animate-spin">sync</span> Mengirim...`;
 
-    fetch('/job/apply', {
+    fetch('/candidate/apply', {
         method: 'POST',
         headers: {
             'X-JWT-Token': window.jwtToken || ''

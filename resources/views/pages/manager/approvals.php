@@ -21,7 +21,7 @@ $inputAttendanceLabel = $isSuperAdmin ? "Input Kehadiran" : "Input Kehadiran Tim
 $selectEmployeeLabel = $isSuperAdmin ? "Karyawan / Pengguna" : "Karyawan Tim";
 $selectOptionLabel = $isSuperAdmin ? "-- Pilih Pengguna --" : "-- Pilih Staf Fungsional --";
 
-[$leaves, $reimbursements, $teamMembers] = ViewHelper::getManagerApprovalsDashboardData($userId, $isSuperAdmin);
+[$leaves, $reimbursements, $teamMembers, $hasDepartment] = ViewHelper::getManagerApprovalsDashboardData($userId, $isSuperAdmin);
 
 // Compute pending stats for badges
 $pendingLeavesCount = count(array_filter($leaves, fn($l) => ($l['status'] ?? '') === 'pending'));
@@ -234,7 +234,7 @@ function getGravatarIcon($email) {
                                     <!-- Dokumen -->
                                     <td class="py-4 px-6 whitespace-nowrap">
                                         <?php if (!empty($req['attachment_path'])): ?>
-                                            <button onclick="previewFile('/hrops/leaves/view_attachment?file=<?= $req['attachment_path'] ?>', 'Bukti Pengajuan Cuti')" class="text-primary hover:underline font-bold flex items-center gap-1 cursor-pointer whitespace-nowrap">
+                                            <button onclick="previewFile('/manager/leaves/view_attachment?file=<?= $req['attachment_path'] ?>', 'Bukti Pengajuan Cuti')" class="text-primary hover:underline font-bold flex items-center gap-1 cursor-pointer whitespace-nowrap">
                                                 <span class="material-symbols-outlined text-sm">attach_file</span> Lihat Berkas
                                             </button>
                                         <?php else: ?>
@@ -343,7 +343,7 @@ function getGravatarIcon($email) {
                                     </td>
                                     <!-- Nota -->
                                     <td class="py-4 px-6 whitespace-nowrap">
-                                        <button onclick="previewFile('/hrops/reimbursements/view_receipt?file=<?= $req['receipt_path'] ?>', 'Kuitansi Reimbursement')" class="text-primary hover:underline font-bold flex items-center gap-1 cursor-pointer whitespace-nowrap">
+                                        <button onclick="previewFile('/manager/reimbursements/view_receipt?file=<?= $req['receipt_path'] ?>', 'Kuitansi Reimbursement')" class="text-primary hover:underline font-bold flex items-center gap-1 cursor-pointer whitespace-nowrap">
                                             <span class="material-symbols-outlined text-sm">attach_file</span> Lihat Berkas
                                         </button>
                                     </td>
@@ -467,6 +467,7 @@ function getGravatarIcon($email) {
         </div>
         <!-- Form Body -->
         <form id="attendanceForm" onsubmit="submitAttendanceCorrection(event)" class="p-6 space-y-4">
+            <?= csrfField() ?>
             <input type="hidden" id="form-att-id" name="attendance_id" />
             <input type="hidden" id="form-att-date" name="date" />
 
@@ -566,7 +567,8 @@ function getGravatarIcon($email) {
                     Swal.showLoading();
                     const formData = new FormData();
                     formData.append('id', id);
-                    fetch('/hrops/leaves/approve', {
+                    formData.append('csrf_token', '<?= csrf_token() ?>');
+                    fetch('/manager/leaves/approve', {
                         method: 'POST',
                         body: formData
                     })
@@ -608,7 +610,8 @@ function getGravatarIcon($email) {
                     const formData = new FormData();
                     formData.append('id', id);
                     formData.append('rejection_reason', result.value);
-                    fetch('/hrops/leaves/reject', {
+                    formData.append('csrf_token', '<?= csrf_token() ?>');
+                    fetch('/manager/leaves/reject', {
                         method: 'POST',
                         body: formData
                     })
@@ -647,7 +650,8 @@ function getGravatarIcon($email) {
                     Swal.showLoading();
                     const formData = new FormData();
                     formData.append('claim_id', id);
-                    fetch('/hrops/reimbursements/approve', {
+                    formData.append('csrf_token', '<?= csrf_token() ?>');
+                    fetch('/manager/reimbursements/approve', {
                         method: 'POST',
                         body: formData
                     })
@@ -689,7 +693,8 @@ function getGravatarIcon($email) {
                     const formData = new FormData();
                     formData.append('claim_id', id);
                     formData.append('rejection_reason', result.value);
-                    fetch('/hrops/reimbursements/reject', {
+                    formData.append('csrf_token', '<?= csrf_token() ?>');
+                    fetch('/manager/reimbursements/reject', {
                         method: 'POST',
                         body: formData
                     })
@@ -1218,6 +1223,7 @@ function getGravatarIcon($email) {
 
         Swal.showLoading();
         const formData = new FormData(form);
+        formData.set('csrf_token', '<?= csrf_token() ?>');
 
         fetch('/hrops/attendance/correct', {
             method: 'POST',

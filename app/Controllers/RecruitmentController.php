@@ -564,13 +564,17 @@ class RecruitmentController {
                 }
             }
 
-            // Get Employee Role ID (or fallback to '3' / 'employee')
-            $roleId = '3';
-            $stmtRoleId = $db->query("SELECT id FROM roles WHERE role_name = 'employee' LIMIT 1");
-            $rId = $stmtRoleId->fetchColumn();
-            if ($rId) {
-                $roleId = $rId;
-            }
+            // Get Employee Role ID (or fallback to standard UUID)
+            $roleId = '2d3e4f5a-6b7c-8d9e-0f1a-2b3c4d5e6f7a';
+            try {
+                $stmtRoleId = $db->query("SELECT id FROM roles WHERE name = 'employee' LIMIT 1");
+                if ($stmtRoleId) {
+                    $rId = $stmtRoleId->fetchColumn();
+                    if ($rId) {
+                        $roleId = $rId;
+                    }
+                }
+            } catch (\Exception $e) {}
 
             // Update user to employee
             $stmtUpdate = $db->prepare("

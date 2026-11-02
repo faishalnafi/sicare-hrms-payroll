@@ -398,7 +398,7 @@ foreach ($requisitions as $r) {
             didOpen: () => { Swal.showLoading(); }
         });
 
-        fetch('/requisitions/store', {
+        fetch('/manager/requisitions/store', {
             method: 'POST',
             body: formData
         })

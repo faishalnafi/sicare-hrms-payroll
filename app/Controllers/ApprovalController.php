@@ -18,12 +18,15 @@ class ApprovalController {
             exit;
         }
         $role = $_SESSION['role'] ?? '';
-        // Only executive and superadmin can approve/reject
-        $allowed = in_array($role, ['executive', 'superadmin']);
+        $origRole = $_SESSION['original_role'] ?? '';
+        $isSuperAdmin = ($role === 'superadmin' || $origRole === 'superadmin');
+        
+        // Executive, Superadmin, and Admin
+        $allowed = ($isSuperAdmin || in_array($role, ['executive', 'admin']));
         if (!$allowed) {
             header('Content-Type: application/json');
             http_response_code(403);
-            echo json_encode(['success' => false, 'message' => 'Access denied: Executive or Superadmin role required.']);
+            echo json_encode(['success' => false, 'message' => 'Akses ditolak: Wewenang Eksekutif, Admin, atau Superadmin diperlukan.']);
             exit;
         }
         if ($requireCsrf) {

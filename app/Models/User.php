@@ -45,7 +45,19 @@ class User {
             $profilePicture = resolveProfilePicture($email);
         }
         
-        $stmt = $this->db->prepare("INSERT INTO users (id, first_name, last_name, email, profile_picture, password_hash, role) VALUES (:id, :first_name, :last_name, :email, :profile_picture, :password_hash, 'candidate')");
+        // Resolve default candidate role_id from roles table
+        $candRoleId = '4b5c6d7e-8f9a-0b1c-2d3e-4f5a6b7c8d9e';
+        try {
+            $stmtRole = $this->db->query("SELECT id FROM roles WHERE name = 'candidate' LIMIT 1");
+            if ($stmtRole) {
+                $rId = $stmtRole->fetchColumn();
+                if (!empty($rId)) {
+                    $candRoleId = $rId;
+                }
+            }
+        } catch (\Exception $e) {}
+
+        $stmt = $this->db->prepare("INSERT INTO users (id, first_name, last_name, email, profile_picture, password_hash, role, role_id) VALUES (:id, :first_name, :last_name, :email, :profile_picture, :password_hash, 'candidate', :role_id)");
         
         $success = $stmt->execute([
             'id' => $id,
@@ -53,7 +65,8 @@ class User {
             'last_name' => $lastName,
             'email' => $email,
             'profile_picture' => $profilePicture,
-            'password_hash' => $hash
+            'password_hash' => $hash,
+            'role_id' => $candRoleId
         ]);
 
         if ($success) {

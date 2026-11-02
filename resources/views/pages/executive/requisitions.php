@@ -314,7 +314,7 @@ foreach ($requisitions as $r) {
 
                 Swal.fire({ title: 'Memproses Persetujuan...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
 
-                fetch('/requisitions/approve', {
+                fetch('/executive/requisitions/approve', {
                     method: 'POST',
                     body: formData
                 })
@@ -356,7 +356,7 @@ foreach ($requisitions as $r) {
 
                 Swal.fire({ title: 'Memproses Penolakan...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
 
-                fetch('/requisitions/reject', {
+                fetch('/executive/requisitions/reject', {
                     method: 'POST',
                     body: formData
                 })
@@ -394,7 +394,7 @@ foreach ($requisitions as $r) {
 
                 Swal.fire({ title: 'Memproses Pembatalan...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
 
-                fetch('/requisitions/revoke', {
+                fetch('/executive/requisitions/revoke', {
                     method: 'POST',
                     body: formData
                 })

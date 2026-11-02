@@ -161,7 +161,10 @@ class CorrectionController {
             session_start();
         }
 
-        if (!isset($_SESSION['user_id']) || !in_array($_SESSION['role'], ['hr_ops', 'superadmin'])) {
+        $role = $_SESSION['role'] ?? '';
+        $origRole = $_SESSION['original_role'] ?? '';
+        $isSuperAdmin = ($role === 'superadmin' || $origRole === 'superadmin');
+        if (!isset($_SESSION['user_id']) || (!$isSuperAdmin && !in_array($role, ['hr_ops', 'admin']))) {
             echo json_encode(['success' => false, 'message' => 'Akses ditolak. Anda harus login sebagai HR Operations.']);
             return;
         }
@@ -262,7 +265,10 @@ class CorrectionController {
             session_start();
         }
 
-        if (!isset($_SESSION['user_id']) || !in_array($_SESSION['role'], ['hr_ops', 'superadmin'])) {
+        $role = $_SESSION['role'] ?? '';
+        $origRole = $_SESSION['original_role'] ?? '';
+        $isSuperAdmin = ($role === 'superadmin' || $origRole === 'superadmin');
+        if (!isset($_SESSION['user_id']) || (!$isSuperAdmin && !in_array($role, ['hr_ops', 'admin']))) {
             echo json_encode(['success' => false, 'message' => 'Akses ditolak. Anda harus login sebagai HR Operations.']);
             return;
         }
@@ -448,7 +454,10 @@ class CorrectionController {
         $stmt->execute(['file_path' => $fileName]);
         $ownerId = $stmt->fetchColumn();
 
-        if ($_SESSION['role'] !== 'hr_ops' && $_SESSION['user_id'] !== $ownerId) {
+        $role = $_SESSION['role'] ?? '';
+        $origRole = $_SESSION['original_role'] ?? '';
+        $isSuperAdmin = ($role === 'superadmin' || $origRole === 'superadmin');
+        if (!$isSuperAdmin && !in_array($role, ['hr_ops', 'admin']) && $_SESSION['user_id'] !== $ownerId) {
             // Fallback check: if the requested file doesn't have an owner in the table (could be static/dummy),
             // let employee see it for illustration, but restrict strict files
             if ($ownerId !== false) {

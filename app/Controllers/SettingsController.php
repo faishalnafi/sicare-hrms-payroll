@@ -104,6 +104,7 @@ class SettingsController {
             'app_idle_timeout_sec',
             'app_idle_countdown_sec',
             'google_maps_api_key',
+            'system_api_key',
         ];
 
         try {
@@ -218,7 +219,8 @@ class SettingsController {
                     'app_logo_type' => $this->get('app_logo_type', 'icon'),
                     'app_logo_icon' => $this->get('app_logo_icon', 'local_police'),
                     'app_logo_image' => $this->get('app_logo_image', ''),
-                    'google_maps_api_key' => $this->get('google_maps_api_key', ''),
+                    'google_maps_api_key' => $this->get('google_maps_api_key',
+            'system_api_key', ''),
                 ]
             ]);
         } catch (Exception $e) {
